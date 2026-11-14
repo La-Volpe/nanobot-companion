@@ -9,14 +9,37 @@ internal data class CandidateFile(val name: String, val mimeType: String, val by
  * The reasons a pick is refused, typed so the platform holds the copy (plan.md §10).
  * Each maps to exactly one sentence in the design's attachment sheet.
  */
-internal sealed interface AttachmentRejection {
-    data object EmptyFile : AttachmentRejection
-    data object TooManyFiles : AttachmentRejection
-    data object FileTooLarge : AttachmentRejection
-    data object TotalTooLarge : AttachmentRejection
-    data object TooManyVideos : AttachmentRejection
-    data object VideoTooLarge : AttachmentRejection
-    data object UnsupportedType : AttachmentRejection
+public sealed interface AttachmentRejection {
+    /** The design's own copy lives in the platform's strings, keyed by this (plan.md §10). */
+    public val copyKey: String
+
+    public data object EmptyFile : AttachmentRejection {
+        override val copyKey: String get() = "attach.empty"
+    }
+
+    public data object TooManyFiles : AttachmentRejection {
+        override val copyKey: String get() = "attach.tooMany"
+    }
+
+    public data object FileTooLarge : AttachmentRejection {
+        override val copyKey: String get() = "attach.fileTooLarge"
+    }
+
+    public data object TotalTooLarge : AttachmentRejection {
+        override val copyKey: String get() = "attach.totalTooLarge"
+    }
+
+    public data object TooManyVideos : AttachmentRejection {
+        override val copyKey: String get() = "attach.tooManyVideos"
+    }
+
+    public data object VideoTooLarge : AttachmentRejection {
+        override val copyKey: String get() = "attach.videoTooLarge"
+    }
+
+    public data object UnsupportedType : AttachmentRejection {
+        override val copyKey: String get() = "attach.unsupported"
+    }
 }
 
 /**

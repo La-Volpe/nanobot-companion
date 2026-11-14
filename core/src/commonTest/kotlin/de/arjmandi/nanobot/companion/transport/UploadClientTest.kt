@@ -59,7 +59,7 @@ class UploadClientTest {
 
         val result = client(engine).upload(capability, file, ByteArray(12))
 
-        assertEquals("ref-1", assertIs<UploadResult.Uploaded>(result).reference, "the message carries the reference (C6.6)")
+        assertEquals("ref-1", assertIs<UploadOutcome.Uploaded>(result).reference, "the message carries the reference (C6.6)")
     }
 
     @Test
@@ -68,7 +68,7 @@ class UploadClientTest {
 
         val result = client(engine).upload(capability, file, ByteArray(12))
 
-        assertEquals(CoreError.ServerError(status = 413), assertIs<UploadResult.Failed>(result).error)
+        assertEquals(CoreError.ServerError(status = 413), assertIs<UploadOutcome.Failed>(result).error)
     }
 
     @Test
@@ -77,6 +77,6 @@ class UploadClientTest {
 
         val result = client(engine).upload(capability, file, ByteArray(12))
 
-        assertEquals(CoreError.AuthFailed, assertIs<UploadResult.Failed>(result).error, "an expired capability is an auth failure")
+        assertEquals(CoreError.AuthFailed, assertIs<UploadOutcome.Failed>(result).error, "an expired capability is an auth failure")
     }
 }

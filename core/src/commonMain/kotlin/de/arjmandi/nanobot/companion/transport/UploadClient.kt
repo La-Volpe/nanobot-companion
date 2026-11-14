@@ -15,9 +15,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-internal sealed interface UploadResult {
-    data class Uploaded(val reference: String) : UploadResult
-    data class Failed(val error: CoreError) : UploadResult
+internal sealed interface UploadOutcome {
+    data class Uploaded(val reference: String) : UploadOutcome
+    data class Failed(val error: CoreError) : UploadOutcome
 }
 
 /**
@@ -30,7 +30,7 @@ internal class UploadClient(
     private val baseUrl: String,
 ) {
 
-    suspend fun upload(capability: UploadCapability, file: CandidateFile, bytes: ByteArray): UploadResult = try {
+    suspend fun upload(capability: UploadCapability, file: CandidateFile, bytes: ByteArray): UploadOutcome = try {
         val response = http.post("${baseUrl.trimEnd('/')}${capability.path}") {
             header(HttpHeaders.Authorization, "Bearer ${capability.token}")
             file.name.let { name -> header("X-Attachment-Name", percentEncode(name)) }
@@ -38,25 +38,25 @@ internal class UploadClient(
         }
         when {
             response.status == HttpStatusCode.Unauthorized || response.status == HttpStatusCode.Forbidden ->
-                UploadResult.Failed(CoreError.AuthFailed)
+                UploadOutcome.Failed(CoreError.AuthFailed)
 
             response.status == HttpStatusCode.Created -> {
                 val reference = runCatching {
                     Json.parseToJsonElement(response.bodyAsText()).jsonObject["reference"]!!.jsonPrimitive.content
                 }.getOrNull()
                 if (reference == null) {
-                    UploadResult.Failed(CoreError.MissingField("reference"))
+                    UploadOutcome.Failed(CoreError.MissingField("reference"))
                 } else {
-                    UploadResult.Uploaded(reference)
+                    UploadOutcome.Uploaded(reference)
                 }
             }
 
-            else -> UploadResult.Failed(CoreError.ServerError(status = response.status.value))
+            else -> UploadOutcome.Failed(CoreError.ServerError(status = response.status.value))
         }
     } catch (failure: IOException) {
-        UploadResult.Failed(classifyFailure(failure))
+        UploadOutcome.Failed(classifyFailure(failure))
     } catch (failure: Exception) {
-        UploadResult.Failed(classifyFailure(failure))
+        UploadOutcome.Failed(classifyFailure(failure))
     }
 
     private fun percentEncode(name: String): String = buildString {
