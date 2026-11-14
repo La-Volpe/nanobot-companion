@@ -93,6 +93,47 @@ public class ChatHandle internal constructor(
     }
 
     /**
+     * Type-and-send while a turn runs (C5.5, I5): the WebUI's `showStopButton = isStreaming &&
+     * !canSend` means the Send button queues rather than stops. What is typed while a prompt
+     * waits joins it, which is the WebUI's own merge (`useQueuedPrompt.mergeQueuedPrompt`).
+     */
+    public fun enqueue(text: String) {
+        val clean = text.trim()
+        val chatId = session.id.value
+        if (clean.isEmpty() || chatId == null) return
+        session.control = TurnControl.enqueue(session.control, chatId, clean).state
+        session.mirrorQueue()
+    }
+
+    /**
+     * Send now: the queued prompt steers the running turn instead of waiting for it, and goes
+     * out as a fresh message when nothing is running (`useQueuedPrompt.send` sets
+     * `continueActiveTurn` only while streaming).
+     */
+    @Throws(Throwable::class)
+    public suspend fun sendQueuedNow(): SendReceipt {
+        val waiting = session.control.queued.filter { it.chatId == session.id.value }
+        if (waiting.isEmpty()) return SendReceipt.Rejected(SendRejection.EmptyDraft)
+        val text = waiting.joinToString("\n") { it.text }
+        session.control = session.control.copy(queued = session.control.queued - waiting.toSet())
+        session.mirrorQueue()
+
+        val chatId = session.id.value ?: return SendReceipt.Rejected(SendRejection.NotConnected)
+        val active = session.thread.value.activeTurnId
+            ?: return core.sendDraft(chatId, OutboundDraft(text = text))
+        val reduction = TurnControl.steer(session.control, chatId, active, text)
+        session.control = reduction.state
+        val written = reduction.effects.mapNotNull { (it as? Effect.Send)?.frame }.map { core.write(it) }
+        return if (written.all { it }) SendReceipt.Accepted(active) else SendReceipt.Rejected(SendRejection.NotConnected)
+    }
+
+    /** Delete on the chip: the prompt never leaves the device. */
+    public fun discardQueued() {
+        session.control = session.control.copy(queued = session.control.queued.filterNot { it.chatId == session.id.value })
+        session.mirrorQueue()
+    }
+
+    /**
      * One recording, transcribed by the gateway (C6.5). The transcript lands after whatever
      * was already typed, so a half-written note is not replaced.
      */
@@ -123,6 +164,17 @@ public class ChatHandle internal constructor(
         val notice = session.thread.value.notices.filterIsInstance<Notice.Recovery>().firstOrNull()
             ?: return AutomationActionResult.Refused(BAD_REQUEST, "no_recovery_notice")
         return core.recoveryAction(chatId, notice.id, "recovery.dismiss")
+    }
+
+    /**
+     * The subtask dock's stop control (I8). The gateway's one control is `subagent.cancel` with
+     * the session key and the task id (`ws_http.py:931`); a refusal leaves the task on screen.
+     */
+    @Throws(Throwable::class)
+    public suspend fun cancelSubagent(taskId: String): AutomationActionResult {
+        val chatId = session.id.value ?: return AutomationActionResult.NotConnected
+        if (taskId.isBlank()) return AutomationActionResult.Refused(BAD_REQUEST, "missing_task_id")
+        return core.subagentCancel(chatId, taskId)
     }
 
     /** A notice the client owns — the sandbox warning — goes away when the user says so. */
@@ -160,4 +212,10 @@ internal class ChatSession(id: MutableStateFlow<String?>) {
 
     /** Uploads waiting for a message to carry them; cleared when one is accepted (C6.6). */
     val media: MutableList<UploadReference> = mutableListOf()
+
+    /** The queue as the chip reads it: the prompts waiting for this chat, one per line. */
+    internal fun mirrorQueue() {
+        val text = control.queued.joinToString("\n") { it.text }
+        composer.value = composer.value.copy(queued = text.ifEmpty { null })
+    }
 }

@@ -63,6 +63,20 @@ public data class UsageTotals(
 )
 
 /**
+ * One model preset (plan.md C6.2, I5's model sheet). `/model <preset>` is the switch, so the
+ * sheet needs the names the gateway actually has; `active` and `isDefault` are the gateway's
+ * own marks rather than a comparison this client re-derives.
+ */
+public data class ModelPreset(
+    public val name: String,
+    public val model: String,
+    public val provider: String?,
+    public val contextWindowTokens: Int?,
+    public val active: Boolean = false,
+    public val isDefault: Boolean = false,
+)
+
+/**
  * Settings → Overview (plan.md C7.1), as one immutable value. Deliberately absent: uptime.
  * The gateway's payload has no uptime field, and the design says so rather than guessing at
  * one from a process start time this client cannot see.
@@ -76,6 +90,8 @@ public data class SettingsState(
     public val contextWindowTokens: Int? = null,
     public val transcription: TranscriptionSettings? = null,
     public val usage: UsageTotals? = null,
+    /** The presets the model sheet offers, in the gateway's own order (C6.2). */
+    public val modelPresets: List<ModelPreset> = emptyList(),
     public val loaded: Boolean = false,
 )
 
@@ -116,7 +132,22 @@ public object SettingsPayloads {
                     maxUploadMb = it.integer("max_upload_mb"),
                 )
             },
+            modelPresets = root.items("model_presets").mapNotNull(::preset),
             loaded = true,
+        )
+    }
+
+    /** A preset with no name or no model cannot be switched to, so it is not offered. */
+    private fun preset(json: JsonObject): ModelPreset? {
+        val name = json.text("name") ?: return null
+        val model = json.text("model") ?: return null
+        return ModelPreset(
+            name = name,
+            model = model,
+            provider = json.text("resolved_provider") ?: json.text("provider"),
+            contextWindowTokens = json.integer("context_window_tokens"),
+            active = json.flag("active"),
+            isDefault = json.flag("is_default"),
         )
     }
 

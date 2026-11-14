@@ -11,6 +11,7 @@ import de.arjmandi.nanobot.companion.projection.PaletteCatalog
 import de.arjmandi.nanobot.companion.projection.SessionListState
 import de.arjmandi.nanobot.companion.projection.ThreadCache
 import de.arjmandi.nanobot.companion.projection.ThreadReducer
+import de.arjmandi.nanobot.companion.projection.TurnControl
 import de.arjmandi.nanobot.companion.projection.ThreadState
 import de.arjmandi.nanobot.companion.transport.AutomationsClient
 import de.arjmandi.nanobot.companion.transport.AutomationsOutcome
@@ -40,6 +41,7 @@ import de.arjmandi.nanobot.companion.wire.ReadyFrame
 import de.arjmandi.nanobot.companion.wire.TranscriptionErrorFrame
 import de.arjmandi.nanobot.companion.wire.TranscriptionResultFrame
 import de.arjmandi.nanobot.companion.wire.SessionUpdatedFrame
+import de.arjmandi.nanobot.companion.wire.TurnEndFrame
 import de.arjmandi.nanobot.companion.wire.SettingsState
 import de.arjmandi.nanobot.companion.wire.UploadCapability
 import de.arjmandi.nanobot.companion.wire.UploadReference
@@ -374,6 +376,10 @@ public class NanobotCore internal constructor(
         chatSet = routed.set
         routed.set.threads.forEach { (chatId, thread) -> publish(chatId, thread) }
 
+        // A settled turn releases the prompt that was waiting for it (C5.5, I5), now that the
+        // thread it belongs to has taken its answer.
+        if (frame is TurnEndFrame) releaseQueued(frame.chatId, frame.turnId)
+
         // A refused scope switch is the only way the gateway answers `set_workspace_scope`
         // (inbound_commands.py:283), so the chip goes back rather than staying wrong (C6.3).
         if (frame is ErrorFrame && frame.detail == SCOPE_REJECTED) {
@@ -425,12 +431,17 @@ public class NanobotCore internal constructor(
     /** A client turn id: stamped with the injected clock so a test can predict it. */
     internal fun nextTurnId(): String = "companion-${deps.clock.nowMs()}-${sequence++}"
 
-    internal suspend fun sendDraft(chatId: String, draft: OutboundDraft): SendReceipt {
+    internal suspend fun sendDraft(
+        chatId: String,
+        draft: OutboundDraft,
+        fromQueue: Boolean = false,
+    ): SendReceipt {
         val session = registry.value[chatId]
         val text = draft.text.trim()
         // The draft is the composer's memory: it goes in before the attempt and only leaves
-        // when the socket took the message (C6.1).
-        session?.composer?.update { it.copy(draft = draft.text) }
+        // when the socket took the message (C6.1). A released prompt is not the draft — what
+        // the reader has typed meanwhile stays where it is.
+        if (!fromQueue) session?.composer?.update { it.copy(draft = draft.text) }
 
         if (text.isEmpty()) return SendReceipt.Rejected(SendRejection.EmptyDraft)
         val limits = session?.composer?.value?.limits ?: payload?.limits
@@ -462,7 +473,7 @@ public class NanobotCore internal constructor(
         val thread = ThreadReducer.addLocalPrompt(chatSet.thread(chatId), turnId, text, quote?.text, deps.clock.nowMs())
         chatSet = chatSet.copy(threads = chatSet.threads + (chatId to thread))
         session?.thread?.value = thread
-        session?.composer?.update { it.copy(draft = "") }
+        if (!fromQueue) session?.composer?.update { it.copy(draft = "") }
         session?.media?.clear()
         return SendReceipt.Accepted(turnId)
     }
@@ -512,6 +523,24 @@ public class NanobotCore internal constructor(
 
     internal fun threadOf(chatId: String): ThreadState = chatSet.thread(chatId)
 
+    /**
+     * The queued prompt goes out when its turn settles. `TurnControl` decides which prompt that
+     * is; the send is the same one a typed prompt takes, so a released prompt gets the same
+     * optimistic bubble and the same limits instead of a second path that could drift.
+     */
+    private suspend fun releaseQueued(chatId: String?, turnId: String?) {
+        if (chatId == null) return
+        val session = registry.value[chatId] ?: return
+        if (session.control.queued.none { it.chatId == chatId }) return
+        val reduction = TurnControl.onTurnEnd(session.control, chatId, turnId.orEmpty())
+        session.control = reduction.state
+        session.mirrorQueue()
+        val released = reduction.effects.mapNotNull { (it as? Effect.Send)?.frame }
+            .filterIsInstance<Outbound.Message>()
+            .firstOrNull() ?: return
+        sendDraft(chatId, OutboundDraft(text = released.content), fromQueue = true)
+    }
+
     // --- internals ---------------------------------------------------------------------
 
     /**
@@ -524,6 +553,20 @@ public class NanobotCore internal constructor(
             put("recovery_id", JsonPrimitive(recoveryId))
         }
         return when (val reply = mutation(action, payload)) {
+            WebuiReply.NotConnected -> AutomationActionResult.NotConnected
+            WebuiReply.Timeout -> AutomationActionResult.Timeout
+            is WebuiReply.Refused -> AutomationActionResult.Refused(reply.status, reply.message)
+            is WebuiReply.Ok -> AutomationActionResult.Accepted
+        }
+    }
+
+    /** One subtask's cancellation, answered like any other mutation (`subagent.cancel`). */
+    internal suspend fun subagentCancel(chatId: String, taskId: String): AutomationActionResult {
+        val payload = buildJsonObject {
+            put("session_key", JsonPrimitive(chatId))
+            put("task_id", JsonPrimitive(taskId))
+        }
+        return when (val reply = mutation("subagent.cancel", payload)) {
             WebuiReply.NotConnected -> AutomationActionResult.NotConnected
             WebuiReply.Timeout -> AutomationActionResult.Timeout
             is WebuiReply.Refused -> AutomationActionResult.Refused(reply.status, reply.message)

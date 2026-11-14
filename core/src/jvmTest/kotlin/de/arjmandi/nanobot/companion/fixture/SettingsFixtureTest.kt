@@ -57,6 +57,32 @@ class SettingsFixtureTest {
         assertEquals(day.totalTokens, day.sources.values.sumOf { it.totalTokens }, "and each day's sources sum to the day")
     }
 
+    /**
+     * The model sheet is drawn from `model_presets` in the settings payload the client already
+     * reads (I5). The alternative — a hand-written list of presets in the app — would offer a
+     * `/model` switch to a name the gateway does not have.
+     */
+    @Test
+    fun theModelPresetsComeFromTheRecordedSettings() {
+        val state = SettingsPayloads.settings(read("settings.json"))
+
+        assertTrue(state.modelPresets.size >= 2, "the recording has more than the default preset: ${state.modelPresets.map { it.name }}")
+        val named = state.modelPresets.map { it.name }
+        assertTrue(named.first() == "default", "the gateway always lists `default` first: $named")
+        assertTrue(
+            state.modelPresets.all { it.name.isNotBlank() && it.model.isNotBlank() },
+            "a preset row needs the name to switch to and the model it answers with",
+        )
+        val primary = state.modelPresets.firstOrNull { it.name == "primary" }
+        assertTrue(primary != null, "the dev gateway's own preset is in the list: $named")
+        assertEquals("deepseek-v4.1-flash:cloud", primary?.model)
+        assertEquals(32768, primary?.contextWindowTokens, "each preset carries its own context window, which the sheet shows")
+        assertTrue(
+            state.modelPresets.count { it.active } == 1,
+            "one preset is the active one: ${state.modelPresets.filter { it.active }.map { it.name }}",
+        )
+    }
+
     @Test
     fun transcriptionBoundsMatchTheProtocol() {
         val state = SettingsPayloads.settings(read("settings.json"))

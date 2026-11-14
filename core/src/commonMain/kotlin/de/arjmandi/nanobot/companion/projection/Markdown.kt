@@ -9,53 +9,53 @@ package de.arjmandi.nanobot.companion.projection
  * items that each know how deep they are, which is what a streaming parser can build
  * incrementally and what both SwiftUI and Compose indent from one number.
  */
-internal data class MarkdownDocument(val blocks: List<MarkdownBlock>) {
+public data class MarkdownDocument(public val blocks: List<MarkdownBlock>) {
 
     /** Everything a copy button or a test wants: the text with no markup. */
-    val plainText: String get() = blocks.joinToString("\n") { it.plainText() }
+    public val plainText: String get() = blocks.joinToString("\n") { it.plainText() }
 }
 
-internal sealed interface MarkdownBlock {
+public sealed interface MarkdownBlock {
 
-    data class Heading(val level: Int, val inlines: List<Inline>) : MarkdownBlock
+    public data class Heading(val level: Int, val inlines: List<Inline>) : MarkdownBlock
 
-    data class Paragraph(val inlines: List<Inline>) : MarkdownBlock
+    public data class Paragraph(val inlines: List<Inline>) : MarkdownBlock
 
-    data class ListBlock(val ordered: Boolean, val items: List<ListItem>, val start: Int = 1) : MarkdownBlock
+    public data class ListBlock(val ordered: Boolean, val items: List<ListItem>, val start: Int = 1) : MarkdownBlock
 
     /** `closed` is false while a fence is still arriving, which the streaming split reads. */
-    data class CodeFence(val language: String?, val code: String, val closed: Boolean = true) : MarkdownBlock
+    public data class CodeFence(val language: String?, val code: String, val closed: Boolean = true) : MarkdownBlock
 
-    data class Table(
+    public data class Table(
         val header: List<List<Inline>>,
         val alignments: List<Alignment>,
         val rows: List<List<List<Inline>>>,
     ) : MarkdownBlock
 
-    data class Quote(val blocks: List<MarkdownBlock>) : MarkdownBlock
+    public data class Quote(val blocks: List<MarkdownBlock>) : MarkdownBlock
 
-    data object Rule : MarkdownBlock
+    public data object Rule : MarkdownBlock
 }
 
 /** One list item: how deep it sits, and its own inline content. */
-internal data class ListItem(val depth: Int, val inlines: List<Inline>)
+public data class ListItem(public val depth: Int, public val inlines: List<Inline>)
 
-internal enum class Alignment { None, Left, Center, Right }
+public enum class Alignment { None, Left, Center, Right }
 
-internal sealed interface Inline {
+public sealed interface Inline {
 
-    data class Text(val text: String) : Inline
+    public data class Text(public val text: String) : Inline
 
-    data class Code(val text: String) : Inline
+    public data class Code(public val text: String) : Inline
 
-    data class Emphasis(val inlines: List<Inline>) : Inline
+    public data class Emphasis(public val inlines: List<Inline>) : Inline
 
-    data class Strong(val inlines: List<Inline>) : Inline
+    public data class Strong(public val inlines: List<Inline>) : Inline
 
-    data class Link(val inlines: List<Inline>, val destination: String) : Inline
+    public data class Link(public val inlines: List<Inline>, public val destination: String) : Inline
 }
 
-internal fun MarkdownBlock.plainText(): String = when (this) {
+public fun MarkdownBlock.plainText(): String = when (this) {
     is MarkdownBlock.Heading -> inlines.plainText()
     is MarkdownBlock.Paragraph -> inlines.plainText()
     is MarkdownBlock.ListBlock -> items.joinToString("\n") { it.inlines.plainText() }
@@ -65,7 +65,7 @@ internal fun MarkdownBlock.plainText(): String = when (this) {
     MarkdownBlock.Rule -> ""
 }
 
-internal fun List<Inline>.plainText(): String = joinToString("") { inline ->
+public fun List<Inline>.plainText(): String = joinToString("") { inline ->
     when (inline) {
         is Inline.Text -> inline.text
         is Inline.Code -> inline.text

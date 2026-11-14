@@ -139,6 +139,12 @@ public data class ComposerState(
     public val draft: String = "",
     /** `ready.limits`: the composer validates against the gateway's own numbers (C6.1, C6.6). */
     public val limits: Limits? = null,
+    /**
+     * The one prompt waiting for the running turn to end (C5.5, I5). Typing while a turn runs
+     * makes the primary button Send again, and pressing it queues rather than stopping; the
+     * chip above the field shows this and the turn's `turn_end` releases it.
+     */
+    public val queued: String? = null,
 )
 
 /**

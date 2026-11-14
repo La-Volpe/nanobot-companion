@@ -13,6 +13,8 @@ internal data class ChatSet(
     val threads: Map<String, ThreadState> = emptyMap(),
     /** Chats the gateway has confirmed with `attached`. */
     val attached: Set<String> = emptySet(),
+    /** Chats with an attach on the wire and no answer yet; a second one is a second replay. */
+    val attaching: Set<String> = emptySet(),
     /** Frames waiting for their chat's attach, in the order they were sent. */
     val pending: Map<String, List<Outbound>> = emptyMap(),
 ) {
@@ -39,9 +41,13 @@ internal object ChatRouter {
         }
         val queued = set.pending[chatId].orEmpty()
         // One attach per chat in flight: a second send joins the queue rather than asking twice.
-        val effects = if (queued.isEmpty()) listOf(Effect.Send(Outbound.Attach(chatId = chatId))) else emptyList()
+        val attaching = chatId in set.attaching
+        val effects = if (attaching) emptyList() else listOf(Effect.Send(Outbound.Attach(chatId = chatId)))
         return ChatRouted(
-            set = set.copy(pending = set.pending + (chatId to queued + message)),
+            set = set.copy(
+                pending = set.pending + (chatId to queued + message),
+                attaching = set.attaching + chatId,
+            ),
             effects = effects,
         )
     }
@@ -52,9 +58,11 @@ internal object ChatRouter {
      * attaches would replay the same history twice and double every row.
      */
     fun open(set: ChatSet, chatId: String): ChatRouted {
-        if (chatId in set.attached) return ChatRouted(set)
-        if (set.pending[chatId].orEmpty().isNotEmpty()) return ChatRouted(set)
-        return ChatRouted(set, effects = listOf(Effect.Send(Outbound.Attach(chatId = chatId))))
+        if (chatId in set.attached || chatId in set.attaching) return ChatRouted(set)
+        return ChatRouted(
+            set = set.copy(attaching = set.attaching + chatId),
+            effects = listOf(Effect.Send(Outbound.Attach(chatId = chatId))),
+        )
     }
 
     fun reduce(set: ChatSet, frame: Frame, nowMs: Long): ChatRouted = when {
@@ -64,6 +72,7 @@ internal object ChatRouter {
             ChatRouted(
                 set = set.copy(
                     attached = set.attached + chatId,
+                    attaching = set.attaching - chatId,
                     pending = set.pending - chatId,
                     threads = set.threads + (chatId to set.thread(chatId)),
                 ),

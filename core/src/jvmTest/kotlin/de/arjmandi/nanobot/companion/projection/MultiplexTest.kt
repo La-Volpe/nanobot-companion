@@ -77,6 +77,31 @@ class MultiplexTest {
         assertEquals(listOf<Effect>(Effect.Send(message(a))), later.effects, "an attached chat sends straight away")
     }
 
+    /**
+     * Opening a chat and sending on it in the same breath is one attach, not two. The second
+     * attach would make the gateway replay the history twice, and the reducer would show every
+     * row of it twice (`ChatRouter.open`'s own promise: "two attaches would double every row").
+     */
+    @Test
+    fun openingThenSendingInTheSameBreathAttachesOnce() {
+        val opened = ChatRouter.open(ChatSet(), chatId = a)
+        assertIs<Outbound.Attach>(assertIs<Effect.Send>(opened.effects.single()).frame)
+
+        val sent = ChatRouter.send(opened.set, chatId = a, message = message(a))
+
+        assertTrue(
+            sent.effects.isEmpty(),
+            "the attach is already in flight, so the send only waits for it: ${sent.effects}",
+        )
+        assertEquals(listOf(message(a)), sent.set.pending[a], "and the message is queued behind that one attach")
+
+        val confirmed = ChatRouter
+            .reduce(sent.set, attached(a), nowMs = 1_000)
+            .let { routed -> ChatRouter.reduce(routed.set, delta(a, "alpha"), nowMs = 1_000) }
+        assertEquals("alpha", confirmed.set.thread(a).turns.single().answer.text)
+        assertEquals(1, confirmed.set.thread(a).turns.size, "one prompt, one answer — not a replayed pair")
+    }
+
     @Test
     fun frameWithoutChatIdIsNotGuessedAt() {
         val routed = ChatRouter.reduce(ChatSet(attached = setOf(a)), FrameCodec.decode("""{"event":"error","detail":"invalid chat_id"}"""), 0)
