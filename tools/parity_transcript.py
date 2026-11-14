@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """The transcript half of G3's side-by-side check (plan.md §8).
 
-Two renderings of one stored chat, compared line for line:
+One stored chat, two renderings, compared line for line:
 
-  argv[1]  `core-cli watch --chat <id>` output — the CLI's plain transcript of the replayed page
-  argv[2]  `parity turn N | prompt=... | answer=... | status=...` — what the Android app holds
+  argv[1]  `core-cli send` / `core-cli watch --chat <id>` output — the CLI's plain transcript
+  argv[2]  a label for the app side: `android` or `ios`
+  argv[3]  that app's own lines: `parity <label> turn N | prompt=... | answer=... | status=...`
 
-Both sides are :core's `HistoryReplay` output for the same chat, so a difference is an app-path
-bug. Turn ids and clocks are not in either rendering, which is what makes the diff meaningful.
+The CLI's transcript is the socket's reduction of the chat; the app's lines are what the app
+holds after opening the same chat through its bridge (the gateway's page through `HistoryReplay`
+on both platforms). One core, two paths, so a difference is an app-path bug. Turn ids and clocks
+are in neither rendering, which is what makes the diff meaningful.
 """
 import re
 import sys
@@ -17,11 +20,12 @@ PROMPT = re.compile(r"^\s+prompt \|(?: \(unsettled\))? ?(.*)$")
 ANSWER = re.compile(r"^\s+answer \| ?(.*)$")
 STATUS = re.compile(r"^\s+status \| ?(.*)$")
 TURN = re.compile(r"^turn (\d+)$")
-ANDROID = re.compile(r"^parity turn (\d+) \| prompt=(.*?) \| answer=(.*?) \| status=(.*)$")
+APP = re.compile(r"^parity (?:\w+ )?turn (\d+) \| prompt=(.*?) \| answer=(.*?) \| status=(.*)$")
 
 
 def unescape(text: str) -> str:
-    return text.replace("\\n", "\n").strip()
+    """One line either way: the CLI escapes newlines, an app renders them as spaces."""
+    return text.replace("\\n", "\n").replace("\n", " ").strip()
 
 
 def cli_turns(path: Path) -> list:
@@ -52,10 +56,12 @@ def cli_turns(path: Path) -> list:
     return turns
 
 
-def android_turns(path: Path) -> list:
+def app_turns(path: Path) -> list:
     turns = []
+    if not path.exists():
+        return turns
     for line in path.read_text().splitlines():
-        match = ANDROID.match(line.strip())
+        match = APP.match(line.strip())
         if not match:
             continue
         turns.append(
@@ -69,29 +75,31 @@ def android_turns(path: Path) -> list:
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
-        print("usage: parity_transcript.py <cli.txt> <android.txt>")
+    if len(sys.argv) != 4:
+        print("usage: parity_transcript.py <cli.txt> <label: android|ios> <app.txt>")
         return 2
+    label = sys.argv[2]
     cli = cli_turns(Path(sys.argv[1]))
-    android = android_turns(Path(sys.argv[2]))
-    if not cli or not android:
-        print(f"parity: FAIL — cli turns={len(cli)} android turns={len(android)}")
+    app = app_turns(Path(sys.argv[3]))
+    if not cli or not app:
+        # An empty side is a failed instrument, not a pass: it would compare nothing to nothing.
+        print(f"parity: {label} FAIL — cli turns={len(cli)} {label} turns={len(app)}")
         return 1
     failures = 0
-    if len(cli) != len(android):
+    if len(cli) != len(app):
         failures += 1
-        print(f"parity: turn count differs: cli={len(cli)} android={len(android)}")
-    for index, (left, right) in enumerate(zip(cli, android), start=1):
+        print(f"parity: {label} turn count differs: cli={len(cli)} {label}={len(app)}")
+    for index, (left, right) in enumerate(zip(cli, app), start=1):
         if left == right:
-            print(f"parity: turn {index}: same ({len(left['answer'])} chars)")
+            print(f"parity: {label} turn {index}: same ({len(left['answer'])} chars)")
             continue
         failures += 1
-        print(f"parity: turn {index}: DIFFER")
+        print(f"parity: {label} turn {index}: DIFFER")
         for field in ("prompt", "answer", "status"):
             if left[field] != right[field]:
-                print(f"  {field} cli     | {left[field]!r}")
-                print(f"  {field} android | {right[field]!r}")
-    print(f"parity: transcript {'PASS' if failures == 0 else 'FAIL'} ({len(cli)} turns, {failures} differ)")
+                print(f"  {field} cli       | {left[field]!r}")
+                print(f"  {field} {label:<9} | {right[field]!r}")
+    print(f"parity: {label} transcript {'PASS' if failures == 0 else 'FAIL'} ({len(cli)} turns, {failures} differ)")
     return 0 if failures == 0 else 1
 
 
