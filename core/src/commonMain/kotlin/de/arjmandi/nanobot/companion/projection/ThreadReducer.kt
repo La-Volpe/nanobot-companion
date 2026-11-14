@@ -2,8 +2,10 @@ package de.arjmandi.nanobot.companion.projection
 
 import de.arjmandi.nanobot.companion.wire.DeltaFrame
 import de.arjmandi.nanobot.companion.wire.ErrorFrame
+import de.arjmandi.nanobot.companion.wire.FileEditFrame
 import de.arjmandi.nanobot.companion.wire.Frame
 import de.arjmandi.nanobot.companion.wire.MessageAcceptedFrame
+import de.arjmandi.nanobot.companion.wire.MessageFrame
 import de.arjmandi.nanobot.companion.wire.ReasoningDeltaFrame
 import de.arjmandi.nanobot.companion.wire.ReasoningEndFrame
 import de.arjmandi.nanobot.companion.wire.SessionUpdatedFrame
@@ -12,6 +14,11 @@ import de.arjmandi.nanobot.companion.wire.TurnEndFrame
 import de.arjmandi.nanobot.companion.wire.TurnModelUpdatedFrame
 import de.arjmandi.nanobot.companion.wire.UnknownFrame
 import de.arjmandi.nanobot.companion.wire.UserMessageFrame
+import de.arjmandi.nanobot.companion.wire.child
+import de.arjmandi.nanobot.companion.wire.integer
+import de.arjmandi.nanobot.companion.wire.text
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * One reducer, two feeds (plan.md D9). Live frames and replayed history use the same
@@ -26,6 +33,8 @@ internal object ThreadReducer {
         is ReasoningDeltaFrame -> appendReasoning(state, frame.streamId, frame.text, frame.turnId)
         is ReasoningEndFrame -> closeReasoning(state, frame.streamId, frame.turnId)
         is UserMessageFrame -> addPrompt(state, frame)
+        is MessageFrame -> addToolEvents(state, frame)
+        is FileEditFrame -> addFileEdits(state, frame)
         is MessageAcceptedFrame -> settleOptimisticPrompt(state, frame)
         is TurnEndFrame -> settleTurn(state, frame)
         is TurnModelUpdatedFrame -> state.copy(
@@ -112,11 +121,94 @@ internal object ThreadReducer {
             )
         }
 
+    /**
+     * A tool call arrives as two snapshots of the same call: `phase: start` while it runs
+     * and `phase: end` when it settles, joined by `call_id`. The row is upserted by that id
+     * in the turn's activity list, so a view keyed by row id sees one row change state
+     * instead of two rows appear.
+     */
+    private fun addToolEvents(state: ThreadState, frame: MessageFrame): ThreadState {
+        if (frame.toolEvents.isEmpty()) return state
+        val items = frame.toolEvents.mapIndexed { index, event ->
+            val name = event.text("name") ?: TOOL_UNKNOWN
+            val error = event.text("error")
+            ActivityItem.Tool(
+                // One gateway call reaches the client as both a tool event and, when it
+                // touches a file, a file_edit. The families are keyed apart so the two rows
+                // do not overwrite each other, and a file edit then takes over the call.
+                id = "tool:" + (event.text("call_id") ?: "${frame.turnId ?: NEW_STREAM}-tool-$index"),
+                name = name,
+                summary = toolSummary(event.child("arguments")),
+                status = activityStatus(event.text("phase"), event.text("status"), error),
+                detail = error ?: event.text("result"),
+            )
+        }
+        return upsertActivity(state, frame.turnId, items)
+    }
+
+    /** `file_edit` carries one diff per edited file; the finished edit is the one C4.4 renders. */
+    private fun addFileEdits(state: ThreadState, frame: FileEditFrame): ThreadState {
+        if (frame.edits.isEmpty()) return state
+        val items = frame.edits.mapIndexed { index, edit ->
+            ActivityItem.FileEdit(
+                id = "file:" + (edit.text("call_id") ?: edit.text("path") ?: "${frame.turnId ?: NEW_STREAM}-edit-$index"),
+                path = edit.text("path") ?: edit.text("absolute_path").orEmpty(),
+                status = activityStatus(edit.text("phase"), edit.text("status"), edit.text("error")),
+                added = edit.integer("added") ?: 0,
+                deleted = edit.integer("deleted") ?: 0,
+                operation = edit.text("operation"),
+                diff = edit.child("diff")?.text("text"),
+            )
+        }
+        return upsertActivity(state, frame.turnId, items)
+    }
+
+    /**
+     * `phase` is the lifecycle word the gateway uses for both families; `status` is the
+     * tool's own, and an error overrides both. Keeping the rule in one function means a
+     * new tool family cannot invent a third meaning for `running`.
+     */
+    private fun activityStatus(phase: String?, status: String?, error: String?): ToolStatus = when {
+        error != null || status == "failed" || status == "error" -> ToolStatus.Failed
+        phase == "start" || status == "editing" || status == "running" -> ToolStatus.Running
+        else -> ToolStatus.Done
+    }
+
+    /** The one line an activity row shows while it runs: what was asked of the tool. */
+    private fun toolSummary(arguments: JsonObject?): String? {
+        if (arguments == null) return null
+        val value = SUMMARY_KEYS.firstNotNullOfOrNull { arguments.text(it) }
+            ?: arguments.values.filterIsInstance<JsonPrimitive>().firstOrNull { it.isString }?.content
+        return value?.let { if (it.length > SUMMARY_LIMIT) it.take(SUMMARY_LIMIT) + "…" else it }
+    }
+
+    /**
+     * Replace a row in place when its id is already there; append it otherwise. A file edit
+     * also retires the tool row for its own call: the design shows one row per edited file,
+     * not a tool row next to it, and both describe the same call.
+     */
+    private fun upsertActivity(state: ThreadState, turnId: String?, items: List<ActivityItem>): ThreadState =
+        updateTurn(state, turnId, 0L) { turn ->
+            val merged = turn.activity.toMutableList()
+            for (item in items) {
+                if (item is ActivityItem.FileEdit) {
+                    val callId = item.id.removePrefix("file:")
+                    merged.removeAll { it is ActivityItem.Tool && it.id == "tool:$callId" }
+                }
+                val existing = merged.indexOfFirst { it.id == item.id }
+                if (existing >= 0) merged[existing] = item else merged += item
+            }
+            turn.copy(activity = merged.toList())
+        }
+
     private fun addPrompt(state: ThreadState, frame: UserMessageFrame): ThreadState {
         val turnId = frame.turnId ?: state.activeTurnId ?: return state
         val existing = state.turn(turnId)
+        // The gateway uses a quote as model-only context and never echoes it (C4.9), so the
+        // one this client rendered has to survive the frame that carries the prompt.
         val prompt = UserPrompt(
             text = frame.text.orEmpty(),
+            quote = existing?.prompt?.quote,
             optimistic = false,
             createdAtMs = frame.createdAtMs,
         )
@@ -200,4 +292,9 @@ internal object ThreadReducer {
     private const val NEW_STREAM = "stream-unknown"
     private const val REASONING_STREAM = "reasoning"
     private const val GOAL_NOTICE = "goal"
+    private const val TOOL_UNKNOWN = "tool"
+    private const val SUMMARY_LIMIT = 80
+
+    /** The argument a human would name the call by, in the order the tools use them. */
+    private val SUMMARY_KEYS = listOf("command", "path", "query", "url", "pattern", "prompt")
 }

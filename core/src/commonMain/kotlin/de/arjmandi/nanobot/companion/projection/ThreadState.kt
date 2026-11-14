@@ -70,7 +70,16 @@ internal sealed interface ActivityItem {
         val detail: String? = null,
     ) : ActivityItem
 
-    data class FileEdit(override val id: String, val path: String, val status: ToolStatus) : ActivityItem
+    /** A write or edit, rendered as a path with a unified diff (C4.4). */
+    data class FileEdit(
+        override val id: String,
+        val path: String,
+        val status: ToolStatus,
+        val added: Int = 0,
+        val deleted: Int = 0,
+        val operation: String? = null,
+        val diff: String? = null,
+    ) : ActivityItem
 
     data class Search(override val id: String, val query: String, val sources: List<String>) : ActivityItem
 }
@@ -99,6 +108,9 @@ internal sealed interface Effect {
     data class PersistCache(val chatId: String) : Effect
     data class SettleDelivery(val turnId: String, val accepted: Boolean) : Effect
     data object ScheduleQueueFlush : Effect
+
+    /** One frame to put on the socket, in the order the reduction produced it. */
+    data class Send(val frame: de.arjmandi.nanobot.companion.wire.Outbound) : Effect
 }
 
 internal data class Reduction(val state: ThreadState, val effects: List<Effect> = emptyList())
