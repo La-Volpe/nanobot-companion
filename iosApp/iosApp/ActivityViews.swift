@@ -11,8 +11,7 @@ struct ActivityClusterView: View {
         VStack(alignment: .leading, spacing: 0) {
             Button(action: onToggle) {
                 HStack(spacing: 8) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
+                    WebUIIcon(name: "ChevronRight", size: 12)
                         .rotationEffect(.degrees(cluster.isOpen ? 90 : 0))
                         .animation(.easeOut(duration: 0.18), value: cluster.isOpen)
                     Text(cluster.headline)
@@ -48,7 +47,7 @@ struct ActivityClusterView: View {
         }
         .background(
             RoundedRectangle(cornerRadius: Design.Radius.field, style: .continuous)
-                .fill(Color(.secondarySystemBackground))
+                .fill(Palette.secondarySurface)
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("activity.cluster")
@@ -93,8 +92,7 @@ struct ActivityRowView: View {
             FileEditView(state: state)
         case let .search(query, sources):
             HStack(spacing: 8) {
-                Image(systemName: "globe")
-                    .font(.system(size: 12))
+                WebUIIcon(name: "Globe", size: 13)
                     .frame(width: 22, height: 22)
                     .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                     .foregroundStyle(.secondary)
@@ -147,7 +145,7 @@ struct FileEditView: View {
             }
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
-            .background(Color(.tertiarySystemBackground))
+            .background(Palette.code)
 
             ForEach(Array(state.lines.enumerated()), id: \.offset) { _, line in
                 Text(line.text)

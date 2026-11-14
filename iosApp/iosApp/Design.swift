@@ -22,8 +22,9 @@ enum Design {
     static let minimumTarget: CGFloat = 44
 
     /// The warm orange from the design system: identity only — the mark, the Full-access
-    /// warning and status accents. It is never a primary button and never a glow.
-    static let brand = Color(red: 0.85, green: 0.45, blue: 0.18)
+    /// warning and status accents. It is never a primary button and never a glow. The value is
+    /// the token itself (`#ef8e30`), shared with `Palette` so there is one orange in the app.
+    static let brand = Palette.brandOrange
 
     /// The composer's bottom inset (`--status-h` plus the design's own padding on iOS).
     static let composerBottomPadding: CGFloat = 12

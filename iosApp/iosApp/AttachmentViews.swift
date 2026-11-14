@@ -104,8 +104,8 @@ struct ImageThumb: View {
                     Image(uiImage: image).resizable().scaledToFill()
                 } else {
                     RoundedRectangle(cornerRadius: Design.Radius.field, style: .continuous)
-                        .fill(Color(.secondarySystemBackground))
-                        .overlay(Image(systemName: "photo").foregroundStyle(.secondary))
+                        .fill(Palette.secondarySurface)
+                        .overlay(WebUIIcon(name: "Image", size: 22).foregroundStyle(Palette.mutedForeground))
                 }
             }
             .frame(width: Design.Attachment.thumbSize, height: Design.Attachment.thumbSize)
@@ -116,7 +116,7 @@ struct ImageThumb: View {
         .accessibilityIdentifier("attach.image")
         .overlay(alignment: .topTrailing) {
             Button(action: onRemove) {
-                Image(systemName: "xmark.circle.fill")
+                WebUIIcon(name: "Close", size: 18)
                     .font(.system(size: 16))
                     .foregroundStyle(.white, .black.opacity(0.5))
             }
@@ -132,7 +132,7 @@ struct VideoCard: View {
 
     var body: some View {
         HStack(spacing: 9) {
-            Image(systemName: "play.rectangle")
+            WebUIIcon(name: "Video", size: 20)
                 .font(.system(size: 15))
                 .frame(width: 26, height: 26)
                 .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -145,13 +145,13 @@ struct VideoCard: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            Button(action: onRemove) { Image(systemName: "xmark") }
+            Button(action: onRemove) { WebUIIcon(name: "Close", size: 13) }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("attach.remove")
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 6)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(Palette.secondarySurface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .accessibilityIdentifier("attach.video")
     }
 }
@@ -176,13 +176,13 @@ struct FileCard: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            Button(action: onRemove) { Image(systemName: "xmark") }
+            Button(action: onRemove) { WebUIIcon(name: "Close", size: 13) }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("attach.remove")
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 6)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(Palette.secondarySurface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .accessibilityIdentifier("attach.file")
     }
 }
@@ -198,7 +198,7 @@ struct LightboxView: View {
                 HStack {
                     Spacer()
                     Button(action: model.closeLightbox) {
-                        Image(systemName: "xmark")
+                        WebUIIcon(name: "Close", size: 13)
                             .font(.system(size: 15, weight: .semibold))
                             .frame(width: Design.minimumTarget, height: Design.minimumTarget)
                             .foregroundStyle(.white)
