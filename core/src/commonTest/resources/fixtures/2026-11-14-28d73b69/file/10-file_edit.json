@@ -1,0 +1,1 @@
+{"event":"file_edit","chat_id":"UUID-5","edits":[{"version":1,"call_id":"call_y69g1xv9","tool":"write_file","path":"tool-probe.txt","absolute_path":"<workspace>/tool-probe.txt","phase":"start","added":0,"deleted":0,"approximate":true,"status":"editing"}],"turn_id":"file-1","turn_phase":"activity","turn_seq":6}

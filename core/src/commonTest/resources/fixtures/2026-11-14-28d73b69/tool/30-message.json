@@ -1,0 +1,1 @@
+{"event":"message","chat_id":"UUID-3","text":"","turn_id":"tool-1","tool_events":[{"version":1,"phase":"start","call_id":"call_up73a58v","name":"exec","arguments":{"command":"printf 'nanobot-tool-probe\\n'"},"result":null,"error":null,"files":[],"embeds":[],"working_directory":"<workspace>"}],"kind":"tool_hint","turn_phase":"activity","turn_seq":26}

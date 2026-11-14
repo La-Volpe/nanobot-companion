@@ -25,7 +25,8 @@ private fun usage(): String =
     commands:
       record      capture wire fixtures for :core tests
                     [--profile .dev/profile.json] [--out core/src/commonTest/resources/fixtures]
-                    [--prompt TEXT] [--gateway-rev REV] [--nanobot-src DIR]
+                    [--scenario plain|tool|error|failure|all] [--prompt TEXT]
+                    [--gateway-rev REV] [--nanobot-src DIR]
 
     planned (phase C8):
       connect     bootstrap a gateway and open a socket

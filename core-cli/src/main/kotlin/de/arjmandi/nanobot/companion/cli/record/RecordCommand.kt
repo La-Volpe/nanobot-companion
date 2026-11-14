@@ -4,8 +4,8 @@ import java.io.File
 import kotlin.system.exitProcess
 
 /**
- * `core-cli record [--profile PATH] [--out DIR] [--prompt TEXT] [--gateway-rev REV]
- * [--nanobot-src DIR]`
+ * `core-cli record [--profile PATH] [--out DIR] [--scenario NAME] [--prompt TEXT]
+ * [--gateway-rev REV] [--nanobot-src DIR]`
  *
  * The provenance header the plan asks for is `manifest.json`: a JSON file cannot
  * carry a comment, and a sidecar is what the codec reads anyway.
@@ -25,10 +25,22 @@ internal object RecordCommand {
         val commit = flags["gateway-rev"] ?: gitRevision(nanobotSrc)
             ?: fail("cannot read the gateway revision from $nanobotSrc; pass --gateway-rev <sha>")
 
+        val scenarios = Scenarios.all(flags["prompt"] ?: DEFAULT_PROMPT)
+            .let { all ->
+                val wanted = flags["scenario"] ?: "all"
+                if (wanted == "all") {
+                    all
+                } else {
+                    val selected = all.filter { it.name == wanted }
+                    if (selected.isEmpty()) fail("unknown scenario '$wanted'; try: ${all.joinToString() { it.name }} or all")
+                    selected
+                }
+            }
+
         val recorder = Recorder(
             profile = GatewayProfile.read(profileFile.readText()),
             outRoot = File(flags["out"] ?: File(repo, "core/src/commonTest/resources/fixtures").path),
-            prompt = flags["prompt"] ?: DEFAULT_PROMPT,
+            scenarios = scenarios,
             gatewayCommit = commit,
             homeDir = System.getProperty("user.home"),
         )
@@ -39,7 +51,9 @@ internal object RecordCommand {
             fail("recording failed: ${failure.message}")
         }
         println("recorded ${set.path}")
-        File(set, "ws").listFiles().orEmpty().sortedBy { it.name }.forEach { println("  ws/${it.name}") }
+        set.listFiles().orEmpty().filter { it.isDirectory }.sortedBy { it.name }.forEach { dir ->
+            println("  ${dir.name}/ (${dir.listFiles().orEmpty().size} frames)")
+        }
     }
 
     private fun parse(args: List<String>): Map<String, String> {

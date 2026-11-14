@@ -7,6 +7,10 @@
 #   .dev/secret         the bootstrap secret (X-Nanobot-Auth)
 #   .dev/profile.json   {url, secret} — what :core and :core-cli consume
 #
+# The `broken` model preset is deliberate: it names a model ollama does not have, so a
+# switch to it fails its turn and `core-cli record` can capture a real `turn_end` with
+# `outcome: failed` for the failure scenario (plan.md C4.5/C7.4).
+#
 # usage:
 #   tools/nanobot-dev.sh start [--port 18765] [--model <ollama-model>]
 #   tools/nanobot-dev.sh stop
@@ -52,6 +56,12 @@ start() {
       "model": "$MODEL",
       "maxTokens": 4096,
       "contextWindowTokens": 32768
+    },
+    "broken": {
+      "provider": "ollama",
+      "model": "no-such-model:latest",
+      "maxTokens": 256,
+      "contextWindowTokens": 8192
     }
   },
   "agents": { "defaults": { "modelPreset": "primary" } },

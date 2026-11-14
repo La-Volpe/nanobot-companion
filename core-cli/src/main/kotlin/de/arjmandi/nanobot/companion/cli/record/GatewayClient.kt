@@ -2,6 +2,7 @@ package de.arjmandi.nanobot.companion.cli.record
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.java.Java
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.client.request.get
@@ -55,15 +56,15 @@ internal class GatewayClient : AutoCloseable {
         get(profile.url + "/api/sessions/" + urlEncode(sessionKey) + "/webui-thread", apiToken)
 
     /**
-     * One scripted turn: the socket's greeting decides the chat id, then a single
-     * `message` envelope is sent and every frame is handed to [onFrame] until the
-     * gateway settles the turn with `turn_end`.
+     * One scripted scenario: the socket's greeting decides the chat id, the scenario's
+     * first envelopes go out, and every frame is handed to [onFrame] until as many turns
+     * have settled as the scenario expects. [settle] counts `turn_end` and `error` alike,
+     * because both end a scripted step.
      */
     suspend fun turn(
         profile: GatewayProfile,
         bootstrap: JsonObject,
-        turnId: String,
-        prompt: String,
+        scenario: Scenario,
         timeoutMs: Long,
         onFrame: (JsonObject) -> Unit,
     ) {
@@ -74,23 +75,38 @@ internal class GatewayClient : AutoCloseable {
         val socket = http.webSocketSession("$wsUrl${separator}client_id=$CLIENT_ID&token=$token")
         try {
             withTimeout(timeoutMs) {
+                var settled = 0
                 while (true) {
                     val frame = socket.incoming.receive()
                     if (frame !is Frame.Text) continue
                     val event = json.parseToJsonElement(frame.readText()).jsonObject
                     onFrame(event)
-                    val name = event["event"]?.jsonPrimitive?.content
-                    if (name == "ready") {
-                        // The gateway mints the chat id in its greeting; the scripted
-                        // turn rides that chat, not one the client invents.
-                        val chatId = event["chat_id"]!!.jsonPrimitive.content
-                        socket.send(Frame.Text(messageEnvelope(chatId, turnId, prompt)))
+                    when (event["event"]?.jsonPrimitive?.content) {
+                        "ready" -> {
+                            // The gateway mints the chat id in its greeting; the scripted
+                            // turn rides that chat, not one the client invents.
+                            val chatId = event["chat_id"]!!.jsonPrimitive.content
+                            sendSteps(socket, scenario, 0, chatId)
+                        }
+
+                        "turn_end", "error" -> {
+                            settled += 1
+                            if (settled >= scenario.settles) return@withTimeout
+                            sendSteps(socket, scenario, settled, event["chat_id"]!!.jsonPrimitive.content)
+                        }
                     }
-                    if (name == "turn_end" || name == "error") return@withTimeout
                 }
             }
         } finally {
             socket.close()
+        }
+    }
+
+    private suspend fun sendSteps(socket: DefaultClientWebSocketSession, scenario: Scenario, after: Int, chatId: String) {
+        scenario.steps.forEachIndexed { index, step ->
+            if (step.afterSettles == after) {
+                socket.send(Frame.Text(step.frame(chatId, scenario.turnIdOf(index))))
+            }
         }
     }
 

@@ -47,6 +47,25 @@ internal object Fixtures {
             .sortedBy { it.name }
             .map(::readJson)
 
+    /**
+     * The frames of one recorded scenario. `plain` is the set's `ws/` directory, because a
+     * plain turn is what the codec and the reducer were written against; every other
+     * scenario sits in a directory of its own name.
+     */
+    fun scenarioFrames(scenario: String, set: File = latest): List<JsonObject> {
+        val dir = File(set, if (scenario == "plain") "ws" else scenario)
+        return dir.listFiles().orEmpty()
+            .filter { it.name.endsWith(".json") }
+            .sortedBy { it.name }
+            .map(::readJson)
+    }
+
+    /** The scenarios the manifest says were recorded, in the order they were run. */
+    fun scenarioNames(set: File = latest): List<String> =
+        manifest(set)["scenarios"].let { it as? kotlinx.serialization.json.JsonArray }
+            ?.mapNotNull { (it as? JsonObject)?.str("name") }
+            .orEmpty()
+
     fun events(set: File = latest): List<String> =
         wsFrames(set).map { it.event() }
 

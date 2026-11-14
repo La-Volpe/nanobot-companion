@@ -1,0 +1,1 @@
+{"event":"delta","chat_id":"UUID-3","text":"`nanobot-tool-probe`","stream_id":"stream-3","response_sources":[{"provider":"ollama","model":"deepseek-v4.1-flash:cloud","preset":"primary","fallback":false}],"response_input_ids":["user:tool-1"],"turn_id":"tool-1","turn_phase":"answer","turn_seq":29}

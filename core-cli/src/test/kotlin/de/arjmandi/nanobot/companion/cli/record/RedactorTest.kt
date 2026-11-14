@@ -116,6 +116,20 @@ class RedactorTest {
     }
 
     @Test
+    fun replacesPathsInsideASentence() {
+        // A tool result is prose: "Successfully wrote 7 characters to /Users/…/tool-probe.txt".
+        val out = redact(
+            """{"result":"Successfully wrote 7 characters to $home/Dev/repo/.dev/workspace/tool-probe.txt"}""",
+        ).single()
+
+        assertEquals(
+            "Successfully wrote 7 characters to <workspace>/tool-probe.txt",
+            out.at("result").content,
+            "a path in the middle of a value is still this machine's path",
+        )
+    }
+
+    @Test
     fun documentsEveryRuleItApplied() {
         val redactor = Redactor(homeDir = home, workspaceDir = "$home/ws")
         redactor.redact(Json.parseToJsonElement("""{"token":"nbwt_x","chat_id":"290bed80-cb7e-405c-8d20-4900347b55fc"}"""))

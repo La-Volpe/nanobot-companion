@@ -1,0 +1,1 @@
+{"event":"delta","chat_id":"UUID-4","text":" First","stream_id":"stream-4","response_sources":[{"provider":"ollama","model":"deepseek-v4.1-flash:cloud","preset":"primary","fallback":false}],"response_input_ids":["user:markdown-1"],"turn_id":"markdown-1","turn_phase":"answer","turn_seq":23}

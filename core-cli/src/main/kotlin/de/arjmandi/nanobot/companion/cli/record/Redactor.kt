@@ -79,14 +79,18 @@ internal class Redactor(
             applied += "ISO-8601 timestamps are re-ranked from 2000-01-01 so order survives and the recording date does not"
             return it
         }
-        if (workspaceDir.isNotEmpty() && content.startsWith(workspaceDir)) {
+        // Not just at the front: a tool result is a sentence with a path in the middle of it
+        // ("Successfully wrote 7 characters to /Users/…/tool-probe.txt").
+        var rewritten = content
+        if (workspaceDir.isNotEmpty() && rewritten.contains(workspaceDir)) {
             applied += "the recording workspace path becomes <workspace>"
-            return "<workspace>" + content.removePrefix(workspaceDir)
+            rewritten = rewritten.replace(workspaceDir, "<workspace>")
         }
-        if (homeDir.isNotEmpty() && content.startsWith(homeDir)) {
+        if (homeDir.isNotEmpty() && rewritten.contains(homeDir)) {
             applied += "the recorder's home directory becomes <home>"
-            return "<home>" + content.removePrefix(homeDir)
+            rewritten = rewritten.replace(homeDir, "<home>")
         }
+        if (rewritten != content) return rewritten
         UUID.find(content)?.let { match ->
             applied += "uuid identifiers become UUID-<n>, stable for the whole recording"
             return content.replaceRange(match.range, alias(match.value, "UUID"))

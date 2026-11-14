@@ -1,0 +1,1 @@
+{"event":"stream_end","chat_id":"UUID-5","stream_id":"stream-8","text_from_seq":24,"response_sources":[{"provider":"ollama","model":"deepseek-v4.1-flash:cloud","preset":"primary","fallback":false}],"response_input_ids":["user:file-1"],"turn_id":"file-1","turn_phase":"answer","turn_seq":26}

@@ -15,62 +15,93 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * `core-cli record`: bootstrap, one scripted turn, then the two reads the app needs
- * for the same chat. The written set is the evidence `:core`'s codec is tested
- * against (plan.md C2.5, §3.3).
+ * `core-cli record`: bootstrap, one scripted scenario at a time, then the reads the app
+ * needs for the chats those scenarios created. The written set is the evidence `:core`'s
+ * codec and reducer are tested against (plan.md C2.5, §3.3, and P3's scenarios).
+ *
+ * A scenario gets its own bootstrap, because a bootstrap token is single-use per
+ * handshake (plan.md §0). Its frames land in its own directory and the manifest is the
+ * index: which scenario, which envelope, which chat, which events.
  */
 internal class Recorder(
     private val profile: GatewayProfile,
     private val outRoot: File,
-    private val prompt: String,
+    private val scenarios: List<Scenario>,
     private val gatewayCommit: String,
     private val homeDir: String,
 ) {
 
+    private class Recorded(
+        val scenario: Scenario,
+        val bootstrap: JsonObject,
+        val chatId: String,
+        val frames: List<JsonObject>,
+        val history: JsonObject?,
+        val historyPath: String?,
+    )
+
     fun run(): File = runBlocking {
         val client = GatewayClient()
         try {
-            val rawBootstrap = client.bootstrap(profile)
-            val apiToken = rawBootstrap["api_token"]?.jsonText()
+            // One throwaway bootstrap for the api token the HTTP reads need (D15.6).
+            val apiToken = client.bootstrap(profile)["api_token"]?.jsonText()
                 ?: error("bootstrap has no api_token; /api/sessions needs it (docs/decisions.md D15.6)")
 
-            val frames = mutableListOf<JsonObject>()
-            lateinit var chatId: String
-            client.turn(
-                profile = profile,
-                bootstrap = rawBootstrap,
-                turnId = TURN_ID,
-                prompt = prompt,
-                timeoutMs = TIMEOUT_MS,
-                onFrame = { frame ->
+            // The file scenario writes a fixed path, so the previous run's copy has to go or
+            // the write changes nothing and the frame carries no diff. The recorder owns
+            // this file: it is fixture plumbing, not the agent's workspace contents.
+            if (scenarios.any { it.name == Scenarios.FILE_TARGET_SCENARIO }) {
+                workspaceDirOf(client.sessions(profile, apiToken))
+                    ?.let { dir -> File(dir, Scenarios.FILE_TARGET).delete() }
+            }
+
+            val recorded = scenarios.map { scenario ->
+                val bootstrap = client.bootstrap(profile)
+                val frames = mutableListOf<JsonObject>()
+                var chatId = ""
+                client.turn(profile, bootstrap, scenario, timeoutMs = TIMEOUT_MS) { frame ->
                     frames += frame
                     if (frame["event"]?.jsonText() == "ready") chatId = frame["chat_id"]!!.jsonText()
-                },
-            )
+                }
+                check(frames.isNotEmpty()) { "scenario ${scenario.name} recorded no frames" }
+                check(chatId.isNotEmpty()) { "scenario ${scenario.name} recorded no ready frame" }
+                Recorded(
+                    scenario = scenario,
+                    bootstrap = bootstrap,
+                    chatId = chatId,
+                    frames = frames,
+                    // The error scenario rejects a made-up chat id, so there is no thread.
+                    history = if (scenario.recordsHistory) {
+                        client.thread(profile, apiToken, "websocket:$chatId")
+                    } else {
+                        null
+                    },
+                    // The plain turn keeps the root history.json the replay test reads.
+                    historyPath = if (!scenario.recordsHistory) {
+                        null
+                    } else if (scenario.framesDir == "ws") {
+                        "history.json"
+                    } else {
+                        "${scenario.framesDir}/history.json"
+                    },
+                )
+            }
 
-            val sessionKey = "websocket:$chatId"
             val rawSessions = client.sessions(profile, apiToken)
-            val rawHistory = client.thread(profile, apiToken, sessionKey)
-
+            val plainChat = recorded.first { it.scenario.name == "plain" }.chatId
             val redactor = Redactor(
                 homeDir = homeDir,
-                workspaceDir = workspaceDirIn(rawSessions, sessionKey).orEmpty(),
+                workspaceDir = workspaceDirIn(rawSessions, "websocket:$plainChat").orEmpty(),
             )
-            write(redactor, rawBootstrap, frames, rawSessions, rawHistory, chatId)
+            write(redactor, recorded, rawSessions)
         } finally {
             client.close()
         }
     }
 
-    private fun write(
-        redactor: Redactor,
-        rawBootstrap: JsonObject,
-        rawFrames: List<JsonObject>,
-        rawSessions: JsonObject,
-        rawHistory: JsonObject,
-        chatId: String,
-    ): File {
-        val webui = rawBootstrap["terminal"]?.let { (it as JsonObject)["webui"] as JsonObject }
+    private fun write(redactor: Redactor, recorded: List<Recorded>, rawSessions: JsonObject): File {
+        val plain = recorded.first { it.scenario.name == "plain" }
+        val webui = plain.bootstrap["terminal"]?.let { (it as JsonObject)["webui"] as JsonObject }
             ?: error("bootstrap has no terminal.webui contract (D15.1)")
         val recordedAt = LocalDateTime.now(ZoneOffset.UTC)
         val set = File(outRoot, "${recordedAt.format(DATE)}-$gatewayCommit")
@@ -79,13 +110,18 @@ internal class Recorder(
         File(set, "ws").mkdirs()
 
         val written = LinkedHashMap<String, JsonObject>()
-        written["bootstrap.json"] = redactor.redact(rawBootstrap) as JsonObject
-        rawFrames.forEachIndexed { index, frame ->
-            val name = frame["event"]?.jsonText() ?: "unlabelled"
-            written["ws/${index.toString().padStart(2, '0')}-$name.json"] = redactor.redact(frame) as JsonObject
+        written["bootstrap.json"] = redactor.redact(plain.bootstrap) as JsonObject
+        for (turn in recorded) {
+            turn.frames.forEachIndexed { index, frame ->
+                val name = frame["event"]?.jsonText() ?: "unlabelled"
+                written["${turn.scenario.framesDir}/${index.toString().padStart(2, '0')}-$name.json"] =
+                    redactor.redact(frame) as JsonObject
+            }
+            turn.historyPath?.let { path ->
+                written[path] = redactor.redact(turn.history!!) as JsonObject
+            }
         }
         written["sessions.json"] = redactor.redact(rawSessions) as JsonObject
-        written["history.json"] = redactor.redact(rawHistory) as JsonObject
 
         for ((path, document) in written) {
             val file = File(set, path)
@@ -99,7 +135,7 @@ internal class Recorder(
                 put("gateway_version", webui["version"]!!.jsonText())
                 put("gateway_commit", gatewayCommit)
                 put("gateway_url", profile.url)
-                put("model", rawBootstrap["model_name"]!!.jsonText())
+                put("model", plain.bootstrap["model_name"]!!.jsonText())
                 put("protocol", buildJsonObject {
                     put("min", (webui["min_protocol"] as JsonPrimitive).content.toInt())
                     put("max", (webui["max_protocol"] as JsonPrimitive).content.toInt())
@@ -110,24 +146,11 @@ internal class Recorder(
             put("redaction", buildJsonObject {
                 put("rules", JsonArray(redactor.rules.map(::JsonPrimitive)))
             })
-            put("session", buildJsonObject {
-                put("chat_id", (redactor.redact(JsonPrimitive(chatId)) as JsonPrimitive).content)
-                put("session_key", (redactor.redact(JsonPrimitive("websocket:$chatId")) as JsonPrimitive).content)
-                put("turn_id", TURN_ID)
-                put("prompt", prompt)
-                put(
-                    "outbound",
-                    buildJsonArray {
-                        // Redacted like any frame, so the recorded script carries the
-                        // same chat alias as the frames it produced.
-                        add(redactor.redact(Json.parseToJsonElement(GatewayClient.messageEnvelope(chatId, TURN_ID, prompt))))
-                    },
-                )
-            })
-            put(
-                "events",
-                buildJsonArray { rawFrames.forEach { add(JsonPrimitive(it["event"]!!.jsonText())) } },
-            )
+            put("session", sessionOf(redactor, plain))
+            put("scenarios", buildJsonArray { recorded.forEach { add(scenarioManifest(redactor, it)) } })
+            // D15.2: the plain turn's event order, at the root because it is the sequence
+            // the codec and reducer tests are written against.
+            put("events", buildJsonArray { plain.frames.forEach { add(JsonPrimitive(it["event"]!!.jsonText())) } })
             put(
                 "files",
                 buildJsonArray {
@@ -144,6 +167,48 @@ internal class Recorder(
         return set
     }
 
+    private fun sessionOf(redactor: Redactor, plain: Recorded): JsonObject = buildJsonObject {
+        put("chat_id", redacted(redactor, plain.chatId))
+        put("session_key", redacted(redactor, "websocket:${plain.chatId}"))
+        put("turn_id", plain.scenario.turnIdOf(0))
+        put("prompt", plain.scenario.prompt)
+        put("outbound", outboundOf(redactor, plain))
+    }
+
+    private fun scenarioManifest(redactor: Redactor, turn: Recorded): JsonObject = buildJsonObject {
+        put("name", turn.scenario.name)
+        put("frames", turn.scenario.framesDir)
+        put("prompt", turn.scenario.prompt)
+        put("chat_id", redacted(redactor, turn.chatId))
+        put("turn_id", turn.scenario.turnIdOf(0))
+        put("settles", turn.scenario.settles)
+        put("history", turn.historyPath ?: "")
+        put("steps", outboundOf(redactor, turn))
+        put("events", buildJsonArray { turn.frames.forEach { add(JsonPrimitive(it["event"]!!.jsonText())) } })
+    }
+
+    /** Every envelope the scenario sent, redacted like the frames they produced. */
+    private fun outboundOf(redactor: Redactor, turn: Recorded): JsonArray = buildJsonArray {
+        turn.scenario.steps.forEachIndexed { index, step ->
+            add(buildJsonObject {
+                put("after_settles", step.afterSettles)
+                put("turn_id", turn.scenario.turnIdOf(index))
+                val envelope = step.frame(turn.chatId, turn.scenario.turnIdOf(index))
+                put("frame", redactor.redact(Json.parseToJsonElement(envelope)))
+            })
+        }
+    }
+
+    /** The same alias the frames carry, so a manifest chat id means one chat in the set. */
+    private fun redacted(redactor: Redactor, value: String): String =
+        (redactor.redact(JsonPrimitive(value)) as JsonPrimitive).content
+
+    /** Any session row names the workspace: they all run in the gateway's one workspace. */
+    private fun workspaceDirOf(sessions: JsonObject): String? =
+        (sessions["sessions"] as? JsonArray)
+            ?.firstNotNullOfOrNull { (it as? JsonObject)?.get("workspace_scope") }
+            ?.let { (it as? JsonObject)?.get("project_path")?.jsonText() }
+
     /** The recording's own workspace, so its absolute path is redacted to <workspace>. */
     private fun workspaceDirIn(sessions: JsonObject, sessionKey: String): String? =
         (sessions["sessions"] as? JsonArray)
@@ -153,7 +218,6 @@ internal class Recorder(
             ?.let { (it as? JsonObject)?.get("project_path")?.jsonText() }
 
     private companion object {
-        const val TURN_ID: String = "turn-1"
         const val TIMEOUT_MS: Long = 240_000
         val DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     }

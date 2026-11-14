@@ -3,6 +3,7 @@ package de.arjmandi.nanobot.companion.fixture
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -95,6 +96,22 @@ class FixtureManifestTest {
         val bootstrap = Fixtures.readJson(File(Fixtures.latest, "bootstrap.json"))
         assertEquals("REDACTED", bootstrap.str("token"), "bootstrap token must not be in the fixture")
         assertEquals("REDACTED", bootstrap.str("api_token"), "api token must not be in the fixture")
+    }
+
+    @Test
+    fun redactionLeavesNoMachinePath() {
+        // A tool result is prose containing a path in the middle of a sentence, so a rule
+        // that only rewrites a value that *starts with* the container path misses it. The
+        // rule is "the path never appears", not "the path never appears at the front".
+        val machinePath = Regex("/(Users|home)/[^\"\\s]+")
+
+        for (set in Fixtures.sets) {
+            for (file in Fixtures.files(set)) {
+                val text = file.readText()
+                val match = machinePath.find(text)
+                assertNull(match, "${set.name}/${file.relativeTo(set).path} still contains ${match?.value}")
+            }
+        }
     }
 
     @Test

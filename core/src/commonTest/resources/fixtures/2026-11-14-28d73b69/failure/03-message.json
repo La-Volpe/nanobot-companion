@@ -1,0 +1,1 @@
+{"event":"message","chat_id":"UUID-7","text":"Switched model preset to `broken`.\n- Scope: current session\n- Model: `no-such-model:latest`\n- Context window: 8192\n- Max output tokens: 256","turn_id":"failure-1","response_input_ids":["user:failure-1"],"turn_phase":"answer","turn_seq":2}
