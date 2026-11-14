@@ -15,23 +15,28 @@ No account, no companion server, nothing leaves your network.
 
 ## The shape
 
+```mermaid
+flowchart LR
+  ios["iosApp/ · SwiftUI<br/>renders, calls"]
+  android[":app · Compose<br/>renders, calls"]
+  bridge["bridge<br/>typed subscribe"]
+  facade["facade<br/>NanobotCore · ChatHandle"]
+  engine["engine<br/>effects · one writer"]
+  projection["projection<br/>reducer + markdown"]
+  transport["transport<br/>socket · uploads · TLS"]
+  wire["wire<br/>frames · encoders · contract"]
+
+  ios --> bridge
+  android --> bridge
+  bridge --> facade
+  facade --> engine
+  engine --> projection
+  engine --> transport
+  transport --> wire
+  projection --> wire
 ```
-┌─ iosApp/ ──────────────┐            ┌─ :app ─────────────────┐
-│ SwiftUI views          │            │ Compose screens        │
-│ render one state,      │            │ render one state,      │
-│ call one command       │            │ call one command       │
-└───────────┬────────────┘            └───────────┬────────────┘
-            │ bridge: typed subscribe,           │
-            │ errors instead of traps            │
-┌───────────┴────────────────────────────────────┴─────────────┐
-│ :core (pure Kotlin, no UI)                                    │
-│   facade    NanobotCore · ChatHandle (StateFlow in, commands)  │
-│   engine    executes effects, one writer, reconnect, cache     │
-│   projection one reducer for live frames AND stored history    │
-│   transport bootstrap · socket · uploads · backoff · TLS       │
-│   wire      frames, outbound encoders, contract, session rows  │
-└───────────────────────────────────────────────────────────────┘
-```
+
+All of that is `:core`, pure Kotlin with no UI in it.
 
 Flow: gateway socket → frames → the reducer → view state → both apps. The apps
 contain only UI.

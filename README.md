@@ -11,25 +11,40 @@ same socket the browser opens, and reduces the same frames. If the WebUI can
 show it, the app can show it; if the gateway cannot do it, the app says so
 instead of inventing a spinner.
 
-```text
-┌─────────────────────────────── :core (KMP, no UI) ──────────────────────────────┐
-│ wire        frame codec, outbound encoders, bootstrap + contract, session rows   │
-│ transport   HTTP bootstrap, WebSocket session, uploads, backoff, TLS policy      │
-│ projection  one reducer for socket frames and stored history, markdown parser    │
-│ engine      executes effects, one writer, reconnect, thread cache                │
-│ facade      NanobotCore · ChatHandle — everything the two apps consume           │
-│ platform    Clock · SecureStore · FileStore · CoreDeps (expect/actual)           │
-│ bridge      iOS/Android hand-off: typed subscribe, errors instead of traps       │
-└──────────┬───────────────────────────────────────────────────────┬──────────────┘
-           │ SwiftUI                                               │ Compose
-   ┌───────▼────────┐                                     ┌────────▼──────────┐
-   │ iosApp/        │                                     │ :app              │
-   │ hand-built     │                                     │ Material 3        │
-   │ .xcodeproj     │                                     │ one VM per screen │
-   └────────────────┘                                     └───────────────────┘
-                                  :core-cli
-        record · connect · sessions · send · watch · session · soak
+```mermaid
+flowchart TB
+  subgraph apps["apps — render only"]
+    ios["iosApp/ · SwiftUI"]
+    android[":app · Compose"]
+  end
+
+  subgraph core[":core — KMP, no UI"]
+    bridge["bridge<br/>typed subscribe"]
+    facade["facade<br/>NanobotCore · ChatHandle"]
+    engine["engine<br/>effects · one writer"]
+    projection["projection<br/>reducer · markdown"]
+    transport["transport<br/>socket · uploads · TLS"]
+    wire["wire<br/>frames · encoders · contract"]
+    platform["platform<br/>Clock · stores · deps"]
+  end
+
+  cli[":core-cli<br/>the instruments"]
+
+  ios --> bridge
+  android --> bridge
+  cli --> facade
+  bridge --> facade
+  facade --> engine
+  engine --> projection
+  engine --> transport
+  projection --> wire
+  transport --> wire
+  platform -.->|expect/actual| transport
+  platform -.-> engine
 ```
+
+The arrow is the dependency direction: nothing below points back up, and
+`commonMain` never reaches for a UI toolkit (enforced by `ArchitectureTest`).
 
 ## What is hard here
 
@@ -50,6 +65,18 @@ instead of inventing a spinner.
 - **Both platforms are compared mechanically, not by eye.** `tools/parity-check.sh`
   diffs the CLI's, iOS's and Android's reduction of the *same stored chat*, and
   compares nine error-copy keys across the two string tables.
+
+One turn arrives twice, and both routes end in the same place:
+
+```mermaid
+flowchart LR
+  socket["socket frames<br/>delta · reasoning · tools · turn_end"] --> reducer
+  history["history page<br/>/webui-thread, compacted"] --> reducer
+  reducer["ThreadReducer<br/>pure · effects as data"] --> state["ThreadState<br/>StateFlow"]
+  state --> ios["SwiftUI"]
+  state --> android["Compose"]
+  state --> cli[":core-cli"]
+```
 
 ## The gateway contract it depends on
 
@@ -124,6 +151,7 @@ app/                 :app, Jetpack Compose
 iosApp/              SwiftUI + the Xcode project
 tools/               dev gateway, devices, soak, parity, consultations
 scripts/gate.sh      reads GATES.md and refuses to pass while anything is unchecked
+docs/diagrams/       the diagrams above, rendered to SVG (regenerate with mmdc)
 ```
 
 ## How this was built
