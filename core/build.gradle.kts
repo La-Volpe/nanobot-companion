@@ -28,7 +28,8 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(libs.kotlinx.coroutines.core)
+            // api: CoreDeps and the facade expose CoroutineDispatcher/StateFlow to Swift and Compose.
+            api(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.websockets)
@@ -38,6 +39,7 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -47,6 +49,11 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.ktor.client.java)
+        }
+        jvmTest.dependencies {
+            // A real WebSocket server in-process, so the frame pump is tested against a socket.
+            implementation(libs.ktor.server.test.host)
+            implementation(libs.ktor.server.websockets)
         }
     }
 }
