@@ -54,7 +54,7 @@ suite has 95 model tests and only 29 UI tests.
 history page. That is the whole reason a reopened chat does not look different
 from the one you were reading. The gateway's stored pages are compacted —
 `stream_end.text` holds the answer, `reasoning_end.text` the reasoning — and
-both land through the same code (D52).
+both land through the same code.
 
 **3. Writes are socket-only.**
 Sending, stopping (`/stop`), switching model (`/model <preset>`), changing
@@ -65,7 +65,7 @@ is the token-gated attachment upload. That is the gateway's design, not ours.
 `core/src/iosMain/.../bridge/CompanionBridge.kt` gives Swift a typed
 `subscribe(flow)` instead of a Kotlin coroutines box, and `@Throws` on the
 facade turns every failure into an `NSError` Swift can catch. Three wrappers,
-counted and pinned by a header-shape test (D38).
+counted and pinned by a header-shape test.
 
 **5. Errors are a taxonomy with copy attached.**
 Eight transport failures, each with a key and a sentence, asserted by tests on
@@ -99,16 +99,17 @@ environment.
   v1, so the parser does not pretend.
 - **Transcription is unproven end to end** on a gateway with no STT provider
   (the dev one has none): the round trip and the refusal are tested, the
-  transcript is not (P8).
-- **Self-signed TLS is unmeasured** (P7/P11): the policy and the Darwin/Android
+  transcript is not.
+- **Self-signed TLS is unmeasured**: the policy and the Darwin/Android
   translation are tested, the handshake itself is not. Real certificates work —
   that path is exercised against `your-gateway.example`.
 - **Search source chips carry no data yet**, and the drawer's Automations row is
-  a placeholder until someone builds that surface (P12).
+  a placeholder until someone builds that surface.
 - The bundle id, iOS 17.0 and minSdk 26 are still placeholders.
 
 ## More
 
 `AGENTS.md` holds the conventions, the twenty-odd paid-for gotchas and the
-review/QA bar. `plan.md` is the plan this was built to, `GATES.md` the evidence,
-and `docs/decisions.md` the reasoning behind every choice that was not obvious.
+review/QA bar. The plan, the phase checklists and the decision log that produced
+this stayed outside the repo; `git log` carries the same story one commit per
+task, and the commit bodies say which tests were red before the code existed.

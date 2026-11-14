@@ -17,12 +17,12 @@ core-cli/   :core-cli — drives :core against real gateways; records fixtures; 
 app/        :app — Compose UI only (plain Android application module)
 iosApp/     SwiftUI + a hand-written iosApp.xcodeproj (no CocoaPods, no XcodeGen, no Tuist)
 tools/      dev gateway, device install, soak, session, parity, clef consultations
-scripts/    gate.sh — reads GATES.md, refuses to pass while a box is unchecked
+scripts/    gate.sh — runs a phase checklist kept outside the repo; refuses to pass while a box is open
 ```
 
 Data flow, in one line: gateway socket → `wire` frames → `projection` reducer →
 `engine` effects → `facade` state → SwiftUI/Compose. Stored history goes through
-**the same reducer**, which is the point (`docs/decisions.md` D9).
+**the same reducer**, which is the point.
 
 Two rules shape every diff:
 
@@ -30,8 +30,9 @@ Two rules shape every diff:
    `iosApp/` is a defect, even if it works. `ArchitectureTest` enforces the
    layers and `LayeringTests` enforces that only the adapter imports `core`.
 2. **The gateway is the contract.** When the client and the plan disagree with a
-   live gateway, the gateway wins, and the plan is amended with evidence
-   (`docs/decisions.md`).
+   live gateway, the gateway wins, and the plan is amended with evidence. The
+   plan, the checklists and the decision log that tracked this build are working
+   files kept outside the repo; `git log` is what ships.
 
 ## Commands
 
@@ -107,17 +108,17 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
 
 ## Gotchas already paid for — do not regress
 
-1. **compileSdk must be 37.** `okhttp-android:5.5.1` (pulled by Ktor's OkHttp
-   engine) declares an AAR metadata floor of 37; 36 fails
-   `checkAndroidMainAarMetadata` (D12).
+1. **compileSdk must be 37.** `okhttp-android:5.5.1`, pulled by Ktor's OkHttp
+   engine, declares an AAR metadata floor of 37; 36 fails
+   `checkAndroidMainAarMetadata`.
 
 2. **AGP 9 for a KMP module**: `kotlin { androidLibrary { namespace; compileSdk;
    minSdk } }`, no top-level `android { }`. For a plain app module, AGP 9 has
-   built-in Kotlin — applying `org.jetbrains.kotlin.android` is a hard error (D47).
+   built-in Kotlin — applying `org.jetbrains.kotlin.android` is a hard error.
 
 3. **Android host tests exist only if you ask for them**: `androidLibrary {
    withHostTestBuilder {}.configure {} }` creates `:core:testAndroidHostTest`.
-   The plan's old `testDebugUnitTest` name is wrong for `:core` (D13).
+   The plan's old `testDebugUnitTest` name is wrong for `:core`.
 
 4. **No `Dispatchers.Main` in host unit tests.** A view model that reads
    `Dispatchers.Main` in its constructor fails every test in that class with
@@ -126,78 +127,75 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
 
 5. **Kover configuration must live in the module.** A root-level `kover { }`
    only configures the root report — class excludes silently do nothing until
-   it moves into `core/build.gradle.kts` (D36). The 85% floor is real: raise it
+   it moves into `core/build.gradle.kts`. The 85% floor is real: raise it
    to 100 and the rule fails naming the percentage.
 
 6. **The layer guard scans file bodies, not just imports.** A fully-qualified
    reference (`projection.ThreadState::class`) escaped an import-only scan; the
-   guard now looks for qualified paths too and ignores comments and strings
-   (D23). Test source sets are exempt by design (D22).
+   guard now looks for qualified paths too and ignores comments and strings. Test source sets are exempt by design.
 
 7. **`explicitApi()` is on.** Every public declaration needs explicit visibility
    and type, because Swift and Compose both consume the facade. `EngineHost` is
    an abstract class for this reason — `explicitApi` rejects `internal` interface
-   members (D28).
+   members.
 
 8. **`expect/actual` is limited to four concerns**: `Clock`, `SecureStore`,
    `FileStore`, `CoreDeps`. `TlsPolicy`/`TlsTrustRule` live in `platform`
-   because `platform` may not import `transport` (D39).
+   because `platform` may not import `transport`.
 
 9. **`ready` means the greeting was processed, not that it arrived.** The engine
    waits for the frame to be reduced before it reports `Open`, and
    `ready.chat_id` is a bare uuid while session rows are keyed `websocket:<uuid>`
-   — both were real bugs the live contract run found (D30).
+   — both were real bugs the live contract run found.
 
 10. **A bootstrap token is single-use.** Every connect bootstraps again; reuse
-    fails the handshake (D15). Do not cache a token.
+    fails the handshake. Do not cache a token.
 
 11. **`attach` carries no history.** An opened chat shows its past only after
     `GET /api/sessions/{key}/webui-thread` is read and reduced
-    (`ChatHandle.open()`, D46). Binding a handle is not opening it — that
-    distinction broke `core-cli watch --chat` for a while (D52).
+    (`ChatHandle.open()`). Binding a handle is not opening it — that distinction
+    broke `core-cli watch --chat` for a while.
 
 12. **Stored pages are compacted.** A turn replays as
     `user_message · reasoning_end · stream_end · turn_end`, with the answer text
     only in `stream_end.text` and the reasoning only in `reasoning_end.text`.
     Any reducer change must be checked against a *compacted* page, not only
-    against the dev gateway's raw ones (D52).
+    against the dev gateway's raw ones.
 
 13. **`quoted_context` is a string.** An object-shaped quote is dropped by the
-    gateway silently — no error, no quote (D25).
+    gateway silently — no error, no quote.
 
 14. **Unknown frames and unknown fields must never throw.** Events are sealed
     classes over the preserved raw JSON, `ignoreUnknownKeys = true`, and an
     unrecognised event is `UnknownFrame`. A future gateway must degrade the
-    feature, not crash the app (D19).
+    feature, not crash the app.
 
 15. **Capabilities are at `terminal.webui.capabilities`.** `runtime_capabilities`
     is a dict of host action flags (`can_restart_engine`, …) and has nothing to
-    do with protocol features (D15).
+    do with protocol features.
 
 16. **Timestamps are ISO-8601 strings on session rows** and epoch millis on
     event frames. The parser is hand-written (no date library) and pinned by a
-    test at the boundary (D15).
+    test at the boundary.
 
 17. **Markdown is parsed here, rendered natively.** No markdown library: the
     parser returns a `MarkdownDocument`, and streaming uses the stable-blocks /
-    unstable-tail split so half an answer does not flash as broken markup
-    (D6, D26).
+    unstable-tail split so half an answer does not flash as broken markup.
 
 18. **iOS has no Simulator.app on this machine.** Drive it with `simctl`; the
     app is invisible unless you screenshot or record. Do not conclude an app is
     broken because you cannot see it.
 
 19. **`CODE_SIGNING_ALLOWED = NO` breaks device installs.** The project carried
-    it as a simulator-era shortcut and the .app shipped unsigned
-    (`No code signature found`). It is removed; do not put it back. A device
-    install also needs `NSAllowsLocalNetworking` in `Info.plist` for plain HTTP
-    to a LAN gateway, and an Apple ID signed into Xcode to mint a profile
-    (otherwise: `No Account for Team`).
+    it as a simulator-era shortcut and the .app shipped unsigned — installd's
+    words were "No code signature found". It is removed; do not put it back. A
+    device install also needs `NSAllowsLocalNetworking` in `Info.plist` for
+    plain HTTP to a LAN gateway, and an Apple ID signed into Xcode to mint a
+    profile, otherwise the build stops at "No Account for Team".
 
 20. **Android blocks cleartext at targetSdk 37.** `network_security_config.xml`
     permits it for the dev gateway; without it the first connect fails as
-    `unreachable`. The emulator reaches the host at `10.0.2.2`, not `127.0.0.1`
-    (D48).
+    `unreachable`. The emulator reaches the host at `10.0.2.2`, not `127.0.0.1`.
 
 21. **XCUITest traps.** A container `accessibilityIdentifier` hides every child
     id; `onChange` does not fire for a value set before the view exists; live
@@ -207,16 +205,16 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
 
 22. **The dev gateway needs help to start.** `NANOBOT_SKIP_WEBUI_BUILD=1`
     (otherwise `nanobot webui` runs npm install/build), and a Python 3.12 venv
-    under `.dev/` because the system `python3` has none of nanobot's deps (D14).
+    under `.dev/` because the system `python3` has none of nanobot's deps.
 
 23. **The instruments are not optional garnish.** `session20.sh`, `soak.sh` and
-    `parity-check.sh` found the reconnect bug (P9) and the dropped-attachment
-    bug (P13) that every unit test passed through. If a change touches the
+    `parity-check.sh` found the reconnect bug and the dropped-attachment
+    bug that every unit test passed through. If a change touches the
     wire, the session is part of the proof.
 
 24. **A gate box is ticked with evidence, not with a claim.** Re-run the
-    command, paste its output under the item in `GATES.md`, then tick. Two gates
-    in this project were deliberately left open until a defect was fixed.
+    command, paste its output under the item, then tick. Two gates in this
+    project were deliberately left open until a defect was fixed.
 
 ## Conventions
 
@@ -226,8 +224,7 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
   do exactly that).
 - **Prove a guard non-vacuous by breaking it.** Delete the teardown, import a
   higher layer, raise the coverage floor to 100, doctor one transcript line.
-  Every guard in this repo has been broken on purpose once (`docs/decisions.md`
-  D23, D36, D51).
+  Every guard in this repo has been broken on purpose once.
 - **One commit per plan task**, message `[C4.2] reducer: streaming segments from
   frames`, body carrying the red evidence and, where files serve several tasks,
   which ones.
@@ -245,9 +242,10 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
   gateway file or the incident that forced a line. Keep that habit; no banners,
   no doc-comment wallpaper.
 - **Never edit `~/Dev/nanobot`.** It is the read-only gateway of record.
-- **The record is in the repo**: `plan.md` (plan), `GATES.md` (evidence),
-  `docs/decisions.md` (D11–D52), `.pi/parked.md` (open questions), `git log`
-  (one task per commit).
+- **The durable record is `git log`**: one commit per task, with the red run in
+  the body. The plan, checklists, decision log and open-questions list are
+  working files and stay out of the repo; say the same thing in a commit body
+  that you would have put in them.
 
 ## Code review standards
 
@@ -303,5 +301,6 @@ the environment changed (fresh install, rebooted device), start the sweep over.
    identically in both tables.
 6. **Tests**: core test in `commonTest` (or `jvmTest` when it needs a server),
    app unit test, XCUITest only where a tap is the point.
-7. **Gates**: the five QA commands above, plus a line in `docs/decisions.md` if
-   the choice was not obvious, and a `GATES.md` tick only after re-running.
+7. **Gates**: the five QA commands above; a note in the decision log if the
+   choice was not obvious; and no gate ticked before its command has been
+   re-run.
