@@ -51,7 +51,7 @@ class FrameCodecTest {
 
         val end = Fixtures.wsFrames().map { FrameCodec.decode(it.toString()) }.filterIsInstance<TurnEndFrame>().single()
         assertEquals("turn-1", end.turnId)
-        assertEquals(5703, end.usage.promptTokens, "D15.4: turn_end carries usage")
+        assertEquals(5703, end.usage?.promptTokens, "D15.4: turn_end carries usage")
         assertEquals(32768, end.contextWindowTokens)
         assertEquals(false, end.goalState.active)
     }
