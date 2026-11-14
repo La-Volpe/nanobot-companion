@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.arjmandi.nanobot.companion.MainViewModel
 import de.arjmandi.nanobot.companion.R
+import de.arjmandi.nanobot.companion.automations.AutomationsScreen
 import de.arjmandi.nanobot.companion.chat.ChatScreen
 import de.arjmandi.nanobot.companion.composer.SessionAction
 import de.arjmandi.nanobot.companion.composer.SessionActionsOverflow
@@ -87,6 +88,16 @@ fun RootScreen(
             DebugStatesMenu(states = chat.states, composer = chat.composer, onClose = { main.closeDebug() }, modifier = modifier)
             return
         }
+    }
+
+    if (main.automationsOpen) {
+        AutomationsScreen(
+            model = main.automations,
+            onClose = { main.closeAutomations() },
+            onAskNanobot = { main.askNanobotForAutomation() },
+            modifier = modifier,
+        )
+        return
     }
 
     if (main.settingsOpen) {
@@ -156,7 +167,7 @@ private fun Shell(
                     selectedKey = main.selected?.key,
                     onSelect = { main.select(it) },
                     onNewChat = { main.newChat() },
-                    onAutomations = onSessionActions,
+                    onAutomations = { main.openAutomations() },
                     onSettings = { main.openSettings() },
                 )
             }

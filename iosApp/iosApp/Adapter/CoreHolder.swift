@@ -123,6 +123,24 @@ final class CoreHolder: ObservableObject {
         try await companion?.core.refreshSessions()
     }
 
+    /// The automations page's read (I2b): the same socket, one HTTP GET through the core.
+    func refreshAutomations() async throws {
+        try await companion?.core.refreshAutomations()
+    }
+
+    /// The jobs the core last read. A plain array, so the page never touches a framework type.
+    var automationJobs: [AutomationJob] {
+        guard let flow = companion?.core.automations else { return [] }
+        return (flow.value as? AutomationsState)?.jobs ?? []
+    }
+
+    /// One automation action. The core refuses a chat change with no values before it sends
+    /// anything, and answers with the whole list when the gateway accepts.
+    func runAutomation(_ action: AutomationActionKind, id: String) async throws -> AutomationActionResult {
+        guard let core = companion?.core else { return AutomationActionResultNotConnected.shared }
+        return try await core.runAutomation(id: id, action: action, chatChange: nil)
+    }
+
     /// The settings read as Settings → Overview draws it: the same payload the model sheet's
     /// presets come from, mapped once here.
     var settingsSnapshot: SettingsViewModel.Snapshot {
@@ -751,5 +769,111 @@ enum Reading {
         case core.Alignment.left: .left
         default: .none
         }
+    }
+}
+
+/// The automations page's driver over the real core: the one file that knows what a Kotlin
+/// `AutomationJob` is, so the screen and its tests speak `AutomationRow`.
+@MainActor
+final class CoreAutomations: AutomationsDriving {
+    private let holder: CoreHolder
+
+    init(holder: CoreHolder) {
+        self.holder = holder
+    }
+
+    func load() async -> [AutomationRow]? {
+        do {
+            try await holder.refreshAutomations()
+        } catch {
+            // A failed read is not an empty page: the view keeps the rows it had.
+            guard !holder.automationJobs.isEmpty else { return nil }
+        }
+        return CoreAutomations.rows(from: holder.automationJobs)
+    }
+
+    func act(_ act: AutomationAct, id: String) async -> String? {
+        let action: AutomationActionKind
+        switch act {
+        case .run: action = .run
+        case .pause: action = .disable
+        case .resume: action = .enable
+        case .delete: action = .delete_
+        }
+        do {
+            let result = try await holder.runAutomation(action, id: id)
+            return CoreAutomations.refusal(from: result)
+        } catch {
+            return "The gateway did not answer."
+        }
+    }
+
+    /// The gateway's own status and words, turned into one sentence. A protection is not an
+    /// error to apologise for: it is the gateway saying this job is its own.
+    static func refusal(from result: AutomationActionResult) -> String? {
+        if result is AutomationActionResultDone || result is AutomationActionResultAccepted {
+            return nil
+        }
+        if let refused = result as? AutomationActionResultRefused {
+            switch refused.status {
+            case 403: return "This job belongs to the gateway and cannot be changed from here."
+            case 409: return "That job is busy right now."
+            case 404: return "That automation is gone."
+            default: return refused.message ?? "The gateway refused that."
+            }
+        }
+        if result is AutomationActionResultNotConnected { return "The gateway is not connected." }
+        if result is AutomationActionResultTimeout { return "The gateway did not answer in time." }
+        return nil
+    }
+
+    static func rows(from jobs: [AutomationJob]) -> [AutomationRow] {
+        jobs.map { job in
+            AutomationRow(
+                id: job.id,
+                name: job.name,
+                schedule: scheduleText(job.schedule),
+                detail: detailText(job.state, local: job.schedule.kind == "local"),
+                enabled: job.enabled,
+                isSystem: job.protected_
+            )
+        }
+    }
+
+    /// The design's second line: a cron expression, an interval, a date, or a local trigger.
+    static func scheduleText(_ schedule: AutomationSchedule) -> String {
+        switch schedule.kind {
+        case "cron": return schedule.expr ?? "Cron"
+        case "every":
+            guard let every = schedule.everyMs?.int64Value, every > 0 else { return "Repeating" }
+            let minutes = every / 60_000
+            if minutes % 60 == 0 { return "Every \(minutes / 60) h" }
+            return "Every \(minutes) min"
+        case "at":
+            guard let at = schedule.atMs?.doubleValue else { return "Once" }
+            return "Once · \(Self.stamp(at / 1000))"
+        case "local": return "Local trigger"
+        default: return schedule.kind.isEmpty ? "No schedule" : schedule.kind
+        }
+    }
+
+    /// The third line: what the job is doing, which is the next run when it is healthy and the
+    /// last error when it is not.
+    static func detailText(_ state: AutomationRunState, local: Bool) -> String {
+        if let error = state.lastError, !error.isEmpty { return error }
+        if state.pending { return "Running now" }
+        if let next = state.nextRunAtMs?.doubleValue { return "Next · \(stamp(next / 1000))" }
+        if local { return "Fires when the gateway calls it" }
+        if let last = state.lastStatus { return last.capitalized }
+        return "No run yet"
+    }
+
+    /// Absolute and short — "Fri 08:00". A relative "in 3 h" would need a clock ticking under the
+    /// view, and reads worse on a page you open once.
+    private static func stamp(_ seconds: Double) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("EEE HH:mm")
+        return formatter.string(from: Date(timeIntervalSince1970: seconds))
     }
 }

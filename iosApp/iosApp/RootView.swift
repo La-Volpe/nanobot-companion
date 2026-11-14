@@ -22,6 +22,8 @@ struct RootView: View {
     @State private var settingsOpen = false
     @State private var photosPresented = false
     @State private var cameraPresented = false
+    @State private var automationsOpen = false
+    @StateObject private var automations: AutomationsViewModel
     @State private var filesPresented = false
     @State private var chatDriver: CoreChat?
 
@@ -50,6 +52,7 @@ struct RootView: View {
         _voice = StateObject(wrappedValue: VoiceViewModel(recording: MicrophoneRecorder(), driver: NoopVoice()))
         let credentials = container.credentials
         _states = StateObject(wrappedValue: StatesViewModel())
+        _automations = StateObject(wrappedValue: AutomationsViewModel(driver: CoreAutomations(holder: container.holder)))
         _settings = StateObject(
             wrappedValue: SettingsViewModel(
                 credentials: credentials,
@@ -180,6 +183,18 @@ struct RootView: View {
                         .presentationDragIndicator(.visible)
                     }
                     .attachmentPickers(model: attachments, photos: $photosPresented, files: $filesPresented)
+                    .sheet(isPresented: $automationsOpen) {
+                        AutomationsView(
+                            model: automations,
+                            onClose: { automationsOpen = false },
+                            onAskNanobot: {
+                                // The design's one way out: the agent creates automations, so the
+                                // page hands the user a prompt rather than a form.
+                                automationsOpen = false
+                                composer.draft = "Create an automation that "
+                            }
+                        )
+                    }
                     .fullScreenCover(isPresented: $cameraPresented) {
                         // The camera is the phone's, and the picture lands in the same cards as a
                         // picked photo, so the upload path stays one path (P13).
@@ -213,7 +228,10 @@ struct RootView: View {
                             closeDrawer()
                             Task { await openChat() }
                         },
-                        onAutomations: closeDrawer,
+                        onAutomations: {
+                            closeDrawer()
+                            automationsOpen = true
+                        },
                         onSettings: {
                             closeDrawer()
                             settingsOpen = true
