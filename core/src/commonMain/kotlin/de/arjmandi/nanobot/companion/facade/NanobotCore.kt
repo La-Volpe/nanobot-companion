@@ -162,12 +162,14 @@ public class NanobotCore internal constructor(
      * Bootstrap, handshake, `ready` (plan.md C8.1). Every call mints a fresh single-use
      * token, so this is also the reconnect path — there is no separate "resume" (C3.4).
      */
+    @Throws(Throwable::class)
     public suspend fun connect(): ConnectResult {
         _connection.value = ConnectionState.Connecting
         return when (val opened = engine.connect(profile.secret)) {
             is EngineOpen.Failed -> {
-                _connection.value = opened.error.connectionFailure()
-                ConnectResult.Failed(opened.error)
+                val mapped = opened.error.connectionFailure()
+                _connection.value = mapped
+                ConnectResult.Failed(error = opened.error, failure = mapped.failure, detail = mapped.detail)
             }
 
             is EngineOpen.Ready -> {
@@ -178,6 +180,7 @@ public class NanobotCore internal constructor(
     }
 
     /** Close the socket. [forget] also drops the stored key (Settings → Gateway). */
+    @Throws(Throwable::class)
     public suspend fun disconnect(forget: Boolean) {
         engine.close()
         _connection.value = ConnectionState.Idle
@@ -216,6 +219,7 @@ public class NanobotCore internal constructor(
     }
 
     /** Refresh the drawer from `GET /api/sessions` (plan.md C5.1, D15.6). */
+    @Throws(Throwable::class)
     public suspend fun refreshSessions() {
         val token = payload?.apiToken
         val client = http
@@ -232,6 +236,7 @@ public class NanobotCore internal constructor(
     }
 
     /** The automations page (`GET /api/webui/automations`, C7.2). */
+    @Throws(Throwable::class)
     public suspend fun refreshAutomations(): CoreError? {
         val token = payload?.apiToken ?: return CoreError.AuthFailed
         val client = http ?: return CoreError.Unreachable
@@ -248,6 +253,7 @@ public class NanobotCore internal constructor(
      * One automation action, sent as a socket mutation (C7.2). A successful action answers
      * with the whole list, so the page never has to re-read to show the switch flipped.
      */
+    @Throws(Throwable::class)
     public suspend fun runAutomation(
         id: String,
         action: AutomationActionKind,
@@ -288,6 +294,7 @@ public class NanobotCore internal constructor(
      * refused read leaves the screen empty rather than showing a stale number as if it were
      * current, and the error comes back so the screen can offer a retry.
      */
+    @Throws(Throwable::class)
     public suspend fun refreshSettings(): CoreError? {
         val token = payload?.apiToken ?: return CoreError.AuthFailed
         val client = http ?: return CoreError.Unreachable
@@ -306,6 +313,7 @@ public class NanobotCore internal constructor(
      * than at connect, and returns the error so the sheet can say "try again" instead of
      * showing a half list.
      */
+    @Throws(Throwable::class)
     public suspend fun refreshPalettes(): CoreError? {
         val token = payload?.apiToken ?: return CoreError.AuthFailed
         val client = http ?: return CoreError.Unreachable
@@ -460,6 +468,16 @@ public class NanobotCore internal constructor(
     }
 
     internal suspend fun write(frame: Outbound): Boolean = engine.send(frame)
+
+    /**
+     * One `attach` for a chat the screen opened (I3). The frames that answer it are the chat's
+     * history, reduced by the same reducer as a live turn (plan.md D9).
+     */
+    internal suspend fun openChat(chatId: String) {
+        val routed = ChatRouter.open(chatSet, chatId)
+        chatSet = routed.set
+        routed.effects.mapNotNull { (it as? Effect.Send)?.frame }.forEach { engine.send(it) }
+    }
 
     /**
      * Audio goes out as a data URL with a request id, and comes back on that id

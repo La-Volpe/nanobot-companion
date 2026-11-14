@@ -45,7 +45,17 @@ public enum class ConnectionFailure(public val copyKey: String, public val retry
 
 public sealed interface ConnectResult {
     public data class Connected(public val modelName: String?) : ConnectResult
-    public data class Failed(public val error: CoreError) : ConnectResult
+
+    /**
+     * A refused connect, carrying both the transport's word ([error]) and the state a screen
+     * renders ([failure], [detail]). The mapping from one to the other is the core's and stays
+     * internal: a platform that re-derived it would be a second taxonomy to keep in step (C7.4).
+     */
+    public data class Failed(
+        public val error: CoreError,
+        public val failure: ConnectionFailure,
+        public val detail: String? = null,
+    ) : ConnectResult
 }
 
 /** What the composer hands the facade (plan.md C6.1). Media travels as references (C6.6). */

@@ -15,6 +15,17 @@ tasks.withType<Test>().configureEach {
     systemProperty("nanobot.contract", providers.gradleProperty("contract").isPresent.toString())
 }
 
+// The Swift bridge is verified against the header Kotlin/Swift interop actually generated, not
+// against the docs (C8.2). `jvmTest` therefore links the simulator framework first: a shape test
+// reading a stale or absent header would pass vacuously.
+val simulatorFrameworkHeader = layout.buildDirectory.file(
+    "bin/iosSimulatorArm64/debugFramework/core.framework/Headers/core.h",
+)
+tasks.matching { it.name == "jvmTest" }.configureEach {
+    dependsOn("linkDebugFrameworkIosSimulatorArm64")
+    (this as Test).systemProperty("nanobot.bridgeHeader", simulatorFrameworkHeader.get().asFile.absolutePath)
+}
+
 kotlin {
     // D2: every public symbol is deliberate, because Swift and Compose both consume it.
     explicitApi()
@@ -25,6 +36,17 @@ kotlin {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
+
+    // The framework the SwiftUI app links (plan.md C8.2, D1). Static on purpose: one app
+    // target consumes it, so there is nothing to embed and no dylib to sign twice. The iOS
+    // bridge is the only source that exists for Swift's benefit; everything else is
+    // `commonMain` code Swift sees through the generated header.
+    targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().configureEach {
+        binaries.framework {
+            baseName = "core"
+            isStatic = true
+        }
+    }
 
     androidLibrary {
         namespace = "de.arjmandi.nanobot.companion.core"

@@ -33,6 +33,9 @@ internal object Architecture {
         "engine" to setOf("wire", "projection", "transport", "engine", "platform"),
         "facade" to setOf("wire", "projection", "transport", "engine", "facade", "platform"),
         "platform" to setOf("platform"),
+        // The Swift bridge (C8.2) sits above the facade: it wraps the public surface for
+        // Object-C interop and adds nothing the facade does not already expose.
+        "bridge" to setOf("facade", "wire", "projection", "transport", "engine", "platform", "bridge"),
     )
 
     /**

@@ -36,12 +36,24 @@ public class ChatHandle internal constructor(
 
     public val composer: StateFlow<ComposerState> get() = session.composer
 
+    /**
+     * Open this chat: one `attach`, and the gateway replays the history into [thread] (I3).
+     * A screen calls this when it appears; calling it again on the same chat is free.
+     */
+    @Throws(Throwable::class)
+    public suspend fun open() {
+        val chatId = session.id.value ?: return
+        core.openChat(chatId)
+    }
+
+    @Throws(Throwable::class)
     public suspend fun send(draft: OutboundDraft): SendReceipt {
         val chatId = session.id.value ?: return SendReceipt.Rejected(SendRejection.NotConnected)
         return core.sendDraft(chatId, draft)
     }
 
     /** A preset switch is the `/model` command on this chat, not a frame of its own (C6.2). */
+    @Throws(Throwable::class)
     public suspend fun setModelPreset(preset: String) {
         val chatId = session.id.value ?: return
         core.write(Outbound.Message(chatId = chatId, turnId = core.nextTurnId(), content = "/model $preset"))
@@ -51,6 +63,7 @@ public class ChatHandle internal constructor(
      * The access chip. The gateway answers only by refusing — `detail:
      * "workspace_scope_rejected"` — so the previous mode is remembered here until then (C6.3).
      */
+    @Throws(Throwable::class)
     public suspend fun setWorkspaceScope(mode: WorkspaceScope) {
         val chatId = session.id.value ?: return
         session.scopeBeforeSwitch = session.composer.value.accessMode
@@ -63,6 +76,7 @@ public class ChatHandle internal constructor(
      * put on the next message (C6.6). The size and type checks happen before a byte leaves the
      * device, using `ready.limits` like every other composer limit (C3.7).
      */
+    @Throws(Throwable::class)
     public suspend fun upload(file: PickedFile): UploadResult {
         val limits = session.composer.value.limits
         if (limits != null) {
@@ -82,6 +96,7 @@ public class ChatHandle internal constructor(
      * One recording, transcribed by the gateway (C6.5). The transcript lands after whatever
      * was already typed, so a half-written note is not replaced.
      */
+    @Throws(Throwable::class)
     public suspend fun transcribe(pcm: ByteArray, durationMs: Long): TranscriptionResult {
         if (durationMs < MIN_TRANSCRIPTION_MS) return TranscriptionResult.Rejected(TranscriptionRejection.TooShort)
         if (durationMs > MAX_TRANSCRIPTION_MS) return TranscriptionResult.Rejected(TranscriptionRejection.TooLong)
@@ -94,6 +109,7 @@ public class ChatHandle internal constructor(
      * recovery id, and the gateway's refusal is what comes back — a refused continue leaves
      * the decision on screen rather than pretending the task resumed.
      */
+    @Throws(Throwable::class)
     public suspend fun continueRecovery(): AutomationActionResult {
         val chatId = session.id.value ?: return AutomationActionResult.NotConnected
         val notice = session.thread.value.notices.filterIsInstance<Notice.Recovery>().firstOrNull()
@@ -101,6 +117,7 @@ public class ChatHandle internal constructor(
         return core.recoveryAction(chatId, notice.id, "recovery.continue")
     }
 
+    @Throws(Throwable::class)
     public suspend fun dismissRecovery(): AutomationActionResult {
         val chatId = session.id.value ?: return AutomationActionResult.NotConnected
         val notice = session.thread.value.notices.filterIsInstance<Notice.Recovery>().firstOrNull()
@@ -114,6 +131,7 @@ public class ChatHandle internal constructor(
     }
 
     /** Stop is the text `/stop` on the running turn; the gateway has no stop frame (C5.5). */
+    @Throws(Throwable::class)
     public suspend fun stop() {
         val chatId = session.id.value ?: return
         val active = session.thread.value.activeTurnId ?: return
