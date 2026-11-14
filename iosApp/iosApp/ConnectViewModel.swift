@@ -38,7 +38,9 @@ final class ConnectViewModel: ObservableObject {
         self.gateway = gateway
         self.credentials = credentials
         self.address = credentials.address ?? ""
-        self.key = prefilledKey ?? ""
+        // The store's key is the whole point of remembering: a launch that has one reconnects
+        // instead of asking the user to type a secret the app already holds.
+        self.key = prefilledKey ?? credentials.storedKey ?? ""
         self.allowUnverifiedCertificate = credentials.allowUnverifiedCertificate
     }
 

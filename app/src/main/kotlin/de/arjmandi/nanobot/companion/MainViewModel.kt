@@ -103,6 +103,11 @@ class MainViewModel(
         debugOpen = false
     }
 
+    /** The drawer's own gesture reports back, so the model and the drawer never disagree. */
+    fun reportDrawerOpen(open: Boolean) {
+        drawerOpen = open
+    }
+
     fun openDrawer() {
         drawerOpen = true
     }

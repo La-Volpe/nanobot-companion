@@ -51,6 +51,13 @@ final class Container {
                 prefilledKey: environment["NANOBOT_LIVE_SECRET"]
             )
         }
+        // A reset launch: the store is emptied before the screens exist, so an instrument that
+        // tests "first launch" starts from a first launch instead of yesterday's Keychain.
+        if environment["NANOBOT_FORGET"] != nil {
+            let container = Container()
+            container.credentials.forget()
+            return container
+        }
         if let scenario = environment["NANOBOT_SCENARIO"], let scripted = ScriptedGateway.Scenario(rawValue: scenario) {
             let container = Container(
                 gateway: ScriptedGateway(scenario: scripted),

@@ -32,6 +32,7 @@ struct SettingsViewModelTests {
 
     final class FakeCredentials: CredentialsStoring {
         var address: String? = "127.0.0.1:18765"
+        var storedKey: String? = "a-key"
         var allowUnverifiedCertificate = true
         private(set) var forgot = 0
         func remember(address: String, key: String, allowUnverifiedCertificate: Bool) {}

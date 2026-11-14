@@ -111,8 +111,12 @@ class MainActivity : ComponentActivity() {
                 readingScale = de.arjmandi.nanobot.companion.settings.ReadingScale.size(settings.readingSize) / 16f,
             ) {
                 // The launch environment is the live instrument's: one press, or none at all.
+                // A device that remembers a gateway reopens it here — the key is in the
+                // encrypted store, so asking for it again would be theatre.
                 LaunchedEffect(launch.autoConnect) {
-                    if (launch.autoConnect) connect.connect()
+                    val remembered = !credentials.address.isNullOrBlank() &&
+                        !credentials.storedKey.isNullOrBlank()
+                    if (launch.autoConnect || remembered) connect.connect()
                 }
                 RootScreen(
                     connect = connect,

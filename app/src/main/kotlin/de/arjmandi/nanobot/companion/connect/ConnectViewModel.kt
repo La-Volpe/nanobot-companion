@@ -30,7 +30,8 @@ class ConnectViewModel(
 ) {
 
     var address by mutableStateOf(credentials.address ?: "")
-    var key by mutableStateOf(prefillKey ?: "")
+    // A stored key is why the app can reopen a chat without asking for the secret again.
+    var key by mutableStateOf(prefillKey ?: credentials.storedKey ?: "")
 
     /** The switch. Set through [rememberTrustDecision] so the decision is also stored. */
     var allowUnverifiedCertificate by mutableStateOf(credentials.allowUnverifiedCertificate)

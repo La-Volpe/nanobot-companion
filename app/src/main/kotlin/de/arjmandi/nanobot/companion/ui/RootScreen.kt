@@ -24,7 +24,9 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -134,10 +136,14 @@ private fun Shell(
         if (chat?.composer?.sheet != null) chat.composer.closeSheet() else main.closeDrawer()
     }
 
-    // One owner for "is the drawer open": the model asks, the drawer state answers.
+    // One owner for "is the drawer open": the model asks, the drawer state answers — and the
+    // swipe reports back, so dragging it open also tells the model (Back then knows to close it).
     LaunchedEffect(main.drawerOpen) {
         if (main.drawerOpen && drawerState.isClosed) drawerState.open()
         if (!main.drawerOpen && drawerState.isOpen) drawerState.close()
+    }
+    LaunchedEffect(drawerState) {
+        snapshotFlow { drawerState.isOpen }.collect { open -> main.reportDrawerOpen(open) }
     }
 
     ModalNavigationDrawer(

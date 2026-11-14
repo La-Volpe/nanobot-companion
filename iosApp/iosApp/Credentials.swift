@@ -13,6 +13,8 @@ protocol SecretStoring: AnyObject {
 /// the Keychain. Neither is a credential; the address is a setting the user can read back.
 protocol CredentialsStoring: AnyObject {
     var address: String? { get }
+    /// The key this device already holds, so a launch can reconnect instead of asking again.
+    var storedKey: String? { get }
     var allowUnverifiedCertificate: Bool { get }
     func remember(address: String, key: String, allowUnverifiedCertificate: Bool)
     func setAllowUnverifiedCertificate(_ allowed: Bool)
@@ -35,6 +37,8 @@ final class StoredCredentials: CredentialsStoring {
     }
 
     var address: String? { defaults.string(forKey: Key.address) }
+
+    var storedKey: String? { secrets.read() }
 
     var allowUnverifiedCertificate: Bool { defaults.bool(forKey: Key.allowUnverified) }
 
