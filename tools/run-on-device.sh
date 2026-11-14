@@ -110,9 +110,26 @@ echo "building…"
 xcodebuild -project "$IOS/iosApp.xcodeproj" -scheme iosApp -configuration Debug \
   -destination "platform=iOS,id=$UDID" -derivedDataPath "$ROOT/build/ios-device" \
   -allowProvisioningUpdates build > "$ROOT/build/ios-device-build.log" 2>&1 || {
+    LOG="$ROOT/build/ios-device-build.log"
+    if grep -q "No Account for Team" "$LOG"; then
+      cat >&2 <<'MSG'
+error: Xcode has no Apple ID signed in, so it cannot create a provisioning profile.
+
+The signing certificate is on this Mac (Apple Development: your-apple-id@example.com,
+team 4L99J8K75T) but a device install also needs a profile, and profiles come from an
+account. One-time fix:
+
+  1. open Xcode → Settings → Accounts → "+" → Apple ID → sign in (2FA)
+  2. select the team "your-apple-id@example.com (Personal Team)" for the iosApp target
+  3. run this script again
+
+Nothing else is missing: the build, the framework, the LAN gateway and the app all work.
+MSG
+      exit 3
+    fi
     echo "build failed; last lines:" >&2
-    grep -E "error:|Signing|Provisioning" "$ROOT/build/ios-device-build.log" | tail -10 >&2
-    echo "(full log: $ROOT/build/ios-device-build.log)" >&2
+    grep -E "error:|Signing|Provisioning" "$LOG" | tail -10 >&2
+    echo "(full log: $LOG)" >&2
     exit 1
   }
 
