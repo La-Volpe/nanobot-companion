@@ -119,12 +119,12 @@ class ConnectViewModel(
 }
 
 /** Where the gateway's address and key live: encrypted preferences in the app, a map in a test. */
-interface CredentialsStoring {
-    val address: String?
+interface CredentialsStoring : de.arjmandi.nanobot.companion.settings.SettingsCredentials {
+    override val address: String?
     val storedKey: String?
     val allowUnverifiedCertificate: Boolean
 
     fun remember(address: String, key: String, allowUnverifiedCertificate: Boolean)
     fun rememberTrustDecision(allowed: Boolean)
-    fun forget()
+    override fun forget()
 }
