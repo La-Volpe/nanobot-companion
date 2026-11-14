@@ -59,6 +59,23 @@ internal data class TranscriptionErrorFrame(
     override val event: String get() = "transcription_error"
 }
 
+/**
+ * The answer to a `webui_request` (C7.2). `ok:false` carries `error{status, message}` from the
+ * HTTP route the mutation maps onto, so a refused automation action keeps the gateway's own
+ * status and words (`inbound_commands.py:1219-1245`).
+ */
+internal data class WebuiResponseFrame(
+    val requestId: String?,
+    val ok: Boolean,
+    val result: kotlinx.serialization.json.JsonElement?,
+    val errorStatus: Int?,
+    val errorMessage: String?,
+    override val chatId: String?,
+    override val raw: JsonObject,
+) : Frame {
+    override val event: String get() = "webui_response"
+}
+
 /** A soft protocol error: the connection stays open, the envelope was refused (C4.5). */
 internal data class ErrorFrame(
     val detail: String?,

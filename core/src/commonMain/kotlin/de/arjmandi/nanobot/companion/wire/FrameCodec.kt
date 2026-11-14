@@ -42,6 +42,19 @@ internal object FrameCodec {
 
             "error" -> ErrorFrame(detail = raw.text("detail"), chatId = chatId, raw = raw)
 
+            "webui_response" -> {
+                val error = raw.child("error")
+                WebuiResponseFrame(
+                    requestId = raw.text("request_id"),
+                    ok = raw.flag("ok"),
+                    result = raw["result"],
+                    errorStatus = error?.integer("status"),
+                    errorMessage = error?.text("message"),
+                    chatId = chatId,
+                    raw = raw,
+                )
+            }
+
             "transcription_result" -> TranscriptionResultFrame(
                 requestId = raw.text("request_id"),
                 text = raw.text("text"),
