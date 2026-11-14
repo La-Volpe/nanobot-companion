@@ -92,15 +92,11 @@ final class LiveSessionTests: XCTestCase {
     }
 
     func testAReconnectResumesTheSameChat() throws {
-        // Parked as P9: the instrument found that after Settings → Gateway → Disconnect and a
-        // second connect the app shows the shell with the connection dot idle and an empty
-        // thread for the session it re-opened (the drawer lists it by its preview, the attach
-        // produces nothing). The core's own reconnect-and-resume is proven by
-        // `core-cli session` (`beat reconnect`, `beat resume` in .dev/session-20min.log); the
-        // app-side path is a defect to fix, not an assertion to weaken.
-        if ProcessInfo.processInfo.environment["NANOBOT_LIVE_RECONNECT"] == nil {
-            throw XCTSkip("P9: the app's reconnect-and-resume does not replay history; run with NANOBOT_LIVE_RECONNECT=1 to reproduce")
-        }
+        // P9's reproduction, now the assertion: after Settings → Gateway → Disconnect and a
+        // second connect, the app shows the shell with the connection dot reading connected
+        // and the session it re-opens replaying its stored history (D46). The core's own
+        // reconnect is proven by `core-cli session` (`beat reconnect`, `beat resume`); this is
+        // the screen above it.
         let app = try liveApp()
 
         XCTAssertTrue(app.buttons["connect.submit"].waitForExistence(timeout: 15))
@@ -140,6 +136,20 @@ final class LiveSessionTests: XCTestCase {
 
         // The greeting mints a new chat, which is the gateway's behaviour; opening the earlier
         // session from the drawer replays its history through the same reducer.
+        //
+        // The dot first: it was idle after a reconnect because the shell only listened for
+        // changes it was on screen to see (P9).
+        let dot = app.descendants(matching: .any).matching(identifier: "states.dot").firstMatch
+        XCTAssertTrue(
+            dot.waitForExistence(timeout: 10),
+            "the connection dot is on screen. Tree:\n\(app.debugDescription)"
+        )
+        XCTAssertEqual(
+            dot.label,
+            "Connection: connected",
+            "a reconnect the gateway accepted is a connected shell, not an idle one"
+        )
+
         app.buttons["chat.openDrawer"].tap()
         // The chat we sent into is the one whose preview carries what we said; the greeting a
         // reconnect mints a fresh empty chat above it, so picking row 0 would prove nothing.

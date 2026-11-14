@@ -109,6 +109,12 @@ struct RootView: View {
             .onChange(of: holder.connectionStatus) { _, status in
                         states.update(connection: status, wasConnected: holder.everConnected)
                     }
+                    // `.onChange` only sees changes this view was on screen for, and the socket
+                    // opens while onboarding is: a shell that appears after a connect or a
+                    // reconnect starts from what the holder already holds (P9).
+                    .task {
+                        states.update(connection: holder.connectionStatus, wasConnected: holder.everConnected)
+                    }
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
                             ConnectionDotView(dot: states.dot)
@@ -190,8 +196,8 @@ struct RootView: View {
         }
     }
 
-    /// Opening a chat: one attach, and the gateway replays the history into the same thread
-    /// the live socket fills (D9).
+    /// Opening a chat: one attach, then the stored history the core reads and reduces into the
+    /// same thread the live socket fills (D9, D46).
     private func openChat() async {
         chatDriver?.stopObserving()
         let driver: ChatDriving
