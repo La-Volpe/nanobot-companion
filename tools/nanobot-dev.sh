@@ -12,7 +12,10 @@
 # `outcome: failed` for the failure scenario (plan.md C4.5/C7.4).
 #
 # usage:
-#   tools/nanobot-dev.sh start [--port 18765] [--model <ollama-model>]
+#   tools/nanobot-dev.sh start [--port 18765] [--model <ollama-model>] [--lan]
+#
+# --lan binds 0.0.0.0 instead of loopback, so a phone on the same network can reach the
+# gateway. Off by default: a loopback listener cannot be reached by accident.
 #   tools/nanobot-dev.sh stop
 #   tools/nanobot-dev.sh status
 set -euo pipefail
@@ -22,6 +25,7 @@ DEV="$ROOT/.dev"
 NANOBOT_SRC="${NANOBOT_SRC:-$HOME/Dev/nanobot}"
 PORT="${PORT:-18765}"
 MODEL="${MODEL:-deepseek-v4.1-flash:cloud}"
+HOST="${HOST:-127.0.0.1}"
 
 die() { echo "error: $*" >&2; exit 1; }
 
@@ -39,6 +43,7 @@ start() {
     case "$1" in
       --port) PORT="$2"; shift 2 ;;
       --model) MODEL="$2"; shift 2 ;;
+      --lan) HOST="0.0.0.0"; shift ;;
       *) die "unknown option: $1" ;;
     esac
   done
@@ -68,7 +73,7 @@ start() {
   "channels": {
     "websocket": {
       "enabled": true,
-      "host": "127.0.0.1",
+      "host": "$HOST",
       "port": $PORT,
       "tokenIssueSecret": "$secret",
       "websocketRequiresToken": true
@@ -105,6 +110,10 @@ JSON
         "http://127.0.0.1:$PORT/webui/bootstrap"; then
       echo "ready:"
       echo "  url    http://127.0.0.1:$PORT"
+      if [ "$HOST" = "0.0.0.0" ]; then
+        lan="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+        [ -n "$lan" ] && echo "  lan    http://$lan:$PORT    (for a phone on the same network)"
+      fi
       echo "  secret .dev/secret"
       echo "  log    .dev/gateway.log"
       return 0
