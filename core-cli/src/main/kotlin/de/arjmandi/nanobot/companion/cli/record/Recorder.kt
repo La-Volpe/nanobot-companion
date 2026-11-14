@@ -88,18 +88,115 @@ internal class Recorder(
             }
 
             val rawSessions = client.sessions(profile, apiToken)
+            val paletteReads = reads(client, apiToken)
             val plainChat = recorded.first { it.scenario.name == "plain" }.chatId
             val redactor = Redactor(
                 homeDir = homeDir,
                 workspaceDir = workspaceDirIn(rawSessions, "websocket:$plainChat").orEmpty(),
             )
-            write(redactor, recorded, rawSessions)
+            write(redactor, recorded, rawSessions, paletteReads)
         } finally {
             client.close()
         }
     }
 
-    private fun write(redactor: Redactor, recorded: List<Recorded>, rawSessions: JsonObject): File {
+    /**
+     * The HTTP reads no scripted turn produces: the command palette and the installed CLI
+     * apps (C6.4). They are plain reads, so they are captured into a set instead of costing
+     * a model turn each.
+     */
+    fun captureReads(): File = runBlocking {
+        val client = GatewayClient()
+        try {
+            val set = newestSet()
+            val apiToken = client.bootstrap(profile)["api_token"]?.jsonText()
+                ?: error("bootstrap has no api_token; the reads need one (docs/decisions.md D15.6)")
+            val rawSessions = client.sessions(profile, apiToken)
+            val redactor = Redactor(
+                homeDir = homeDir,
+                workspaceDir = workspaceDirOf(rawSessions).orEmpty(),
+            )
+            val reads = reads(client, apiToken)
+            writeReads(set, redactor, reads)
+            rewriteManifest(set, redactor, reads)
+            set
+        } finally {
+            client.close()
+        }
+    }
+
+    /**
+     * The read endpoints the app needs that no turn produces: the two palettes (C6.4), the
+     * settings overview and its usage totals (C7.1), and the automation jobs (C7.2).
+     */
+    private suspend fun reads(client: GatewayClient, apiToken: String): Map<String, JsonObject> = linkedMapOf(
+        "palette/commands.json" to client.commands(profile, apiToken),
+        "palette/cli-apps.json" to client.installedCliApps(profile, apiToken),
+        "settings.json" to client.settings(profile, apiToken),
+        "settings-usage.json" to client.settingsUsage(profile, apiToken),
+        "automations.json" to client.automations(profile, apiToken),
+    )
+
+    private fun writeReads(set: File, redactor: Redactor, reads: Map<String, JsonObject>) {
+        for ((path, document) in reads) {
+            val file = File(set, path)
+            file.parentFile.mkdirs()
+            file.writeText((redactor.redact(document) as JsonObject).toString())
+        }
+    }
+
+    /**
+     * A set's manifest indexes its files, so a capture after a recording rebuilds that index
+     * from the directory rather than leaving the new documents unlisted (the manifest test
+     * compares the two lists).
+     */
+    private fun rewriteManifest(set: File, redactor: Redactor, reads: Map<String, JsonObject>) {
+        val manifestFile = File(set, "manifest.json")
+        val existing = Json.parseToJsonElement(manifestFile.readText()) as JsonObject
+        val listed = buildJsonArray {
+            set.walkTopDown()
+                .filter { it.isFile && it.name != "manifest.json" }
+                .sortedBy { it.relativeTo(set).path }
+                .forEach { file ->
+                    add(buildJsonObject {
+                        put("path", file.relativeTo(set).path)
+                        put("bytes", file.length())
+                    })
+                }
+        }
+        // A read captured with a rule the original recording did not use still has to be
+        // documented where review looks for redaction: the set-level rule list.
+        val knownRules = (existing["redaction"]?.let { (it as? JsonObject)?.get("rules") } as? JsonArray)
+            ?.mapNotNull { (it as? JsonPrimitive)?.content }
+            .orEmpty()
+        val updated = JsonObject(
+            existing + mapOf(
+                "redaction" to buildJsonObject {
+                    put("rules", JsonArray((knownRules + redactor.rules).distinct().map(::JsonPrimitive)))
+                },
+                "files" to listed,
+                "reads" to buildJsonObject {
+                    put("recorded_at", LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z")
+                    put("endpoints", buildJsonArray { reads.keys.forEach { add(JsonPrimitive(it)) } })
+                    put("rules", JsonArray(redactor.rules.map(::JsonPrimitive)))
+                },
+            ),
+        )
+        manifestFile.writeText(updated.toString())
+    }
+
+    /** The newest recording is the set a read-only capture belongs to. */
+    private fun newestSet(): File =
+        outRoot.listFiles().orEmpty().filter { it.isDirectory && File(it, "manifest.json").isFile }
+            .maxByOrNull { it.name }
+            ?: error("no fixture set under $outRoot; run `core-cli record` first")
+
+    private fun write(
+        redactor: Redactor,
+        recorded: List<Recorded>,
+        rawSessions: JsonObject,
+        paletteReads: Map<String, JsonObject>,
+    ): File {
         val plain = recorded.first { it.scenario.name == "plain" }
         val webui = plain.bootstrap["terminal"]?.let { (it as JsonObject)["webui"] as JsonObject }
             ?: error("bootstrap has no terminal.webui contract (D15.1)")
@@ -122,6 +219,9 @@ internal class Recorder(
             }
         }
         written["sessions.json"] = redactor.redact(rawSessions) as JsonObject
+        for ((path, document) in paletteReads) {
+            written[path] = redactor.redact(document) as JsonObject
+        }
 
         for ((path, document) in written) {
             val file = File(set, path)

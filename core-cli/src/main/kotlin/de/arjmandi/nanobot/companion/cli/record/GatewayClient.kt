@@ -52,6 +52,25 @@ internal class GatewayClient : AutoCloseable {
     suspend fun sessions(profile: GatewayProfile, apiToken: String): JsonObject =
         get(profile.url + "/api/sessions", apiToken)
 
+    /** The slash palette: the gateway's own command registry (C6.4, `_handle_commands`). */
+    suspend fun commands(profile: GatewayProfile, apiToken: String): JsonObject =
+        get(profile.url + "/api/commands", apiToken)
+
+    /** Only what is installed: that is the mention group the composer offers (C6.4). */
+    suspend fun installedCliApps(profile: GatewayProfile, apiToken: String): JsonObject =
+        get(profile.url + "/api/settings/cli-apps?installed_only=1", apiToken)
+
+    /** The settings overview: `version{current, commit}` and no uptime field (C7.1, design README). */
+    suspend fun settings(profile: GatewayProfile, apiToken: String): JsonObject =
+        get(profile.url + "/api/settings", apiToken)
+
+    suspend fun settingsUsage(profile: GatewayProfile, apiToken: String): JsonObject =
+        get(profile.url + "/api/settings/usage", apiToken)
+
+    /** The automation list (C7.2). Actions are socket mutations, so only the list is a read. */
+    suspend fun automations(profile: GatewayProfile, apiToken: String): JsonObject =
+        get(profile.url + "/api/webui/automations", apiToken)
+
     suspend fun thread(profile: GatewayProfile, apiToken: String, sessionKey: String): JsonObject =
         get(profile.url + "/api/sessions/" + urlEncode(sessionKey) + "/webui-thread", apiToken)
 

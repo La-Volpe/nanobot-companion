@@ -110,9 +110,13 @@ internal class Redactor(
         const val REDACTED = "REDACTED"
         val CREDENTIAL_FIELDS = listOf("token", "api_token", "secret", "password")
         val OPAQUE_FIELDS = listOf("stream_id")
+        // Every absolute moment in a payload churns between two recordings of the same
+        // scenario. The cron fields are here because `next_run_at_ms` moved on the moment
+        // the first recording finished (C7.2).
         val TIMING_FIELDS = listOf(
             "created_at_ms", "updated_at_ms", "started_at", "started_at_ms", "ended_at",
             "latency_ms", "ttft_ms", "generation_ms",
+            "next_run_at_ms", "last_run_at_ms", "run_at_ms",
         )
         val UUID = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
         val HEX = Regex("[0-9a-f]{16,}")

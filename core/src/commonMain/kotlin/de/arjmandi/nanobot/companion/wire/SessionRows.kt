@@ -21,6 +21,9 @@ public data class SessionRow(
     public val updatedAt: String?,
     public val updatedAtMs: Long?,
     public val recoveryState: String?,
+    /** The stable handle a prompt mentions this chat by; absent on a row the gateway did not mint (C6.4). */
+    public val handleId: String? = null,
+    public val handleName: String? = null,
 )
 
 internal object SessionListParser {
@@ -36,6 +39,7 @@ internal object SessionListParser {
         val scope = json["workspace_scope"] as? JsonObject
         val created = json.text("created_at")
         val updated = json.text("updated_at")
+        val handle = json["handle"] as? JsonObject
         return SessionRow(
             key = key,
             chatId = key.removePrefix("websocket:"),
@@ -48,6 +52,8 @@ internal object SessionListParser {
             updatedAt = updated,
             updatedAtMs = updated?.let(Iso8601::toEpochMillis),
             recoveryState = json.text("recovery_state"),
+            handleId = handle?.text("id"),
+            handleName = handle?.text("name"),
         )
     }
 

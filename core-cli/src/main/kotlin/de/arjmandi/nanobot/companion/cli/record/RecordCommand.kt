@@ -45,6 +45,16 @@ internal object RecordCommand {
             homeDir = System.getProperty("user.home"),
         )
 
+        if (flags.containsKey("reads-only")) {
+            val captured = try {
+                recorder.captureReads()
+            } catch (failure: Exception) {
+                fail("capture failed: ${failure.message}")
+            }
+            println("captured reads into ${captured.path}")
+            return
+        }
+
         val set = try {
             recorder.run()
         } catch (failure: Exception) {
@@ -62,9 +72,11 @@ internal object RecordCommand {
         while (index < args.size) {
             val key = args[index]
             if (!key.startsWith("--")) fail("unexpected argument: $key")
-            val value = args.getOrNull(index + 1) ?: fail("$key needs a value")
+            // A flag with no value is a switch (`--reads-only`); one with a value reads it.
+            val next = args.getOrNull(index + 1)
+            val value = if (next == null || next.startsWith("--")) "" else next
             flags[key.removePrefix("--")] = value
-            index += 2
+            index += if (value.isEmpty()) 1 else 2
         }
         return flags
     }

@@ -1,5 +1,6 @@
 package de.arjmandi.nanobot.companion.fixture
 
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -85,12 +86,29 @@ class ScenarioFixturesTest {
                 "manifest names scenario '$scenario' but recorded no frames for it",
             )
         }
-        // The manifest is the index review reads; every frame directory has to be in it.
+        // The manifest is the index review reads; every frame directory has to be in it. A
+        // read capture (`palette/`, C6.4) holds documents, not frames, so it is named under
+        // `manifest.reads` instead — and named there, not merely exempted.
+        val reads = (Fixtures.manifest(set)["reads"] as? JsonObject)
+            ?.get("endpoints")
+            ?.let { it as? JsonArray }
+            ?.map { (it as JsonPrimitive).content.substringBefore('/') }
+            .orEmpty()
+            .toSet()
         val dirs = set.listFiles().orEmpty()
             .filter { it.isDirectory }
             .map { if (it.name == "ws") "plain" else it.name }
+            .filterNot { it in reads }
             .sorted()
         assertEquals(dirs, named.sorted(), "every frame directory in the set belongs to a named scenario")
+        for (dir in reads) {
+            val holder = File(set, dir)
+            // A read may be a file (`settings.json`) or a folder of files (`palette/`).
+            assertTrue(
+                if (holder.isDirectory) holder.listFiles().orEmpty().isNotEmpty() else holder.isFile,
+                "manifest.reads names '$dir' but it holds no document",
+            )
+        }
     }
 
     private fun JsonObject.event(): String = str("event") ?: "<missing>"
