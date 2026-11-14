@@ -1,12 +1,16 @@
 package de.arjmandi.nanobot.companion.projection
 
+import de.arjmandi.nanobot.companion.wire.ContextCompactionFrame
 import de.arjmandi.nanobot.companion.wire.DeltaFrame
 import de.arjmandi.nanobot.companion.wire.ErrorFrame
 import de.arjmandi.nanobot.companion.wire.FileEditFrame
 import de.arjmandi.nanobot.companion.wire.Frame
+import de.arjmandi.nanobot.companion.wire.GoalStateFrame
 import de.arjmandi.nanobot.companion.wire.MessageAcceptedFrame
 import de.arjmandi.nanobot.companion.wire.MessageFrame
 import de.arjmandi.nanobot.companion.wire.ReasoningDeltaFrame
+import de.arjmandi.nanobot.companion.wire.RecoveryStateFrame
+import de.arjmandi.nanobot.companion.wire.RetryStatusFrame
 import de.arjmandi.nanobot.companion.wire.ReasoningEndFrame
 import de.arjmandi.nanobot.companion.wire.SessionUpdatedFrame
 import de.arjmandi.nanobot.companion.wire.StreamEndFrame
@@ -15,6 +19,7 @@ import de.arjmandi.nanobot.companion.wire.TurnModelUpdatedFrame
 import de.arjmandi.nanobot.companion.wire.UnknownFrame
 import de.arjmandi.nanobot.companion.wire.UserMessageFrame
 import de.arjmandi.nanobot.companion.wire.child
+import de.arjmandi.nanobot.companion.wire.flag
 import de.arjmandi.nanobot.companion.wire.integer
 import de.arjmandi.nanobot.companion.wire.text
 import kotlinx.serialization.json.JsonObject
@@ -31,7 +36,7 @@ internal object ThreadReducer {
         is DeltaFrame -> appendAnswer(state, frame.streamId, frame.text, frame.turnId, nowMs)
         is StreamEndFrame -> closeAnswer(state, frame.streamId, frame.turnId, frame.text)
         is ReasoningDeltaFrame -> appendReasoning(state, frame.streamId, frame.text, frame.turnId)
-        is ReasoningEndFrame -> closeReasoning(state, frame.streamId, frame.turnId)
+        is ReasoningEndFrame -> closeReasoning(state, frame.streamId, frame.turnId, frame.text)
         is UserMessageFrame -> addPrompt(state, frame)
         is MessageFrame -> addToolEvents(state, frame)
         is FileEditFrame -> addFileEdits(state, frame)
@@ -51,6 +56,10 @@ internal object ThreadReducer {
                 updated.copy(notices = updated.notices.filterNot { it.id == FALLBACK_NOTICE })
             }
         }
+        is ContextCompactionFrame -> compaction(state, frame)
+        is RecoveryStateFrame -> recovery(state, frame)
+        is RetryStatusFrame -> retry(state, frame, nowMs)
+        is GoalStateFrame -> goalState(state, frame)
         is SessionUpdatedFrame -> state
         is ErrorFrame -> addNotice(state, Notice.Failure(frame.turnIdForNotice(), frame.detail, frame.detail))
         // A frame this client does not model must not disturb a thread it is still showing.
@@ -94,10 +103,20 @@ internal object ThreadReducer {
             val segments = turn.answer.segments
             val last = segments.lastOrNull()
             val closed = when {
-                last == null -> listOf(StreamSegment(id = streamId ?: NEW_STREAM, text = text.orEmpty(), closed = true))
+                // A stream_end with no text and no deltas before it is a placeholder: the live
+                // socket sends one per answer phase and the history page does not store it, so
+                // keeping it would give the turn an empty bubble (found by `watch --verify`, D37).
+                last == null -> if (text.isNullOrEmpty()) {
+                    segments
+                } else {
+                    listOf(StreamSegment(id = streamId ?: NEW_STREAM, text = text, closed = true))
+                }
                 last.id == streamId || streamId == null -> segments.dropLast(1) + last.copy(closed = true)
-                // The recorded history puts the whole text on stream_end when no delta preceded it.
-                text != null -> segments + StreamSegment(id = streamId, text = text, closed = true)
+                // The recorded history puts the whole text on stream_end when no delta preceded
+                // it. An *empty* stream_end for a stream that carried nothing is a placeholder
+                // the live socket emits and the history page does not store, and rendering it
+                // gives the turn an empty bubble (found by `core-cli watch --verify`, D37).
+                !text.isNullOrEmpty() -> segments + StreamSegment(id = streamId, text = text, closed = true)
                 else -> segments
             }
             turn.copy(answer = turn.answer.copy(segments = closed))
@@ -118,15 +137,28 @@ internal object ThreadReducer {
         }
     }
 
-    private fun closeReasoning(state: ThreadState, streamId: String?, turnId: String?): ThreadState =
+    /**
+     * The socket streams reasoning in deltas and ends the stream with a text-less
+     * `reasoning_end`; the history page stores one `reasoning_end` per block carrying the block's
+     * whole text (recorded: `fixtures/…/file/history.json`). Both feeds therefore have to land a
+     * bubble, and neither may drop the text the other form carries (C4.3, D35).
+     */
+    private fun closeReasoning(state: ThreadState, streamId: String?, turnId: String?, text: String?): ThreadState =
         updateTurn(state, turnId, null) { turn ->
             val id = streamId ?: REASONING_STREAM
-            turn.copy(
-                answer = turn.answer.copy(
-                    reasoning = turn.answer.reasoning.map { if (it.id == id) it.copy(closed = true) else it },
-                    reasoningDone = true,
-                ),
-            )
+            val reasoning = turn.answer.reasoning
+            val last = reasoning.lastOrNull()
+            val closed = when {
+                last != null && last.id == id && !last.closed -> reasoning.dropLast(1) + last.copy(closed = true)
+                !text.isNullOrEmpty() -> {
+                    // A block that only exists as this frame; a later block for the same stream
+                    // id gets its own segment so a view keyed by segment id does not merge them.
+                    val segmentId = if (reasoning.any { it.id == id }) "$id#${reasoning.size}" else id
+                    reasoning + StreamSegment(id = segmentId, text = text, closed = true)
+                }
+                else -> reasoning.map { if (it.id == id) it.copy(closed = true) else it }
+            }
+            turn.copy(answer = turn.answer.copy(reasoning = closed, reasoningDone = true))
         }
 
     /**
@@ -151,7 +183,27 @@ internal object ThreadReducer {
                 detail = error ?: event.text("result"),
             )
         }
-        return upsertActivity(state, frame.turnId, items)
+        return sandbox(upsertActivity(state, frame.turnId, items), frame)
+    }
+
+    /**
+     * Shell tools are the one activity that produces a standing warning: a failed `exec`
+     * with a sandbox `error_code` pauses every shell tool, so it is a notice rather than a
+     * row (`useSandboxNotice.ts`). A later successful `exec` retires it.
+     */
+    private fun sandbox(state: ThreadState, frame: MessageFrame): ThreadState {
+        var updated = state
+        for (event in frame.toolEvents) {
+            if (event.text("name") != EXEC_TOOL) continue
+            val phase = event.text("phase")
+            if (phase == "end") {
+                updated = updated.copy(notices = updated.notices.filterNot { it is Notice.Sandbox })
+                continue
+            }
+            val issue = sandboxIssues[event.text("error_code")] ?: continue
+            updated = addNotice(updated, Notice.Sandbox(id = SANDBOX_NOTICE, issue = issue))
+        }
+        return updated
     }
 
     /** `file_edit` carries one diff per edited file; the finished edit is the one C4.4 renders. */
@@ -229,8 +281,11 @@ internal object ThreadReducer {
     )
 
     private fun addPrompt(state: ThreadState, frame: UserMessageFrame): ThreadState {
-        val turnId = frame.turnId ?: state.activeTurnId ?: return state
-        val existing = state.turn(turnId)
+        // `user_message` starts a turn just as `message_accepted` does, and both are clean
+        // slates for the sandbox warning (useSandboxNotice.ts:29).
+        val opened = if (frame.startsTurn) state.copy(notices = state.notices.filterNot { it is Notice.Sandbox }) else state
+        val turnId = frame.turnId ?: opened.activeTurnId ?: return opened
+        val existing = opened.turn(turnId)
         // The gateway uses a quote as model-only context and never echoes it (C4.9), so the
         // one this client rendered has to survive the frame that carries the prompt.
         val prompt = UserPrompt(
@@ -240,25 +295,27 @@ internal object ThreadReducer {
             createdAtMs = frame.createdAtMs,
         )
         return if (existing == null) {
-            state.copy(
-                turns = state.turns + Turn(id = turnId, prompt = prompt, startedAtMs = frame.createdAtMs),
-                activeTurnId = state.activeTurnId ?: turnId,
+            opened.copy(
+                turns = opened.turns + Turn(id = turnId, prompt = prompt, startedAtMs = frame.createdAtMs),
+                activeTurnId = opened.activeTurnId ?: turnId,
             )
         } else {
-            state.copy(turns = state.turns.map { if (it.id == turnId) it.copy(prompt = prompt) else it })
+            opened.copy(turns = opened.turns.map { if (it.id == turnId) it.copy(prompt = prompt) else it })
         }
     }
 
     /** `message_accepted` is the gateway's ack: the optimistic bubble stops being optimistic (C4.5). */
     private fun settleOptimisticPrompt(state: ThreadState, frame: MessageAcceptedFrame): ThreadState {
-        val turnId = frame.turnId ?: frame.activeTurnId ?: return state
-        val existing = state.turn(turnId)
+        // A turn that starts is a clean slate for the standing warning (useSandboxNotice.ts:29).
+        val clean = if (frame.startsTurn) state.copy(notices = state.notices.filterNot { it is Notice.Sandbox }) else state
+        val turnId = frame.turnId ?: frame.activeTurnId ?: return clean
+        val existing = clean.turn(turnId)
         return if (existing == null) {
-            state.copy(activeTurnId = turnId)
+            clean.copy(activeTurnId = turnId)
         } else {
-            state.copy(
+            clean.copy(
                 activeTurnId = frame.activeTurnId ?: turnId,
-                turns = state.turns.map { turn ->
+                turns = clean.turns.map { turn ->
                     if (turn.id == turnId && turn.prompt != null) {
                         turn.copy(prompt = turn.prompt.copy(optimistic = false))
                     } else {
@@ -268,6 +325,69 @@ internal object ThreadReducer {
             )
         }
     }
+
+    /** One row per compaction id, and its phase is what changes (C7.3). */
+    private fun compaction(state: ThreadState, frame: ContextCompactionFrame): ThreadState {
+        val phase = frame.phase ?: return state
+        val id = frame.compactionId ?: COMPACTION_NOTICE
+        return addNotice(state, Notice.Compaction(id = id, phase = phase, reason = frame.reason))
+    }
+
+    /**
+     * Recovery is a decision surface, so it exists only while a decision is outstanding:
+     * `awaiting_user` and `failed` ask something, `resuming` and `recovered` do not.
+     */
+    private fun recovery(state: ThreadState, frame: RecoveryStateFrame): ThreadState {
+        val waiting = frame.status == "awaiting_user" || frame.status == "failed"
+        // One recovery state per chat, as the stream hook keeps it: a new id replaces the
+        // previous decision rather than stacking two prompts to continue.
+        val cleared = state.copy(notices = state.notices.filterNot { it is Notice.Recovery })
+        if (!waiting) return cleared
+        return addNotice(
+            cleared,
+            Notice.Recovery(
+                id = frame.recoveryId ?: RECOVERY_NOTICE,
+                status = frame.status.orEmpty(),
+                canContinue = frame.canContinue,
+                reason = frame.reason,
+                failureErrorKind = frame.failureErrorKind,
+                replyPreserved = frame.replyPreserved,
+            ),
+        )
+    }
+
+    /** The countdown is the frame's delay on the injected clock; nothing here holds a timer. */
+    private fun retry(state: ThreadState, frame: RetryStatusFrame, nowMs: Long): ThreadState {
+        if (frame.state != "waiting") return state.copy(notices = state.notices.filterNot { it is Notice.Retry })
+        val delayMs = frame.retryAfterSeconds?.let { (it * 1_000).toLong() }
+        return addNotice(
+            state,
+            Notice.Retry(
+                id = RETRY_NOTICE,
+                attempt = frame.attempt ?: 0,
+                maxAttempts = frame.maxAttempts,
+                errorKind = frame.errorKind,
+                retryAtMs = delayMs?.let { nowMs + it },
+            ),
+        )
+    }
+
+    /** The strip shows `ui_summary`, else the objective; `active: false` takes it away. */
+    private fun goalState(state: ThreadState, frame: GoalStateFrame): ThreadState {
+        val goal = frame.goalState
+        val active = goal?.flag("active") ?: false
+        if (!active) return state.copy(notices = state.notices.filterNot { it is Notice.Goal })
+        val summary = goal.text("ui_summary")?.takeIf { it.isNotBlank() }
+            ?: goal.text("objective")?.takeIf { it.isNotBlank() }
+        return addNotice(
+            state,
+            Notice.Goal(id = GOAL_NOTICE, active = true, status = goal.text("status"), summary = summary),
+        )
+    }
+
+    /** The sheet's own dismiss: the notice is client state, so this is a pure reduction. */
+    fun dismiss(state: ThreadState, noticeId: String): ThreadState =
+        state.copy(notices = state.notices.filterNot { it.id == noticeId })
 
     private fun settleTurn(state: ThreadState, frame: TurnEndFrame): ThreadState {
         val turnId = frame.turnId ?: state.activeTurnId ?: return state
@@ -284,8 +404,12 @@ internal object ThreadReducer {
             activeTurnId = if (settled.activeTurnId == turnId) null else settled.activeTurnId,
             usage = frame.usage ?: settled.usage,
             contextWindowTokens = frame.contextWindowTokens ?: settled.contextWindowTokens,
+            // The strip is drawn only while a goal is active, so a settle that says
+            // `active: false` takes it away rather than drawing an empty strip (C7.3).
             notices = settled.notices.filterNot { it is Notice.Goal } +
-                Notice.Goal(id = GOAL_NOTICE, active = frame.goalState.active),
+                listOfNotNull(
+                    Notice.Goal(id = GOAL_NOTICE, active = true).takeIf { frame.goalState.active },
+                ),
         )
     }
 
@@ -320,9 +444,25 @@ internal object ThreadReducer {
     private const val NEW_STREAM = "stream-unknown"
     private const val REASONING_STREAM = "reasoning"
     private const val GOAL_NOTICE = "goal"
+    private const val COMPACTION_NOTICE = "compaction"
+    private const val RECOVERY_NOTICE = "recovery"
+    private const val RETRY_NOTICE = "retry"
+    private const val SANDBOX_NOTICE = "sandbox"
+    private const val EXEC_TOOL = "exec"
     private const val FALLBACK_NOTICE = "preset-fallback"
     private const val TOOL_UNKNOWN = "tool"
     private const val SUMMARY_LIMIT = 80
+
+    /** The seven codes the WebUI maps to four sentences (`useSandboxNotice.ts:5-14`). */
+    private val sandboxIssues: Map<String, SandboxIssue> = mapOf(
+        "sandbox_launcher_missing" to SandboxIssue.LauncherMissing,
+        "sandbox_path_not_absolute" to SandboxIssue.Path,
+        "sandbox_not_executable" to SandboxIssue.Path,
+        "sandbox_path_unavailable" to SandboxIssue.Path,
+        "sandbox_agent_writable" to SandboxIssue.Permissions,
+        "sandbox_unprotected_installation" to SandboxIssue.Permissions,
+        "sandbox_start_failed" to SandboxIssue.Startup,
+    )
 
     /** The argument a human would name the call by, in the order the tools use them. */
     private val SUMMARY_KEYS = listOf("command", "path", "query", "url", "pattern", "prompt")

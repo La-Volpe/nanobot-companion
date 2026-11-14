@@ -92,23 +92,76 @@ public enum class TurnStatus { Running, Complete, Failed }
 public sealed interface Notice {
     public val id: String
 
-    public data class Compaction(override val id: String, public val phase: String) : Notice
+    /**
+     * One line per compaction: the phase of the *same* `compaction_id` replaces the row
+     * rather than adding a second, because one compaction is one event in the transcript
+     * (`ContextCompactionNotice.tsx`, `phase: started | succeeded | failed | cancelled`).
+     */
+    public data class Compaction(
+        override val id: String,
+        public val phase: String,
+        public val reason: String? = null,
+    ) : Notice
 
-    public data class Recovery(override val id: String, public val canContinue: Boolean, public val reason: String?) : Notice
+    /**
+     * A task the host interrupted. It is offered only while the gateway is waiting for a
+     * decision — `awaiting_user` or `failed` — and `canContinue` is the gateway's own answer
+     * to whether the saved context could be restored (`RecoveryNotice.tsx:41`).
+     */
+    public data class Recovery(
+        override val id: String,
+        public val status: String,
+        public val canContinue: Boolean,
+        public val reason: String? = null,
+        public val failureErrorKind: String? = null,
+        public val replyPreserved: Boolean = false,
+    ) : Notice
 
+    /**
+     * A retry with a clock on it: `retryAtMs` is the frame's `retry_after_s` added to the
+     * clock the reducer was given, so the countdown is derived, never a timer in the core.
+     */
     public data class Retry(
         override val id: String,
         public val attempt: Int,
         public val maxAttempts: Int?,
         public val errorKind: String?,
+        public val retryAtMs: Long?,
     ) : Notice
 
-    public data class Goal(override val id: String, public val active: Boolean) : Notice
+    /** The goal strip: one line, the gateway's summary or its objective (`ThreadComposer.tsx:515`). */
+    public data class Goal(
+        override val id: String,
+        public val active: Boolean,
+        public val status: String? = null,
+        public val summary: String? = null,
+    ) : Notice
 
     public data class Failure(override val id: String, public val errorKind: String?, public val message: String?) : Notice
 
     /** A different model answered than the preset asked for (C6.2, `turn_model_updated.fallback`). */
     public data class PresetFallback(override val id: String, public val modelName: String?) : Notice
+
+    /**
+     * Shell tools are paused because the sandbox could not run them. The four issues are the
+     * seven `exec` error codes collapsed to what a person can act on (`useSandboxNotice.ts:5`).
+     */
+    public data class Sandbox(override val id: String, public val issue: SandboxIssue) : Notice
+}
+
+/** What went wrong with the sandbox, as the notice sentence is chosen by (copy keys, not copy). */
+public enum class SandboxIssue(public val copyKey: String) {
+    /** `sandbox_launcher_missing` — the launcher binary is not installed. */
+    LauncherMissing("notice.sandbox.missing"),
+
+    /** `sandbox_path_not_absolute`, `sandbox_not_executable`, `sandbox_path_unavailable`. */
+    Path("notice.sandbox.path"),
+
+    /** `sandbox_agent_writable`, `sandbox_unprotected_installation`. */
+    Permissions("notice.sandbox.permissions"),
+
+    /** `sandbox_start_failed` — the launcher is there and would not start. */
+    Startup("notice.sandbox.startup"),
 }
 
 /** Effects are data; the engine executes them (§2). */
