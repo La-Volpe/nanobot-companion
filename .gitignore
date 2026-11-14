@@ -1,0 +1,24 @@
+# Gradle / Kotlin
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.kotlin/
+local.properties
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+.swiftpm/
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+captures/
+
+# Local dev gateway (tools/nanobot-dev.sh)
+.dev/
+
+# macOS
+.DS_Store
