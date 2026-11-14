@@ -43,12 +43,12 @@ class ArchitectureTest {
     }
 
     @Test
-    fun ruleTableRejectsAnOffendingImport() {
-        val wireImportingFacade = SourceFile(
+    fun ruleTableRejectsAnOffendingImport() {        val wireImportingFacade = SourceFile(
             path = "core/src/commonMain/.../wire/Bad.kt",
             sourceSet = "commonMain",
             packageName = "de.arjmandi.nanobot.companion.wire",
             imports = listOf("de.arjmandi.nanobot.companion.facade.NanobotCore"),
+            body = "",
         )
         val commonMainUsingCompose = wireImportingFacade.copy(
             imports = listOf("androidx.compose.runtime.Composable"),
@@ -66,5 +66,53 @@ class ArchitectureTest {
             imports = listOf("de.arjmandi.nanobot.companion.wire.Frame", "kotlinx.serialization.json.Json"),
         )
         assertTrue(Architecture.layerViolations(allowed).isEmpty(), "a legal import is not a violation")
+    }
+
+    @Test
+    fun fullyQualifiedReferenceWithoutAnImportIsAViolation() {
+        // The hole this closes: writing the type out in full needs no import line, so
+        // an import-only scan let `wire` reach `projection` unnoticed.
+        val wireUsingProjection = SourceFile(
+            path = "core/src/commonMain/.../wire/Qualified.kt",
+            sourceSet = "commonMain",
+            packageName = "de.arjmandi.nanobot.companion.wire",
+            imports = listOf("kotlinx.serialization.json.JsonObject"),
+            body = """
+                internal fun state(): Any = de.arjmandi.nanobot.companion.projection.ThreadState.EMPTY
+            """.trimIndent(),
+        )
+        val wireUsingItself = wireUsingProjection.copy(body = "de.arjmandi.nanobot.companion.wire.Frame")
+
+        assertEquals(
+            listOf("wire -> projection (fully qualified)"),
+            Architecture.layerViolations(wireUsingProjection),
+        )
+        assertTrue(
+            Architecture.layerViolations(wireUsingItself).isEmpty(),
+            "naming its own layer in full is not a violation",
+        )
+    }
+
+    @Test
+    fun qualifiedReferenceInACommentOrStringIsNotAViolation() {
+        val quotes = "\"\"\""
+        val documented = SourceFile(
+            path = "core/src/commonMain/.../wire/Documented.kt",
+            sourceSet = "commonMain",
+            packageName = "de.arjmandi.nanobot.companion.wire",
+            imports = emptyList(),
+            body = listOf(
+                "// plan.md: de.arjmandi.nanobot.companion.facade.NanobotCore owns this.",
+                "/* and the engine, de.arjmandi.nanobot.companion.engine.TurnEngine, runs it */",
+                "internal val note: String = \"see de.arjmandi.nanobot.companion.engine.TurnEngine\"",
+                "internal val raw: String = " + quotes +
+                    "de.arjmandi.nanobot.companion.projection.ThreadState" + quotes,
+            ).joinToString("\n"),
+        )
+
+        assertTrue(
+            Architecture.layerViolations(documented).isEmpty(),
+            "prose about another layer is not a dependency on it: ${Architecture.layerViolations(documented)}",
+        )
     }
 }
