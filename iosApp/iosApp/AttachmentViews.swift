@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 struct AttachSheet: View {
     let model: AttachmentViewModel
     let onPickPhotos: () -> Void
+    let onTakePhoto: () -> Void
     let onPickFiles: () -> Void
 
     private var cameraAvailable: Bool {
@@ -35,7 +36,10 @@ struct AttachSheet: View {
                 subtitle: cameraAvailable ? "Take a photo and attach it" : "No camera on this device",
                 checked: false,
                 identifier: "attach.camera"
-            ) {}
+            ) {
+                model.closeSheet()
+                onTakePhoto()
+            }
             .disabled(!cameraAvailable)
             .opacity(cameraAvailable ? 1 : 0.5)
             SheetRow(

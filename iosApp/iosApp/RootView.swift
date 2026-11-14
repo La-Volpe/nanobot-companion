@@ -21,6 +21,7 @@ struct RootView: View {
     @State private var debugOpen = false
     @State private var settingsOpen = false
     @State private var photosPresented = false
+    @State private var cameraPresented = false
     @State private var filesPresented = false
     @State private var chatDriver: CoreChat?
 
@@ -172,12 +173,21 @@ struct RootView: View {
                             attachments: attachments,
                             loadPresets: loadPresets,
                             onPickPhotos: { photosPresented = true },
+                            onTakePhoto: { cameraPresented = true },
                             onPickFiles: { filesPresented = true }
                         )
                         .presentationDetents([.medium, .large])
                         .presentationDragIndicator(.visible)
                     }
                     .attachmentPickers(model: attachments, photos: $photosPresented, files: $filesPresented)
+                    .fullScreenCover(isPresented: $cameraPresented) {
+                        // The camera is the phone's, and the picture lands in the same cards as a
+                        // picked photo, so the upload path stays one path (P13).
+                        CameraPicker { picked in
+                            Task { await attachments.add(picked) }
+                        }
+                        .ignoresSafeArea()
+                    }
                     .overlay {
                         if attachments.lightbox != nil {
                             LightboxView(model: attachments)
