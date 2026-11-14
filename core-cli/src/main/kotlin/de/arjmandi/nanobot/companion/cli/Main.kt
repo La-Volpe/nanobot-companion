@@ -15,6 +15,7 @@ fun main(args: Array<String>) {
         "send" -> HarnessCommands.send(args.drop(1))
         "watch" -> HarnessCommands.watch(args.drop(1))
         "soak" -> HarnessCommands.soak(args.drop(1))
+        "session" -> SessionCommand.run(args.drop(1))
         else -> {
             System.err.println("unknown command: ${args[0]} (try --help)")
             kotlin.system.exitProcess(2)
@@ -42,6 +43,9 @@ private fun usage(): String =
       watch       follow one chat and print a plain, diffable transcript
                     [--chat CHAT_ID] [--prompt TEXT | --prompts "a|b|c"] [--out FILE]
                     [--verify] [--history-out FILE]    compare with the WebUI's thread page
+      session     the 20-minute scripted session G2 asks for (plan.md §7): connect,
+                    send, stream, attach, transcribe, stop, reconnect mid-turn, resume
+                    [--minutes 20] [--prompt TEXT]
       soak        reconnect/send soak harness (plan.md C8.4)
                     [--sends 200] [--reconnects 50] [--minutes 30] [--prompt TEXT]
 

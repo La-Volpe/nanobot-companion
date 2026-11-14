@@ -28,6 +28,39 @@ struct DesignSystemTests {
         #expect(ReadingType.lineSpacing == 8.5, "a 1.5 line height at 17 pt")
     }
 
+    /// The surfaces this phase added keep the same mapping: a row a thumb can land on, a
+    /// monospaced diff, and reading type that follows the reader's own size.
+    @Test func theActivityAndComposerSurfacesKeepTheTouchTarget() {
+        #expect(Design.Activity.rowHeight >= Design.minimumTarget, "a tool row is a target, not a caption")
+        #expect(Design.Attachment.thumbSize >= Design.minimumTarget, "an image thumbnail is tappable")
+        #expect(Design.Activity.reasoningSize < ReadingType.size, "reasoning is reading type, a shade down")
+        #expect(Design.Activity.diffSize < Design.Interface.captionSize * 1.2, "the diff is the smallest mono type")
+    }
+
+    /// The two voice numbers are both the platform's: the tap threshold the artifact draws and
+    /// the gateway's own floor, which the app must not cross.
+    @Test func theVoiceThresholdsAreBothTheDesigns() {
+        #expect(Design.tapThresholdMs == 300, "the artifact arms tap-to-dictate under 300 ms")
+        #expect(Design.tapThresholdMs < VoiceLimits.floorMs, "and the 650 ms floor is the gateway's, above it")
+        #expect(VoiceLimits.ceilingMs == 120_000, "120 s is the gateway's own ceiling")
+    }
+
+    /// Appearance moves the reading scale and nothing else (design README, "Platform adaptation").
+    @Test func theReadingScaleMovesProseCodeAndComposerOnly() {
+        #expect(ReadingScale.size(for: .small) == 15)
+        #expect(ReadingScale.size(for: .medium) == 16)
+        #expect(ReadingScale.size(for: .large) == 18)
+        #expect(ReadingScale.size(for: .large) != ReadingType.size, "the preference is its own scale, not the base token")
+    }
+
+    /// The activity cluster picks its glyph by the tool's name, which is the design's own rule.
+    @Test func theToolGlyphComesFromTheToolName() {
+        #expect(Design.Activity.icon(forTool: "run_command") == "terminal")
+        #expect(Design.Activity.icon(forTool: "web_search") == "globe")
+        #expect(Design.Activity.icon(forTool: "edit_file") == "doc.text")
+        #expect(Design.Activity.icon(forTool: "read_file") == "doc")
+    }
+
     @Test func everyControlMeetsTheTouchTarget() {
         #expect(Design.minimumTarget == 44)
         #expect(Design.Radius.field == 12)

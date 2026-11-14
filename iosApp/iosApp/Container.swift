@@ -11,6 +11,8 @@ final class Container {
 
     /// A scripted chat for a flow test (DEBUG only): the real one needs a gateway.
     var scriptedChat: ChatDriving?
+    /// The gateway key a live-session launch prefills (DEBUG only): typed keys land in test logs.
+    var prefilledKey: String?
     /// Set when the launch asked for a scripted thread; the shell builds the chat around this.
     var scripted = false
 
@@ -22,8 +24,10 @@ final class Container {
         holder: CoreHolder? = nil,
         gateway: GatewayConnecting? = nil,
         credentials: CredentialsStoring? = nil,
-        startsConnected: Bool = false
+        startsConnected: Bool = false,
+        prefilledKey: String? = nil
     ) {
+        self.prefilledKey = prefilledKey
         self.startsConnected = startsConnected
         let holder = holder ?? CoreHolder()
         self.holder = holder
@@ -36,6 +40,17 @@ final class Container {
     static func forLaunch() -> Container {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
+        // The live-session instrument: a real gateway, a real socket, and the key through the
+        // environment rather than a typed string in the test log.
+        if let url = environment["NANOBOT_LIVE_URL"] {
+            return Container(
+                credentials: InMemoryCredentials(
+                    address: url,
+                    allowUnverifiedCertificate: environment["NANOBOT_LIVE_UNVERIFIED"] != nil
+                ),
+                prefilledKey: environment["NANOBOT_LIVE_SECRET"]
+            )
+        }
         if let scenario = environment["NANOBOT_SCENARIO"], let scripted = ScriptedGateway.Scenario(rawValue: scenario) {
             let container = Container(
                 gateway: ScriptedGateway(scenario: scripted),

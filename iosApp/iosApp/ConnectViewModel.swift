@@ -31,11 +31,14 @@ final class ConnectViewModel: ObservableObject {
     private let gateway: GatewayConnecting
     private let credentials: CredentialsStoring
 
-    init(gateway: GatewayConnecting, credentials: CredentialsStoring) {
+    /// `prefilledKey` exists for the live session instrument (DEBUG only): the gateway secret
+    /// arrives through the launch environment instead of being typed, so it never reaches a
+    /// test log.
+    init(gateway: GatewayConnecting, credentials: CredentialsStoring, prefilledKey: String? = nil) {
         self.gateway = gateway
         self.credentials = credentials
         self.address = credentials.address ?? ""
-        self.key = ""
+        self.key = prefilledKey ?? ""
         self.allowUnverifiedCertificate = credentials.allowUnverifiedCertificate
     }
 

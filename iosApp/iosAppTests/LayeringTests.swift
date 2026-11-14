@@ -17,11 +17,19 @@ struct LayeringTests {
             .deletingLastPathComponent()   // iosApp
     }
 
+    /// Every Swift file under a folder, subfolders included: a first version scanned only the
+    /// top level, which quietly exempted `Adapter/` — the one directory that is allowed to
+    /// import the framework, and therefore the one a mistake would hide in.
     private static func swiftFiles(in directory: String) throws -> [String] {
-        let path = projectDirectory.appendingPathComponent(directory).path
-        return try FileManager.default.contentsOfDirectory(atPath: path)
-            .filter { $0.hasSuffix(".swift") }
-            .sorted()
+        let root = projectDirectory.appendingPathComponent(directory)
+        guard let walk = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil) else {
+            return []
+        }
+        var names: [String] = []
+        for case let url as URL in walk where url.pathExtension == "swift" {
+            names.append(url.path.replacingOccurrences(of: root.path + "/", with: ""))
+        }
+        return names.sorted()
     }
 
     private static func contents(_ directory: String, _ name: String) throws -> String {
@@ -31,9 +39,10 @@ struct LayeringTests {
     @Test func onlyTheBridgeImportsTheKotlinFramework() throws {
         let appFiles = try Self.swiftFiles(in: "iosApp")
         #expect(!appFiles.isEmpty, "the scan found no app sources; the guard would pass vacuously")
+        #expect(appFiles.contains("Adapter/\(Self.bridgeFile)"), "the scan reaches the adapter folder")
 
         var offenders: [String] = []
-        for name in appFiles where name != Self.bridgeFile {
+        for name in appFiles where name != "Adapter/\(Self.bridgeFile)" {
             if try Self.contents("iosApp", name).contains("import core") { offenders.append(name) }
         }
 

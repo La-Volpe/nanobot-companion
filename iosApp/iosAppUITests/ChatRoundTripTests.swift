@@ -11,7 +11,10 @@ final class ChatRoundTripTests: XCTestCase {
         app.launchEnvironment["NANOBOT_START_CONNECTED"] = "1"
         app.launchEnvironment["NANOBOT_THREAD"] = "scripted"
         app.launch()
-        if !app.buttons["chat.send"].waitForExistence(timeout: 10) {
+        // The composer's field is what proves the shell: with an empty field the primary button
+        // is the microphone (I5), so waiting for "chat.send" would wait for a state the screen is
+        // not in yet.
+        if !app.textFields["chat.composer"].waitForExistence(timeout: 10) {
             XCTFail("the chat is the connected screen. Tree:\n\(app.debugDescription)")
         }
         return app

@@ -253,7 +253,7 @@ internal object HarnessCommands {
 
     // --- shared plumbing ------------------------------------------------------------------
 
-    private fun run(name: String, args: List<String>, body: suspend (Map<String, String>) -> Unit) {
+    internal fun run(name: String, args: List<String>, body: suspend (Map<String, String>) -> Unit) {
         val flags = parse(args)
         try {
             runBlocking { body(flags) }
@@ -266,7 +266,7 @@ internal object HarnessCommands {
         }
     }
 
-    private fun profile(flags: Map<String, String>): File =
+    internal fun profile(flags: Map<String, String>): File =
         File(flags["profile"] ?: File(repoRoot(), ".dev/profile.json").path)
 
     private fun parse(args: List<String>): Map<String, String> {
