@@ -25,3 +25,4 @@ captures/
 
 # Heartbeat loop bookkeeping (churns; not part of the repo history)
 .pi/beat-log.md
+.pi/subagent-schedules/
