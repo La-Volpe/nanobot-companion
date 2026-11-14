@@ -75,7 +75,10 @@ final class LiveSessionTests: XCTestCase {
 
         let composer = app.textFields["chat.composer"]
         composer.tap()
-        composer.typeText("Count slowly from 1 to 200, one number per line.")
+        // Long enough that the turn is still composing when the tap lands: a 200-line list is
+        // finished by a fast model inside the second the button takes to settle, and then there
+        // is nothing to stop — a race in this instrument, not in the app.
+        composer.typeText("Write a detailed 1200-word explanation of WebSocket framing, with headings and examples.")
         XCTAssertTrue(app.buttons["chat.send"].waitForExistence(timeout: 10))
         app.buttons["chat.send"].tap()
 
