@@ -51,17 +51,17 @@ The arrow is the dependency direction: nothing below points back up, and
 - **Two feeds, one reducer.** The gateway replays the same event vocabulary for
   live frames and for stored history, so `:core` reduces both through
   `projection/ThreadReducer.kt`. A chat that is reopened after a reconnect
-  looks exactly like the chat you were reading (`docs/decisions.md` D9, D46).
-  The gateway's stored pages are *compacted*: the answer text survives only
-  inside `stream_end.text` and the reasoning inside `reasoning_end.text` (D52).
+  looks exactly like the chat you were reading. The gateway's stored pages are
+  *compacted*: the answer text survives only inside `stream_end.text` and the
+  reasoning inside `reasoning_end.text`.
 - **The protocol is the contract and it is verified against the real thing.**
   `-Pcontract` runs four tests against a live nanobot 0.4.1; fixtures are
   recorded by `:core-cli record`, never hand-written, and carry provenance
-  (gateway version, commit, redaction rules). See `docs/decisions.md` D18.
+  (gateway version, commit, redaction rules).
 - **Nothing is allowed to be theatre.** The architecture guard, the Kover floor
-  and the parity instrument are all proved non-vacuous by breaking them
-  (D23, D36, D51). A test that passes with the implementation deleted is not a
-  test — several tasks were rejected for exactly that.
+  and the parity instrument are all proved non-vacuous by breaking them. A test
+  that passes with the implementation deleted is not a test — several tasks were
+  rejected for exactly that.
 - **Both platforms are compared mechanically, not by eye.** `tools/parity-check.sh`
   diffs the CLI's, iOS's and Android's reduction of the *same stored chat*, and
   compares nine error-copy keys across the two string tables.
@@ -89,7 +89,7 @@ flowchart LR
 | Writes: socket only, except token-gated `POST /api/attachments` | `nanobot/webui/ws_http.py` |
 
 A bootstrap token is single-use, so every reconnect bootstraps again — that is
-a rule the engine obeys, not a bug to paper over (D15).
+a rule the engine obeys, not a bug to paper over.
 
 ## Building and running
 
@@ -141,31 +141,32 @@ Instruments that are not unit tests, and earn their keep:
 ## Layout
 
 ```
-plan.md              the approved plan: tasks, TDD contract, gate criteria
-GATES.md             G0–G3 checklists; a phase is done when its boxes are ticked with evidence
-docs/decisions.md    D11–D52: every non-obvious choice, with the evidence that forced it
-HEARTBEAT.md         the manager loop that drove this build (halted: goal reached)
 core/                :core, the KMP library (no UI, no Compose, no UIKit)
 core-cli/            :core-cli, the harness that talks to real gateways
 app/                 :app, Jetpack Compose
 iosApp/              SwiftUI + the Xcode project
 tools/               dev gateway, devices, soak, parity, consultations
-scripts/gate.sh      reads GATES.md and refuses to pass while anything is unchecked
+scripts/gate.sh      runs a phase checklist kept outside the repo; refuses to pass while a box is open
 docs/diagrams/       the diagrams above, rendered to SVG (regenerate with mmdc)
 ```
 
+The working record — plan, phase checklists, decision log, open questions —
+stays outside the repository. It is how the work was tracked, not what the
+project ships.
+
 ## How this was built
 
-With an agent loop that was held to a plan: `plan.md` first, TDD per task, one
-commit per task with the red run in the message, and gate checklists that only
-I could tick after re-running the evidence myself. Two gates were *held* rather
-than ticked because the instruments found real defects — an app that did not
-replay history on reconnect (P9) and an iOS composer that silently dropped
-attachments (P13). Both were fixed with red-then-green tests.
+With an agent loop held to a written plan: TDD per task, one commit per task
+with the failing run in the message, and phase gates that were only ticked after
+the evidence had been re-run. Two gates were *held* rather than ticked because
+the instruments found real defects — an app that did not replay history on
+reconnect and an iOS composer that silently dropped attachments. Both were fixed
+with red-then-green tests.
 
-The record is in the repo: `git log` is one commit per plan task, `GATES.md`
-holds the evidence pasted under each item, `docs/decisions.md` explains the
-choices, and `.pi/parked.md` lists what is still open and why.
+`git log` is the durable record: one commit per task, each naming what it
+changed and, where a red was weak, saying so. The plan, the checklists, the
+decision log and the list of open questions were working files and are not
+shipped.
 
 ## Notes for agents (and the curious)
 
