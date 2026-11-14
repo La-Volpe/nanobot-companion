@@ -216,6 +216,30 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
     command, paste its output under the item, then tick. Two gates in this
     project were deliberately left open until a defect was fixed.
 
+25. **The glyphs are nanobot's, not the platform's.** `tools/webui-icons.py`
+    reads the WebUI's own drawings — `components/icons/product-icons.tsx` plus
+    the lucide icons it imports — and writes both the iOS template imagesets
+    (`Assets.xcassets/Icon*.imageset`) and the Android vector drawables
+    (`res/drawable/ic_webui_*.xml`). Adding an SF Symbol or a Unicode character
+    where a WebUI glyph exists is a regression: the phone stops matching the
+    browser. The generated files are committed; regenerating needs a gateway
+    checkout. The only survivors on purpose are the debug ladybug (ours) and the
+    `−N` diff marker (a number, not an icon).
+
+26. **Colour has one source per platform and it is the design's tokens.**
+    `Palette` (iOS, `Brand.swift`) and `NanobotTheme` (Android, `ui/Theme.kt`)
+    carry the same values: charcoal `hsl(0 0% 19%)` in dark, warm neutrals in
+    light, monochrome actions, orange only as identity. A
+    `Color(.systemBackground)` in a screen or a hand-picked hex in a row is how
+    the app drifts back to looking like a bare shell.
+
+27. **The iosApp target is a file-system-synchronized group**, so a new asset
+    catalog or a new Swift file needs no `project.pbxproj` entry — but a new
+    *kind* of resource still needs its build setting
+    (`ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`). Without it the bundle has
+    no icon and SpringBoard draws a grey grid; `BrandTests` fails on exactly
+    that, which is how the setting was proved necessary.
+
 ## Conventions
 
 - **TDD, and a red that means something.** Write the assertion, watch it fail
@@ -235,6 +259,9 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
 - **The apps are dumb.** One state in, commands out. Anything with a branch
   worth testing lives in a view model with `kotlinx-coroutines-test` (Android)
   or `swift-testing` (iOS).
+- **A glyph is an asset, not a character.** `☰`, `⋮` and `📎` stood in for
+  icons until the WebUI port; they render differently on every device and never
+  match the browser. Generate from `tools/webui-icons.py`.
 - **Strings live per platform, keyed the same.** `ConnectionCopy.swift` and
   `res/values/strings.xml` must agree key for key — `tools/parity_copy.py`
   under `parity-check.sh` compares them.

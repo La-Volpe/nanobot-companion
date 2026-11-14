@@ -1,8 +1,8 @@
 package de.arjmandi.nanobot.companion.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
@@ -28,23 +29,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.arjmandi.nanobot.companion.MainViewModel
 import de.arjmandi.nanobot.companion.R
+import de.arjmandi.nanobot.companion.chat.ChatScreen
+import de.arjmandi.nanobot.companion.composer.SessionAction
+import de.arjmandi.nanobot.companion.composer.SessionActionsOverflow
 import de.arjmandi.nanobot.companion.connect.ConnectScreen
 import de.arjmandi.nanobot.companion.connect.ConnectViewModel
 import de.arjmandi.nanobot.companion.core.ConnectionStatus
 import de.arjmandi.nanobot.companion.core.CoreHolder
-import de.arjmandi.nanobot.companion.chat.ChatScreen
-import de.arjmandi.nanobot.companion.composer.SessionAction
-import de.arjmandi.nanobot.companion.composer.SessionActionsOverflow
-import de.arjmandi.nanobot.companion.drawer.DrawerContent
 import de.arjmandi.nanobot.companion.debug.DebugStatesMenu
+import de.arjmandi.nanobot.companion.drawer.DrawerContent
 import de.arjmandi.nanobot.companion.settings.SettingsScreen
 import de.arjmandi.nanobot.companion.states.ConnectionDot
 import de.arjmandi.nanobot.companion.states.ConnectionDotView
@@ -166,8 +168,13 @@ private fun Shell(
                             },
                             modifier = Modifier.testTag("chat.openDrawer"),
                         ) {
-                            // The bar's drawer glyph, as the design's Android mapping draws it.
-                            Text(text = "\u2630", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
+                            // The WebUI's own menu glyph (lucide `Menu`), not a Unicode trigram.
+                            Icon(
+                                painter = painterResource(R.drawable.ic_webui_menu),
+                                contentDescription = stringResource(R.string.drawer_open),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     },
                     actions = {
@@ -185,7 +192,12 @@ private fun Shell(
                             onClick = { composer?.openOverflow() },
                             modifier = Modifier.testTag("chat.sessionActions"),
                         ) {
-                            Text(text = "\u22EE", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Icon(
+                                painter = painterResource(R.drawable.ic_webui_more_horizontal),
+                                contentDescription = stringResource(R.string.drawer_session_actions),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                         if (composer != null) {
                             SessionActionsOverflow(

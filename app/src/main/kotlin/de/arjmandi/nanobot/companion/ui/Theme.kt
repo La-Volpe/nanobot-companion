@@ -39,7 +39,7 @@ object Design {
     val minimumTarget = 48.dp
 
     /** The identity anchor from the design system. Never a button, never a surface fill. */
-    val brand = Color(red = 0.85f, green = 0.45f, blue = 0.18f)
+    val brand = Color(0xFFEF8E30)
 
     /**
      * A press shorter than this arms tap-to-dictate instead of ending the recording (artifact:
@@ -100,26 +100,28 @@ fun NanobotTheme(
     content: @Composable () -> Unit,
 ) {
     val scheme = when {
+        // Charcoal `hsl(0 0% 19%)`, not black and not navy — the design says so, and the iOS
+        // palette carries the same numbers.
         dark -> darkColorScheme(
-            primary = Color(0xFFEDEDED),
-            onPrimary = Color(0xFF151515),
-            surface = Color(0xFF151413),
-            onSurface = Color(0xFFEDEBE9),
-            surfaceVariant = Color(0xFF232120),
-            onSurfaceVariant = Color(0xFFB9B4AF),
-            outline = Color(0xFF3A3735),
-            error = Color(0xFFE5675C),
+            primary = Color(0xFFFAFAFA),
+            onPrimary = Color(0xFF171717),
+            surface = Color(0xFF303030),
+            onSurface = Color(0xFFF4F4F5),
+            surfaceVariant = Color(0xFF383838),
+            onSurfaceVariant = Color(0xFFB8B8B8),
+            outline = Color(0xFF474747),
+            error = Color(0xFFFCA5A5),
         )
 
         else -> lightColorScheme(
-            primary = Color(0xFF1B1A19),
-            onPrimary = Color(0xFFFDFCFB),
+            primary = Color(0xFF27272A),
+            onPrimary = Color(0xFFFAFAFA),
             surface = Color(0xFFFDFCFB),
-            onSurface = Color(0xFF1B1A19),
-            surfaceVariant = Color(0xFFF2EFEC),
-            onSurfaceVariant = Color(0xFF5C5754),
-            outline = Color(0xFFDAD5D0),
-            error = Color(0xFFB3261E),
+            onSurface = Color(0xFF1E1E20),
+            surfaceVariant = Color(0xFFF5F5F5),
+            onSurfaceVariant = Color(0xFF62626A),
+            outline = Color(0xFFE9E7E5),
+            error = Color(0xFFB91C1C),
         )
     }
     val typography = Typography().let { base ->
