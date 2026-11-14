@@ -23,10 +23,14 @@ captures/
 # macOS
 .DS_Store
 
-# Heartbeat loop bookkeeping (churns; not part of the repo history)
-.pi/beat-log.md
-.pi/subagent-schedules/
-.pi/current-run
+# Working documents stay local. The repo ships three documents: README.md,
+# HUMANS.md and AGENTS.md. Plans, gate evidence, decision logs, agent
+# definitions and heartbeat bookkeeping are working material, not deliverables.
+.pi/
+*.md
+!README.md
+!HUMANS.md
+!AGENTS.md
 
 # Python bytecode from the parity instruments
 __pycache__/
