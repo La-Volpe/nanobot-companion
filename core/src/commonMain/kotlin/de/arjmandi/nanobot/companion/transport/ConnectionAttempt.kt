@@ -1,8 +1,6 @@
 package de.arjmandi.nanobot.companion.transport
 
 import de.arjmandi.nanobot.companion.wire.BootstrapPayload
-import de.arjmandi.nanobot.companion.wire.Frame
-import kotlinx.coroutines.flow.Flow
 
 /** Bootstrap as a function, so a reconnect test can mint a fresh token per attempt. */
 internal fun interface BootstrapSource {
@@ -10,7 +8,7 @@ internal fun interface BootstrapSource {
 }
 
 internal sealed interface ConnectionResult {
-    data class Open(val payload: BootstrapPayload, val frames: Flow<Frame>) : ConnectionResult
+    data class Open(val payload: BootstrapPayload, val socket: Socket) : ConnectionResult
     data class Failed(val error: CoreError) : ConnectionResult
 }
 
@@ -22,7 +20,7 @@ internal sealed interface ConnectionResult {
  */
 internal class ConnectionAttempt(
     private val bootstrap: BootstrapSource,
-    private val openSocket: (String) -> Flow<Frame>,
+    private val openSocket: (String) -> Socket,
     private val clientId: String = "nanobot-companion",
 ) {
 
@@ -38,7 +36,7 @@ internal class ConnectionAttempt(
                 } else {
                     ConnectionResult.Open(
                         payload = outcome.payload,
-                        frames = openSocket(outcome.payload.socketUrl(clientId)),
+                        socket = openSocket(outcome.payload.socketUrl(clientId)),
                     )
                 }
             }

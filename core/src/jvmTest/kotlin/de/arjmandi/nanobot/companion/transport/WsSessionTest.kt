@@ -60,7 +60,7 @@ class WsSessionTest {
             }
         }
 
-        val frames: List<Frame> = WsSession(wsClient()).frames("ws://localhost/ws?token=t").toList()
+        val frames: List<Frame> = WsSession(wsClient()).connect("ws://localhost/ws?token=t").frames.toList()
 
         assertIs<ReadyFrame>(frames[0])
         assertEquals(listOf("po", "ng"), frames.drop(1).map { (it as DeltaFrame).text })
@@ -77,7 +77,7 @@ class WsSessionTest {
         }
 
         val frames = mutableListOf<Frame>()
-        WsSession(wsClient()).frames("ws://localhost/ws?token=t").collect { frames += it }
+        WsSession(wsClient()).connect("ws://localhost/ws?token=t").frames.collect { frames += it }
 
         assertEquals(1, frames.size, "the flow completes when the server closes instead of hanging")
     }
@@ -92,7 +92,7 @@ class WsSessionTest {
             }
         }
 
-        val frame = WsSession(wsClient()).frames("ws://localhost/ws?token=t").toList().single()
+        val frame = WsSession(wsClient()).connect("ws://localhost/ws?token=t").frames.toList().single()
 
         assertEquals("telemetry_ping", frame.event, "an unknown frame still reaches the engine")
     }

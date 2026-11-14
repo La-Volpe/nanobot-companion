@@ -7,100 +7,108 @@ import de.arjmandi.nanobot.companion.wire.Usage
  * something a view may show, and the ids are derived from gateway ids rather than from
  * arrival order, so reducing the same frames twice yields the same state.
  */
-internal data class ThreadState(
-    val chatId: String,
-    val turns: List<Turn> = emptyList(),
-    val activeTurnId: String? = null,
-    val notices: List<Notice> = emptyList(),
-    val usage: Usage? = null,
-    val contextWindowTokens: Int? = null,
-    val modelPreset: String? = null,
-    val modelName: String? = null,
+public data class ThreadState(
+    public val chatId: String,
+    public val turns: List<Turn> = emptyList(),
+    public val activeTurnId: String? = null,
+    public val notices: List<Notice> = emptyList(),
+    public val usage: Usage? = null,
+    public val contextWindowTokens: Int? = null,
+    public val modelPreset: String? = null,
+    public val modelName: String? = null,
 ) {
-    val activeTurn: Turn? get() = turns.lastOrNull { it.id == activeTurnId }
+    public val activeTurn: Turn? get() = turns.lastOrNull { it.id == activeTurnId }
 
-    fun turn(id: String): Turn? = turns.firstOrNull { it.id == id }
+    public fun turn(id: String): Turn? = turns.firstOrNull { it.id == id }
 }
 
-internal data class Turn(
-    val id: String,
-    val prompt: UserPrompt? = null,
-    val answer: AnswerState = AnswerState(),
-    val activity: List<ActivityItem> = emptyList(),
-    val status: TurnStatus = TurnStatus.Running,
-    val usage: Usage? = null,
-    val failureKind: String? = null,
+public data class Turn(
+    public val id: String,
+    public val prompt: UserPrompt? = null,
+    public val answer: AnswerState = AnswerState(),
+    public val activity: List<ActivityItem> = emptyList(),
+    public val status: TurnStatus = TurnStatus.Running,
+    public val usage: Usage? = null,
+    public val failureKind: String? = null,
     /** The local wall clock when the prompt was composed; the gateway's time is separate. */
-    val startedAtMs: Long? = null,
+    public val startedAtMs: Long? = null,
 )
 
-internal data class UserPrompt(
-    val text: String,
-    val quote: String? = null,
+public data class UserPrompt(
+    public val text: String,
+    public val quote: String? = null,
     /** True until `message_accepted` proves the gateway took it (C4.5). */
-    val optimistic: Boolean = false,
-    val createdAtMs: Long? = null,
+    public val optimistic: Boolean = false,
+    public val createdAtMs: Long? = null,
 )
 
-internal data class AnswerState(
-    val segments: List<StreamSegment> = emptyList(),
+public data class AnswerState(
+    public val segments: List<StreamSegment> = emptyList(),
     /** Reasoning is streamed in parallel with the answer and collapses when it ends (C4.3). */
-    val reasoning: List<StreamSegment> = emptyList(),
-    val reasoningDone: Boolean = false,
+    public val reasoning: List<StreamSegment> = emptyList(),
+    public val reasoningDone: Boolean = false,
 ) {
-    val text: String get() = segments.joinToString("") { it.text }
+    public val text: String get() = segments.joinToString("") { it.text }
 }
 
-internal data class StreamSegment(
-    val id: String,
-    val text: String = "",
-    val closed: Boolean = false,
+public data class StreamSegment(
+    public val id: String,
+    public val text: String = "",
+    public val closed: Boolean = false,
 )
 
-internal sealed interface ActivityItem {
-    val id: String
+public sealed interface ActivityItem {
+    public val id: String
 
-    data class Reasoning(override val id: String, val text: String, val done: Boolean) : ActivityItem
+    public data class Reasoning(override val id: String, public val text: String, public val done: Boolean) : ActivityItem
 
-    data class Tool(
+    public data class Tool(
         override val id: String,
-        val name: String,
-        val summary: String?,
-        val status: ToolStatus,
-        val detail: String? = null,
+        public val name: String,
+        public val summary: String?,
+        public val status: ToolStatus,
+        public val detail: String? = null,
     ) : ActivityItem
 
     /** A write or edit, rendered as a path with a unified diff (C4.4). */
-    data class FileEdit(
+    public data class FileEdit(
         override val id: String,
-        val path: String,
-        val status: ToolStatus,
-        val added: Int = 0,
-        val deleted: Int = 0,
-        val operation: String? = null,
-        val diff: String? = null,
+        public val path: String,
+        public val status: ToolStatus,
+        public val added: Int = 0,
+        public val deleted: Int = 0,
+        public val operation: String? = null,
+        public val diff: String? = null,
     ) : ActivityItem
 
-    data class Search(override val id: String, val query: String, val sources: List<String>) : ActivityItem
+    public data class Search(override val id: String, public val query: String, public val sources: List<String>) : ActivityItem
 }
 
-internal enum class ToolStatus { Running, Done, Failed }
+public enum class ToolStatus { Running, Done, Failed }
 
-internal enum class TurnStatus { Running, Complete, Failed }
+public enum class TurnStatus { Running, Complete, Failed }
 
 /** User-facing states that are not part of a turn's answer (C7.3). */
-internal sealed interface Notice {
-    val id: String
+public sealed interface Notice {
+    public val id: String
 
-    data class Compaction(override val id: String, val phase: String) : Notice
+    public data class Compaction(override val id: String, public val phase: String) : Notice
 
-    data class Recovery(override val id: String, val canContinue: Boolean, val reason: String?) : Notice
+    public data class Recovery(override val id: String, public val canContinue: Boolean, public val reason: String?) : Notice
 
-    data class Retry(override val id: String, val attempt: Int, val maxAttempts: Int?, val errorKind: String?) : Notice
+    public data class Retry(
+        override val id: String,
+        public val attempt: Int,
+        public val maxAttempts: Int?,
+        public val errorKind: String?,
+    ) : Notice
 
-    data class Goal(override val id: String, val active: Boolean) : Notice
+    public data class Goal(override val id: String, public val active: Boolean) : Notice
 
-    data class Failure(override val id: String, val errorKind: String?, val message: String?) : Notice
+    public data class Failure(override val id: String, public val errorKind: String?, public val message: String?) : Notice
+
+    /** A different model answered than the preset asked for (C6.2, `turn_model_updated.fallback`). */
+    public data class PresetFallback(override val id: String, public val modelName: String?) : Notice
 }
 
 /** Effects are data; the engine executes them (§2). */

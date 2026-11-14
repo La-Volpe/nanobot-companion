@@ -42,6 +42,20 @@ internal object FrameCodec {
 
             "error" -> ErrorFrame(detail = raw.text("detail"), chatId = chatId, raw = raw)
 
+            "transcription_result" -> TranscriptionResultFrame(
+                requestId = raw.text("request_id"),
+                text = raw.text("text"),
+                chatId = chatId,
+                raw = raw,
+            )
+
+            "transcription_error" -> TranscriptionErrorFrame(
+                requestId = raw.text("request_id"),
+                detail = raw.text("detail"),
+                chatId = chatId,
+                raw = raw,
+            )
+
             "delta", "stream_end", "reasoning_delta", "reasoning_end" -> stream(event, raw, chatId)
 
             "message_accepted" -> MessageAcceptedFrame(
@@ -97,7 +111,7 @@ internal object FrameCodec {
             "turn_end" -> TurnEndFrame(
                 turnId = raw.text("turn_id"),
                 latencyMs = raw.long("latency_ms"),
-                usage = Usage.of(raw.child("usage")),
+                usage = raw.child("usage")?.let(Usage::of),
                 roundUsages = raw.items("round_usages").map(Usage::of),
                 contextWindowTokens = raw.integer("context_window_tokens"),
                 outcome = raw.text("outcome"),

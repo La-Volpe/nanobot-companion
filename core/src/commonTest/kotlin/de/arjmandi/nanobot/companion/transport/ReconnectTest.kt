@@ -6,8 +6,6 @@ import de.arjmandi.nanobot.companion.wire.ReadyFrame
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -29,9 +27,9 @@ class ReconnectTest {
             BootstrapOutcome.Ready(payload(tokens.next()))
         }
 
-        val socket: (String) -> Flow<de.arjmandi.nanobot.companion.wire.Frame> = { url ->
+        val socket: (String) -> Socket = { url ->
             handshakeUrls += url
-            flowOf(readyFrame("chat-1"))
+            FiniteSocket(de.arjmandi.nanobot.companion.wire.FrameCodec.decode("""{"event":"ready","chat_id":"chat-1"}"""))
         }
     }
 
@@ -43,10 +41,6 @@ class ReconnectTest {
         """.trimIndent()
         return assertIs<BootstrapResult.Parsed>(de.arjmandi.nanobot.companion.wire.BootstrapParser.parse(text)).payload
     }
-
-    private fun readyFrame(chatId: String) = de.arjmandi.nanobot.companion.wire.FrameCodec.decode(
-        """{"event":"ready","chat_id":"$chatId"}""",
-    )
 
     @Test
     fun neverReusesConsumedToken() = runTest {
@@ -70,13 +64,13 @@ class ReconnectTest {
         val attempt = ConnectionAttempt(gateway.source, gateway.socket)
 
         val first = assertIs<ConnectionResult.Open>(attempt.open("s3cr3t"))
-        assertIs<ReadyFrame>(first.frames.toList().single())
+        assertIs<ReadyFrame>(first.socket.frames.toList().single())
 
         // The socket closed. A reconnect is a new attempt, not a resume of the old one.
         val second = assertIs<ConnectionResult.Open>(attempt.open("s3cr3t"))
 
         assertEquals(2, gateway.bootstrapCalls.size)
-        assertIs<ReadyFrame>(second.frames.toList().single())
+        assertIs<ReadyFrame>(second.socket.frames.toList().single())
     }
 
     @Test
@@ -84,7 +78,7 @@ class ReconnectTest {
         var handshakes = 0
         val attempt = ConnectionAttempt(
             bootstrap = { BootstrapOutcome.Failed(CoreError.AuthFailed) },
-            openSocket = { handshakes++; flowOf() },
+            openSocket = { handshakes++; FakeSocket() },
         )
 
         val result = attempt.open("wrong")
@@ -97,7 +91,7 @@ class ReconnectTest {
     fun protocolTooNewStopsBeforeTheHandshake() = runTest {
         val attempt = ConnectionAttempt(
             bootstrap = { BootstrapOutcome.Failed(CoreError.ProtocolTooNew(hostMinProtocol = 2, clientProtocol = 1)) },
-            openSocket = { flowOf() },
+            openSocket = { FakeSocket() },
         )
 
         val result = assertIs<ConnectionResult.Failed>(attempt.open("s3cr3t"))

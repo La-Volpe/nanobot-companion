@@ -56,17 +56,17 @@ internal data class HostActions(
 )
 
 /** What the composer validates locally before it sends (C6.1); defaults mirror ingress_policy.py. */
-internal data class Limits(
-    val maxFrameBytes: Long = 32L * 1024 * 1024,
-    val envelopeReserveBytes: Long = 64L * 1024,
-    val maxTextBytes: Long = 64L * 1024,
-    val attachments: AttachmentLimits = AttachmentLimits(),
+public data class Limits(
+    public val maxFrameBytes: Long = 32L * 1024 * 1024,
+    public val envelopeReserveBytes: Long = 64L * 1024,
+    public val maxTextBytes: Long = 64L * 1024,
+    public val attachments: AttachmentLimits = AttachmentLimits(),
 )
 
-internal data class AttachmentLimits(
-    val maxCount: Int = 4,
-    val maxFileBytes: Long = 6L * 1024 * 1024,
-    val maxTotalBytes: Long = 24L * 1024 * 1024,
+public data class AttachmentLimits(
+    public val maxCount: Int = 4,
+    public val maxFileBytes: Long = 6L * 1024 * 1024,
+    public val maxTotalBytes: Long = 24L * 1024 * 1024,
 )
 
 /** A feature the client can drop when the host does not advertise it (plan.md C2.6). */

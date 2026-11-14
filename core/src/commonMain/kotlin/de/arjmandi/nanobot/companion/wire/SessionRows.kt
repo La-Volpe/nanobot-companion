@@ -9,18 +9,18 @@ import kotlinx.serialization.json.JsonObject
  * the raw string is kept beside the parsed instant so a row can be shown even if the
  * parser meets a format it does not know.
  */
-internal data class SessionRow(
-    val key: String,
-    val chatId: String,
-    val title: String,
-    val preview: String,
-    val modelPreset: String?,
-    val accessMode: String?,
-    val projectName: String?,
-    val createdAt: String?,
-    val updatedAt: String?,
-    val updatedAtMs: Long?,
-    val recoveryState: String?,
+public data class SessionRow(
+    public val key: String,
+    public val chatId: String,
+    public val title: String,
+    public val preview: String,
+    public val modelPreset: String?,
+    public val accessMode: String?,
+    public val projectName: String?,
+    public val createdAt: String?,
+    public val updatedAt: String?,
+    public val updatedAtMs: Long?,
+    public val recoveryState: String?,
 )
 
 internal object SessionListParser {

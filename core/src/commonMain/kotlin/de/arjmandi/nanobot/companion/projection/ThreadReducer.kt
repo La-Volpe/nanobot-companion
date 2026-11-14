@@ -37,12 +37,20 @@ internal object ThreadReducer {
         is FileEditFrame -> addFileEdits(state, frame)
         is MessageAcceptedFrame -> settleOptimisticPrompt(state, frame)
         is TurnEndFrame -> settleTurn(state, frame)
-        is TurnModelUpdatedFrame -> state.copy(
-            activeTurnId = state.activeTurnId,
-            modelName = frame.modelName ?: state.modelName,
-            modelPreset = frame.modelPreset ?: state.modelPreset,
-            contextWindowTokens = frame.contextWindowTokens ?: state.contextWindowTokens,
-        )
+        is TurnModelUpdatedFrame -> {
+            val updated = state.copy(
+                modelName = frame.modelName ?: state.modelName,
+                modelPreset = frame.modelPreset ?: state.modelPreset,
+                contextWindowTokens = frame.contextWindowTokens ?: state.contextWindowTokens,
+            )
+            // The preset asked for one model and another answered: that is a notice, not a
+            // silent chip change (C6.2).
+            if (frame.fallback) {
+                addNotice(updated, Notice.PresetFallback(id = FALLBACK_NOTICE, modelName = frame.modelName))
+            } else {
+                updated.copy(notices = updated.notices.filterNot { it.id == FALLBACK_NOTICE })
+            }
+        }
         is SessionUpdatedFrame -> state
         is ErrorFrame -> addNotice(state, Notice.Failure(frame.turnIdForNotice(), frame.detail, frame.detail))
         // A frame this client does not model must not disturb a thread it is still showing.
@@ -201,6 +209,25 @@ internal object ThreadReducer {
             turn.copy(activity = merged.toList())
         }
 
+    /**
+     * The bubble the composer puts up before the gateway has answered (C6.1). It is a turn the
+     * client named, so `message_accepted` can find it and `turn_end` can settle it.
+     */
+    fun addLocalPrompt(
+        state: ThreadState,
+        turnId: String,
+        text: String,
+        quote: String?,
+        nowMs: Long,
+    ): ThreadState = state.copy(
+        turns = state.turns + Turn(
+            id = turnId,
+            prompt = UserPrompt(text = text, quote = quote, optimistic = true, createdAtMs = nowMs),
+            startedAtMs = nowMs,
+        ),
+        activeTurnId = turnId,
+    )
+
     private fun addPrompt(state: ThreadState, frame: UserMessageFrame): ThreadState {
         val turnId = frame.turnId ?: state.activeTurnId ?: return state
         val existing = state.turn(turnId)
@@ -248,13 +275,14 @@ internal object ThreadReducer {
         val settled = updateTurn(state, turnId, null) { turn ->
             turn.copy(
                 status = if (failed) TurnStatus.Failed else TurnStatus.Complete,
-                usage = frame.usage,
+                // A settle frame with no usage says nothing about the ring; keep what we had.
+                usage = frame.usage ?: turn.usage,
                 failureKind = frame.failureKind,
             )
         }
         return settled.copy(
             activeTurnId = if (settled.activeTurnId == turnId) null else settled.activeTurnId,
-            usage = frame.usage,
+            usage = frame.usage ?: settled.usage,
             contextWindowTokens = frame.contextWindowTokens ?: settled.contextWindowTokens,
             notices = settled.notices.filterNot { it is Notice.Goal } +
                 Notice.Goal(id = GOAL_NOTICE, active = frame.goalState.active),
@@ -292,6 +320,7 @@ internal object ThreadReducer {
     private const val NEW_STREAM = "stream-unknown"
     private const val REASONING_STREAM = "reasoning"
     private const val GOAL_NOTICE = "goal"
+    private const val FALLBACK_NOTICE = "preset-fallback"
     private const val TOOL_UNKNOWN = "tool"
     private const val SUMMARY_LIMIT = 80
 

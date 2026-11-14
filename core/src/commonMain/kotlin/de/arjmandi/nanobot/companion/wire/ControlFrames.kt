@@ -39,6 +39,26 @@ internal data class RuntimeModelUpdatedFrame(
     override val event: String get() = "runtime_model_updated"
 }
 
+/** `transcribe_audio` out, this back: `{request_id, text}` (`transcription_ws.py:51`). */
+internal data class TranscriptionResultFrame(
+    val requestId: String?,
+    val text: String?,
+    override val chatId: String?,
+    override val raw: JsonObject,
+) : Frame {
+    override val event: String get() = "transcription_result"
+}
+
+/** A refused recording: `{detail, request_id}` on its own event, not on `error`. */
+internal data class TranscriptionErrorFrame(
+    val requestId: String?,
+    val detail: String?,
+    override val chatId: String?,
+    override val raw: JsonObject,
+) : Frame {
+    override val event: String get() = "transcription_error"
+}
+
 /** A soft protocol error: the connection stays open, the envelope was refused (C4.5). */
 internal data class ErrorFrame(
     val detail: String?,

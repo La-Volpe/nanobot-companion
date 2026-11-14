@@ -82,7 +82,7 @@ internal data class RecoveryStateFrame(
 internal data class TurnEndFrame(
     val turnId: String?,
     val latencyMs: Long?,
-    val usage: Usage,
+    val usage: Usage?,
     val roundUsages: List<Usage>,
     val contextWindowTokens: Int?,
     val outcome: String?,
@@ -100,18 +100,18 @@ internal data class TurnEndFrame(
 }
 
 /** D15.4: every one of these arrives inside `turn_end.usage` and `model_request.request_usage`. */
-internal data class Usage(
-    val promptTokens: Int = 0,
-    val completionTokens: Int = 0,
-    val totalTokens: Int = 0,
-    val requestCount: Int = 0,
-    val estimatedTokens: Int = 0,
-    val contextTokens: Int = 0,
-    val cachedTokens: Int = 0,
-    val generationMs: Long = 0,
-    val measuredCompletionTokens: Int = 0,
-    val ttftMs: Long = 0,
-    val timedRequests: Int = 0,
+public data class Usage(
+    public val promptTokens: Int = 0,
+    public val completionTokens: Int = 0,
+    public val totalTokens: Int = 0,
+    public val requestCount: Int = 0,
+    public val estimatedTokens: Int = 0,
+    public val contextTokens: Int = 0,
+    public val cachedTokens: Int = 0,
+    public val generationMs: Long = 0,
+    public val measuredCompletionTokens: Int = 0,
+    public val ttftMs: Long = 0,
+    public val timedRequests: Int = 0,
 ) {
     internal companion object {
         fun of(json: JsonObject?): Usage = json?.let {
