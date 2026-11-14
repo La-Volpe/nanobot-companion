@@ -46,6 +46,17 @@ internal object ChatRouter {
         )
     }
 
+    /**
+     * Open a chat: the `attach` that makes the gateway replay its history (plan.md C4.6, I3).
+     * An attached chat, or one whose attach is already in flight, asks for nothing — two
+     * attaches would replay the same history twice and double every row.
+     */
+    fun open(set: ChatSet, chatId: String): ChatRouted {
+        if (chatId in set.attached) return ChatRouted(set)
+        if (set.pending[chatId].orEmpty().isNotEmpty()) return ChatRouted(set)
+        return ChatRouted(set, effects = listOf(Effect.Send(Outbound.Attach(chatId = chatId))))
+    }
+
     fun reduce(set: ChatSet, frame: Frame, nowMs: Long): ChatRouted = when {
         frame is AttachedFrame && !frame.chatId.isNullOrBlank() -> {
             val chatId: String = frame.chatId
