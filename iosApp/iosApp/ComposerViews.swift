@@ -295,6 +295,7 @@ struct ComposerSheets: View {
     @ObservedObject var attachments: AttachmentViewModel
     let loadPresets: () async -> [ChatModelPreset]
     let onPickPhotos: () -> Void
+    let onTakePhoto: () -> Void
     let onPickFiles: () -> Void
 
     var body: some View {
@@ -354,7 +355,12 @@ struct ComposerSheets: View {
         case .palette:
             paletteSheet
         case .attach:
-            AttachSheet(model: attachments, onPickPhotos: onPickPhotos, onPickFiles: onPickFiles)
+            AttachSheet(
+                model: attachments,
+                onPickPhotos: onPickPhotos,
+                onTakePhoto: onTakePhoto,
+                onPickFiles: onPickFiles
+            )
         case nil:
             EmptyView()
         }

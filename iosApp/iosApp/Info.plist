@@ -7,6 +7,8 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>nanobot Companion opens the camera only when you tap Camera, and sends the picture you take to your gateway as an attachment.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>nanobot Companion records a voice note only while you hold the microphone, and sends it to your gateway to be transcribed.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
