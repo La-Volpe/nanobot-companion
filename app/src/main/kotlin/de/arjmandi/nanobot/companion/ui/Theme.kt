@@ -41,6 +41,12 @@ object Design {
     /** The identity anchor from the design system. Never a button, never a surface fill. */
     val brand = Color(red = 0.85f, green = 0.45f, blue = 0.18f)
 
+    /**
+     * A press shorter than this arms tap-to-dictate instead of ending the recording (artifact:
+     * 300 ms on the pointer, while the gateway's own floor is 650 ms).
+     */
+    const val tapThresholdMs: Long = 300
+
     /** The composer's bottom inset above the navigation bar. */
     val composerBottomPadding = 12.dp
 
@@ -58,6 +64,26 @@ object Design {
         /** 1.55 × 16 ≈ 25 sp, the design's Android line height. */
         val lineHeight = 25.sp
     }
+
+    /** The activity cluster's numbers (artifact: `.reasoning`, `.tool-row`, `.diff`). */
+    object Activity {
+        /** Reasoning is reading text, two points under the reading scale (iOS: 15 of 17). */
+        val reasoningSize = 14.sp
+
+        /** The diff is the smallest type in the app, and monospaced. */
+        val diffSize = 11.sp
+
+        /** A tool row is a row a thumb can land on, like every other row here. */
+        val rowHeight = minimumTarget
+
+        /** The design picks the glyph by the tool's name, not by its arguments. */
+        fun glyph(toolName: String): String = when (toolName) {
+            "run_command", "exec", "shell" -> ">_"
+            "web_search", "search" -> "\u2315"
+            "edit_file", "write_file", "apply_patch" -> "\u2261"
+            else -> "\u00b7"
+        }
+    }
 }
 
 /** The reading face, registered from `res/font/open_sans.ttf`. */
@@ -70,6 +96,7 @@ val OpenSans = FontFamily(Font(R.font.open_sans, FontWeight.Normal))
 @Composable
 fun NanobotTheme(
     dark: Boolean = isSystemInDarkTheme(),
+    readingScale: Float = 1f,
     content: @Composable () -> Unit,
 ) {
     val scheme = when {
@@ -102,7 +129,9 @@ fun NanobotTheme(
             bodySmall = base.bodySmall.copy(fontSize = Design.Interface.captionSize),
         )
     }
-    MaterialTheme(colorScheme = scheme, typography = typography, content = content)
+    androidx.compose.runtime.CompositionLocalProvider(LocalReadingScale provides readingScale) {
+        MaterialTheme(colorScheme = scheme, typography = typography, content = content)
+    }
 }
 
 /** The reading style a prose row uses: Open Sans at the reading scale. */
@@ -110,4 +139,17 @@ val readingStyle = TextStyle(
     fontFamily = OpenSans,
     fontSize = Design.Reading.size,
     lineHeight = Design.Reading.lineHeight,
+)
+
+/**
+ * Settings → Appearance moves the reading scale and nothing else, which is the design's rule: prose,
+ * code and the composer follow it, navigation does not (A7).
+ */
+val LocalReadingScale = androidx.compose.runtime.compositionLocalOf { 1f }
+
+/** The reading style at the scale the user chose, for a composable that draws prose. */
+@Composable
+fun scaledReadingStyle(): TextStyle = readingStyle.copy(
+    fontSize = Design.Reading.size * LocalReadingScale.current,
+    lineHeight = Design.Reading.lineHeight * LocalReadingScale.current,
 )

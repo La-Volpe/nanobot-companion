@@ -5,9 +5,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.arjmandi.nanobot.companion.chat.ChatDriver
 import de.arjmandi.nanobot.companion.chat.ChatViewModel
+import de.arjmandi.nanobot.companion.composer.ComposerDriving
+import de.arjmandi.nanobot.companion.composer.ComposerSnapshot
+import de.arjmandi.nanobot.companion.composer.EmptyComposerDriver
+import de.arjmandi.nanobot.companion.core.ChatSession
 import de.arjmandi.nanobot.companion.core.CoreHolder
 import de.arjmandi.nanobot.companion.core.SessionSummary
 import de.arjmandi.nanobot.companion.drawer.DrawerViewModel
+import de.arjmandi.nanobot.companion.settings.SettingsViewModel
+import de.arjmandi.nanobot.companion.states.ConnectionStatus
+import de.arjmandi.nanobot.companion.states.ConnectionView
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * The shell's own state (plan.md A1–A3): whether onboarding or the shell is on screen, which chat
@@ -17,8 +25,8 @@ import de.arjmandi.nanobot.companion.drawer.DrawerViewModel
  */
 class MainViewModel(
     val holder: CoreHolder,
-    /** The driver for one chat: the real one in the app, a scripted one in a test. */
-    private val driver: (chatId: String?) -> ChatDriver,
+    /** Both bridges for one chat: the real pair in the app, scripted ones in a test. */
+    private val session: (chatId: String?) -> ChatSession,
 ) {
 
     /** Onboarding until a gateway opened, then the shell. */
@@ -27,6 +35,27 @@ class MainViewModel(
 
     /** The drawer, opened from the bar and closed by a choice or the scrim. */
     var drawerOpen by mutableStateOf(false)
+        private set
+
+    /**
+     * Settings (A7), attached by the composition root once the shell exists: its disconnect calls
+     * back into [disconnect], so the two are built in that order rather than in one constructor.
+     */
+    var settings: SettingsViewModel? = null
+        private set
+
+    var settingsOpen by mutableStateOf(false)
+        private set
+
+    /** The DEBUG menu (A8): reachable in a debug build only, and it injects the state objects. */
+    var debugOpen by mutableStateOf(false)
+        private set
+
+    /**
+     * The connection as the states surfaces draw it (A8). One value, pushed to the chat's own states
+     * whenever the holder emits, so the bar's dot and the chat's banner cannot disagree.
+     */
+    var connectionView by mutableStateOf(ConnectionView(ConnectionStatus.Idle))
         private set
 
     val drawer: DrawerViewModel = DrawerViewModel()
@@ -46,6 +75,32 @@ class MainViewModel(
 
     fun enterShell() {
         connected = true
+    }
+
+    fun attachSettings(settings: SettingsViewModel) {
+        this.settings = settings
+    }
+
+    fun openSettings() {
+        drawerOpen = false
+        settingsOpen = true
+    }
+
+    fun closeSettings() {
+        settingsOpen = false
+    }
+
+    fun updateConnection(view: ConnectionView) {
+        connectionView = view
+        chat?.states?.update(view)
+    }
+
+    fun openDebug() {
+        debugOpen = true
+    }
+
+    fun closeDebug() {
+        debugOpen = false
     }
 
     fun openDrawer() {
@@ -72,8 +127,19 @@ class MainViewModel(
      * its turns (D46, P9).
      */
     suspend fun openChat(chatId: String?) {
-        val model = chats.getOrPut(chatId) { ChatViewModel(driver(chatId)) }
+        val model = chats.getOrPut(chatId) {
+            val opened = session(chatId)
+            ChatViewModel(
+                chat = opened.chat,
+                composerDriver = opened.composer,
+                snapshots = opened.snapshots,
+                attachmentDriver = opened.attachments,
+                voiceDriver = opened.voice,
+            )
+        }
         chat = model
+        // The chat's states start from the connection the shell already knows (P9's lesson).
+        model.states.update(connectionView)
         model.open(chatId)
     }
 
@@ -92,8 +158,18 @@ class MainViewModel(
      * Settings → Gateway or the debug menu's way out: one command, which forgets the address and
      * the key and returns to onboarding.
      */
+    /** The bar's overflow chose a row, so the shell performs it and the choice is consumed once. */
+    fun consumeComposerAction() {
+        chat?.composer?.consumeAction()
+    }
+
+    /** The model sheet's list: the gateway's presets, read when the sheet opens. */
+    suspend fun presets(): List<de.arjmandi.nanobot.companion.composer.ChatModelPreset> = holder.presets()
+
     fun disconnect() {
         connected = false
+        debugOpen = false
+        settingsOpen = false
         selected = null
         chat = null
         chats.clear()

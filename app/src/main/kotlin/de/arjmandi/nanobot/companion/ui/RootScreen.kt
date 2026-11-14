@@ -41,7 +41,13 @@ import de.arjmandi.nanobot.companion.connect.ConnectViewModel
 import de.arjmandi.nanobot.companion.core.ConnectionStatus
 import de.arjmandi.nanobot.companion.core.CoreHolder
 import de.arjmandi.nanobot.companion.chat.ChatScreen
+import de.arjmandi.nanobot.companion.composer.SessionAction
+import de.arjmandi.nanobot.companion.composer.SessionActionsOverflow
 import de.arjmandi.nanobot.companion.drawer.DrawerContent
+import de.arjmandi.nanobot.companion.debug.DebugStatesMenu
+import de.arjmandi.nanobot.companion.settings.SettingsScreen
+import de.arjmandi.nanobot.companion.states.ConnectionDot
+import de.arjmandi.nanobot.companion.states.ConnectionDotView
 import kotlinx.coroutines.launch
 
 /**
@@ -71,6 +77,27 @@ fun RootScreen(
         if (main.connected) main.openChat(main.selected?.chatId)
     }
 
+    if (main.debugOpen) {
+        val chat = main.chat
+        if (chat != null) {
+            DebugStatesMenu(states = chat.states, composer = chat.composer, onClose = { main.closeDebug() }, modifier = modifier)
+            return
+        }
+    }
+
+    if (main.settingsOpen) {
+        val settings = main.settings
+        if (settings != null) {
+            SettingsScreen(
+                model = settings,
+                loadSnapshot = { holder.settingsSnapshot() },
+                onClose = { main.closeSettings() },
+                modifier = modifier,
+            )
+            return
+        }
+    }
+
     if (main.connected) {
         Shell(
             main = main,
@@ -98,6 +125,13 @@ private fun Shell(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    // Back closes the nearest thing first: an open sheet, then the drawer, and nothing else is
+    // taken from the system. A shell that swallowed Back everywhere would trap the user.
+    val chat = main.chat
+    androidx.activity.compose.BackHandler(enabled = chat?.composer?.sheet != null || main.drawerOpen) {
+        if (chat?.composer?.sheet != null) chat.composer.closeSheet() else main.closeDrawer()
+    }
+
     // One owner for "is the drawer open": the model asks, the drawer state answers.
     LaunchedEffect(main.drawerOpen) {
         if (main.drawerOpen && drawerState.isClosed) drawerState.open()
@@ -115,7 +149,7 @@ private fun Shell(
                     onSelect = { main.select(it) },
                     onNewChat = { main.newChat() },
                     onAutomations = onSessionActions,
-                    onSettings = onSessionActions,
+                    onSettings = { main.openSettings() },
                 )
             }
         },
@@ -137,9 +171,28 @@ private fun Shell(
                         }
                     },
                     actions = {
-                        ConnectionDot(status)
-                        TextButton(onClick = onSessionActions, modifier = Modifier.testTag("chat.sessionActions")) {
-                            Text(stringResource(R.string.drawer_session_actions))
+                        val dot = main.chat?.states?.dot ?: status.toDot(main.connectionView.everConnected)
+                        ConnectionDotView(dot)
+                        if (de.arjmandi.nanobot.companion.BuildConfig.DEBUG_MENU) {
+                            IconButton(onClick = { main.openDebug() }, modifier = Modifier.testTag("chat.debug")) {
+                                Text(text = "\uD83D\uDC1E", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
+                        // The design's Android column: one overflow holds the message list, the
+                        // session details and a new chat, so the title keeps its room.
+                        val composer = main.chat?.composer
+                        IconButton(
+                            onClick = { composer?.openOverflow() },
+                            modifier = Modifier.testTag("chat.sessionActions"),
+                        ) {
+                            Text(text = "\u22EE", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        if (composer != null) {
+                            SessionActionsOverflow(
+                                composer = composer,
+                                expanded = composer.overflowOpen,
+                                onDismiss = { composer.closeOverflow() },
+                            )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -149,6 +202,7 @@ private fun Shell(
             Thread(
                 main = main,
                 status = status,
+                onSessionActions = onSessionActions,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(insets),
@@ -157,25 +211,14 @@ private fun Shell(
     }
 }
 
-/** The connection dot: one colour per state, and the sentence a screen reader says (A8 draws the banner). */
-@Composable
-private fun ConnectionDot(status: ConnectionStatus) {
-    val colour = when (status) {
-        ConnectionStatus.Open -> Color(0xFF4CAF50)
-        ConnectionStatus.Connecting -> Color(0xFFFFA726)
-        ConnectionStatus.Offline -> Color(0xFF9E9E9E)
-        ConnectionStatus.Failed -> Color(0xFFE5675C)
-        ConnectionStatus.Idle -> Color(0xFF9E9E9E)
-    }
-    val label = stringResource(connectionLabel(status))
-    Box(
-        modifier = Modifier
-            .padding(end = 8.dp)
-            .size(8.dp)
-            .background(colour, CircleShape)
-            .semantics { contentDescription = label }
-            .testTag("states.dot"),
-    )
+/** The holder's connection as the dot's six states, for a shell that has no chat yet. */
+private fun de.arjmandi.nanobot.companion.core.ConnectionStatus.toDot(everConnected: Boolean): ConnectionDot = when (this) {
+    de.arjmandi.nanobot.companion.core.ConnectionStatus.Idle -> ConnectionDot.Idle
+    de.arjmandi.nanobot.companion.core.ConnectionStatus.Connecting -> ConnectionDot.Connecting
+    de.arjmandi.nanobot.companion.core.ConnectionStatus.Open -> ConnectionDot.Open
+    de.arjmandi.nanobot.companion.core.ConnectionStatus.Offline ->
+        if (everConnected) ConnectionDot.Reconnecting else ConnectionDot.Offline
+    de.arjmandi.nanobot.companion.core.ConnectionStatus.Failed -> ConnectionDot.Failed
 }
 
 /**
@@ -184,13 +227,36 @@ private fun ConnectionDot(status: ConnectionStatus) {
  * the drawer does not build a second screen, it opens a second chat through the same core.
  */
 @Composable
-private fun Thread(main: MainViewModel, status: ConnectionStatus, modifier: Modifier = Modifier) {
+private fun Thread(
+    main: MainViewModel,
+    status: ConnectionStatus,
+    onSessionActions: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val chat = main.chat
+
+    // The overflow reports its choice once; the shell performs it and consumes it.
+    val chosen = chat?.composer?.chosenAction
+    LaunchedEffect(chosen) {
+        val composer = chat?.composer ?: return@LaunchedEffect
+        when (chosen) {
+            SessionAction.MessageList -> composer.openMessageList()
+            SessionAction.SessionDetails -> composer.openSessionDetails()
+            SessionAction.NewChat -> main.newChat()
+            null -> Unit
+        }
+        if (chosen != null) composer.consumeAction()
+    }
 
     Column(modifier = modifier) {
         Box(modifier = Modifier.weight(1f)) {
             if (chat != null) {
-                ChatScreen(model = chat)
+                ChatScreen(
+                    model = chat,
+                    sessionTitle = main.title,
+                    sessionChatId = main.selected?.chatId,
+                    loadPresets = { main.presets() },
+                )
             } else {
                 Text(
                     text = stringResource(connectionLabel(status)),
@@ -199,12 +265,8 @@ private fun Thread(main: MainViewModel, status: ConnectionStatus, modifier: Modi
                 )
             }
         }
-        TextButton(
-            onClick = { main.disconnect() },
-            modifier = Modifier.padding(horizontal = 12.dp).testTag("chat.disconnect"),
-        ) {
-            Text(stringResource(R.string.chat_disconnect), fontSize = Design.Interface.captionSize)
-        }
+        // The way out is Settings → Gateway (A7), which forgets the address and the key; the
+        // thread no longer carries a placeholder button for it (D48's note, now closed).
     }
 }
 

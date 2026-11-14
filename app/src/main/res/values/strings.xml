@@ -57,6 +57,7 @@
     <string name="chat_stop">Stop</string>
     <string name="chat_send_refused">The gateway did not take that message.</string>
     <string name="chat_disconnect">Disconnect</string>
+    <string name="chat_sending">Sending…</string>
     <string name="chat_empty_title">Nothing here yet</string>
     <string name="chat_empty_body">Send the first message to start this conversation.</string>
     <string name="chat_connection_idle">Connection: idle</string>
@@ -65,4 +66,140 @@
     <string name="chat_connection_reconnecting">Connection: reconnecting</string>
     <string name="chat_connection_disconnected">Connection: disconnected</string>
     <string name="chat_connection_error">Connection: error</string>
+
+    <!-- Activity (A4): the cluster head, the three status words, and the row labels. The head is a
+         sentence built from clauses here rather than from a string in a view model, so the copy is
+         translatable and the model stays a pure value. -->
+    <string name="activity_thinking">Thinking</string>
+    <string name="activity_thought_for">Thought for %1$ds</string>
+    <plurals name="activity_steps">
+        <item quantity="one">%d step</item>
+        <item quantity="other">%d steps</item>
+    </plurals>
+    <plurals name="activity_files_changed">
+        <item quantity="one">%d file changed</item>
+        <item quantity="other">%d files changed</item>
+    </plurals>
+    <string name="activity_status_running">running</string>
+    <string name="activity_status_done">done</string>
+    <string name="activity_status_failed">failed</string>
+    <string name="activity_tool_done">done</string>
+    <string name="activity_tool_failed">failed</string>
+    <string name="activity_web_search">web_search</string>
+    <string name="activity_sources">%1$d sources</string>
+
+    <!-- Composer (A5): the chips, the meta row, the sheets and the bar's one overflow. -->
+    <string name="composer_access_default">Default</string>
+    <string name="composer_access_full">Full</string>
+    <string name="composer_access_title">Workspace access</string>
+    <string name="composer_access_default_body">Files and commands inside the working directory</string>
+    <string name="composer_access_full_body">Files and commands outside the working directory</string>
+    <string name="composer_choose_model">Choose model</string>
+    <string name="composer_manage_presets">Manage presets</string>
+    <string name="composer_manage_presets_body">Providers and fallbacks in Settings</string>
+    <string name="composer_usage_title">Context usage</string>
+    <string name="composer_usage_percent">%1$d%% of the window</string>
+    <string name="composer_usage_none">No window yet</string>
+    <string name="composer_usage_no_window">The gateway reports this with the first model update of a turn.</string>
+    <string name="composer_usage_tokens">%1$d of %2$d tokens</string>
+    <string name="composer_palette_title">Commands</string>
+    <string name="composer_attach_title">Attach</string>
+    <string name="composer_queue_send_now">Send now</string>
+    <string name="composer_queue_delete">Delete</string>
+    <string name="composer_message_list">Messages</string>
+    <string name="composer_message_list_empty">No messages in this conversation yet.</string>
+    <string name="composer_message_number">Message %1$d</string>
+    <string name="composer_session_details">Session details</string>
+    <string name="composer_session_no_id">This chat has no gateway id yet.</string>
+    <string name="composer_session_no_model">The gateway has not named a model yet.</string>
+    <string name="composer_mention_title">Mention</string>
+    <string name="palette_group_commands">Commands</string>
+    <string name="palette_group_sessions">Nanobot conversations</string>
+    <string name="palette_group_cliApps">CLI apps</string>
+
+    <!-- The bar's one overflow: the session actions the iOS bar carries as three glyphs. -->
+    <string name="chat_action_message_list">Message list</string>
+    <string name="chat_action_session_details">Session details</string>
+    <string name="chat_action_new_chat">New chat</string>
+    <string name="chat_overflow">Session actions</string>
+
+    <!-- Markdown (A5): the fence's language chip, its default label when the fence names none,
+         and Copy's 1.5 s confirmation. -->
+    <string name="markdown_code">code</string>
+    <string name="markdown_copy">Copy</string>
+    <string name="markdown_copied">Copied</string>
+
+    <!-- Attachments (A6): the sheet, the cards, and one sentence per typed refusal from the
+         core's `AttachmentRejection.copyKey` (plan.md §9's limits row). -->
+    <string name="attach_photos">Photos</string>
+    <string name="attach_files">Files</string>
+    <string name="attach_remove">Remove</string>
+    <string name="attach_video_card">Video · %1$s</string>
+    <string name="attach_empty">That file is empty.</string>
+    <string name="attach_tooMany">Up to %1$d files per message.</string>
+    <string name="attach_fileTooLarge">Each file is capped at %2$s.</string>
+    <string name="attach_totalTooLarge">The whole message is capped at %3$s.</string>
+    <string name="attach_tooManyVideos">One video per message.</string>
+    <string name="attach_videoTooLarge">A video is capped at %4$s.</string>
+    <string name="attach_unsupported">That file type is not one the gateway accepts.</string>
+    <string name="attach_unreachable">The upload did not reach the gateway.</string>
+
+    <!-- Voice (A6): the two gestures, the wait, and the one sentence a gesture can produce. -->
+    <string name="voice_transcribing">Transcribing…</string>
+    <string name="voice_tap_to_stop">Tap to stop</string>
+    <string name="voice_release_to_send">Release to send</string>
+    <string name="voice_too_short">Hold a little longer to record voice.</string>
+    <string name="voice_too_long">Recording is too long.</string>
+    <string name="voice_microphone">The microphone is not available.</string>
+    <string name="voice_nothing_recorded">That recording did not reach the microphone.</string>
+    <string name="voice_transcription_failed">The gateway could not transcribe that recording.</string>
+    <string name="voice_start">Voice input</string>
+
+    <!-- Settings (A7): the four sections, the one honest notification promise, and the way out. -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_back">Back</string>
+    <string name="settings_disconnect">Disconnect gateway</string>
+    <string name="settings_disconnect_title">Disconnect gateway?</string>
+    <string name="settings_disconnect_message">The app forgets this address and key. Nothing on the gateway is deleted, and you can reconnect any time.</string>
+    <string name="settings_disconnected">Disconnected. Sign in to reconnect.</string>
+    <string name="settings_test_notification">Send a test notification</string>
+    <string name="settings_test_sent">A test notification was posted on this device.</string>
+    <string name="settings_notifications_off">Notifications are turned off for this app in Settings.</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_reading_size">Reading size</string>
+    <string name="settings_notifications_copy">Alerts arrive while the app is open, plus a local notification if a task ends while it is foregrounded. The gateway has no push service and none is planned, so a closed app stays quiet instead of promising an alert it cannot deliver.</string>
+
+    <!-- States (A8): the banner's lines, the notice rows, the goal strip, the dock and the one
+         snackbar above the composer for the transient ones. The sandbox sentences are named after
+         the core's own copy keys (notice.sandbox.*), so a drift is a key that no longer exists. -->
+    <string name="states_connecting">Connecting…</string>
+    <string name="states_reconnecting">Reconnecting…</string>
+    <string name="states_disconnected">Disconnected. Sends are held.</string>
+    <string name="states_handshake_failed">Handshake failed or token expired.</string>
+    <string name="states_try_again">Try again</string>
+    <string name="states_recovery">A task was interrupted.</string>
+    <string name="states_recovery_reason">%1$s</string>
+    <string name="states_recovery_restorable">The gateway can restore its saved context.</string>
+    <string name="states_continue">Continue</string>
+    <string name="states_dismiss">Dismiss</string>
+    <string name="states_compaction_started">Compacting context…</string>
+    <string name="states_compaction_done">Context compacted to keep the conversation going.</string>
+    <string name="states_compaction_failed">Context compaction failed. The gateway kept the old context.</string>
+    <string name="states_compaction_cancelled">Context compaction was cancelled.</string>
+    <string name="notice_sandbox_missing">Shell tools are paused: the sandbox launcher is not installed.</string>
+    <string name="notice_sandbox_path">Shell tools are paused: the sandbox path is not usable.</string>
+    <string name="notice_sandbox_permissions">Shell tools are paused: the sandbox is writable by the agent.</string>
+    <string name="notice_sandbox_startup">Shell tools are paused: the sandbox did not start.</string>
+    <string name="states_turn_failed">The turn failed.</string>
+    <string name="states_preset_fallback">%1$s answered instead of the preset you chose.</string>
+    <string name="states_not_sent">The gateway did not take that message.</string>
+    <string name="states_resend">Send again</string>
+    <string name="states_retry_timeout">The model timed out · retrying in %1$ds</string>
+    <string name="states_retry_error">The model errored · retrying in %1$ds</string>
+    <string name="states_dock_stop">Stop</string>
+    <string name="states_goal">Goal</string>
+    <string name="states_debug_title">Injected states</string>
+    <string name="states_debug_failures">The eight failures</string>
+    <string name="states_debug_chats">Chat states</string>
+    <string name="states_debug_clear">Clear every injected state</string>
 </resources>

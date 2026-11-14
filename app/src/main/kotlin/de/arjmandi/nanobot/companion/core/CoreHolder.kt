@@ -1,6 +1,9 @@
 package de.arjmandi.nanobot.companion.core
 
 import de.arjmandi.nanobot.companion.bridge.Companion
+import de.arjmandi.nanobot.companion.chat.ChatDriver
+import de.arjmandi.nanobot.companion.composer.ChatModelPreset
+import de.arjmandi.nanobot.companion.composer.ComposerDriving
 import de.arjmandi.nanobot.companion.facade.ChatHandle
 import de.arjmandi.nanobot.companion.facade.ConnectResult
 import de.arjmandi.nanobot.companion.facade.ConnectionFailure
@@ -10,6 +13,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
+import de.arjmandi.nanobot.companion.composer.ComposerSnapshot
+import de.arjmandi.nanobot.companion.wire.ModelPreset
 import kotlinx.coroutines.launch
 
 /**
@@ -81,14 +89,50 @@ class CoreHolder(
     /** A chat handle for the thread (A3). Null before a gateway is open. */
     fun chat(id: String?): ChatHandle? = stack?.core?.chat(chatId = id)
 
+
     /**
-     * The driver the chat screen holds for one chat, or null before a gateway is open. Two calls
-     * for the same chat share the core's session, so the thread is one value however many screens
-     * ask for it.
+     * One chat as the screens drive it (A3, A5): the thread's driver, the composer's commands, and
+     * the composer's own state. Null before a gateway is open, which is how a screen knows it has
+     * nothing behind it rather than a handle that answers nothing.
      */
-    fun chatDriver(id: String?): CoreChatDriver? {
+    fun chatSession(id: String?): ChatSession? {
+        val opened = stack ?: return null
         val handle = chat(id) ?: return null
-        return CoreChatDriver(handle, scope)
+        val composer = CoreComposerDriver(handle, opened.core, scope)
+        return ChatSession(
+            chat = CoreChatDriver(handle, scope),
+            composer = composer,
+            snapshots = composer.snapshot,
+            attachments = CoreAttachmentDriver(handle),
+            voice = CoreVoiceDriver(handle),
+        )
+    }
+
+    /** Settings → Overview, from the same read the model sheet uses (C7.1). No uptime: there is none. */
+    suspend fun settingsSnapshot(): de.arjmandi.nanobot.companion.settings.SettingsSnapshot {
+        val core = stack?.core ?: return de.arjmandi.nanobot.companion.settings.SettingsSnapshot()
+        runCatching { core.refreshSettings() }
+        val state = core.settings.value
+        return de.arjmandi.nanobot.companion.settings.SettingsSnapshot(
+            version = state.version?.current,
+            commit = state.version?.commit,
+            os = state.environment?.os,
+            pythonVersion = state.environment?.pythonVersion,
+            modelName = state.modelName,
+            modelPreset = state.modelPreset,
+            provider = state.provider,
+            contextWindowTokens = state.contextWindowTokens,
+            transcriptionProvider = state.transcription?.provider,
+            transcriptionModel = state.transcription?.model,
+            presets = state.modelPresets.map { it.name },
+        )
+    }
+
+    /** The model sheet's list, from the settings read the gateway already answers (C6.2). */
+    suspend fun presets(): List<ChatModelPreset> {
+        val core = stack?.core ?: return emptyList()
+        runCatching { core.refreshSettings() }
+        return core.settings.value.modelPresets.map(ModelPreset::toPreset)
     }
 
     fun isOpen(): Boolean = stack != null
@@ -174,3 +218,16 @@ class CoreHolder(
         }
     }
 }
+
+/**
+ * One chat's two bridges and the composer state they publish (A3, A5). The screens hold this
+ * bundle, so a chat that has a gateway has both halves and a chat that does not has neither.
+ */
+data class ChatSession(
+    val chat: ChatDriver,
+    val composer: ComposerDriving,
+    val snapshots: StateFlow<ComposerSnapshot>,
+    val attachments: de.arjmandi.nanobot.companion.attachment.AttachmentDriving =
+        de.arjmandi.nanobot.companion.attachment.EmptyAttachmentDriver(),
+    val voice: de.arjmandi.nanobot.companion.voice.VoiceDriving = de.arjmandi.nanobot.companion.voice.EmptyVoiceDriver(),
+)
