@@ -22,3 +22,6 @@ captures/
 
 # macOS
 .DS_Store
+
+# Heartbeat loop bookkeeping (churns; not part of the repo history)
+.pi/beat-log.md
