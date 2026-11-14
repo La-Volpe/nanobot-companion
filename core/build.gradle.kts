@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kover)
 }
 
 // `-Pcontract` is the opt-in for the live-gateway tests (plan.md §3.4). Fast runs never see
@@ -64,6 +65,36 @@ kotlin {
             implementation(libs.ktor.server.websockets)
             // The contract tests talk to a real gateway over the JVM engine.
             implementation(libs.ktor.client.java)
+        }
+    }
+}
+
+// The module owns the report: a root-level kover block only configures the root report.
+//
+// The floor is the three layers a bug hides in (plan.md §3.6, the G1 Kover item): `wire`,
+// `projection`, `engine`. Outside it on purpose: `platform` is `expect`/`actual` over
+// AndroidKeyStore, SharedPreferences, PackageManager and the Keychain, whose bodies need a
+// device or an app bundle (D17, P1); `facade` and `transport` are wiring, proved by the
+// contract suite against a live gateway rather than by unit tests.
+kover {
+    reports {
+        filters {
+            includes {
+                packages(
+                    "de.arjmandi.nanobot.companion.wire",
+                    "de.arjmandi.nanobot.companion.projection",
+                    "de.arjmandi.nanobot.companion.engine",
+                )
+            }
+        }
+        verify {
+            rule("wire, projection, engine") {
+                bound {
+                    minValue = 85
+                    coverageUnits = kotlinx.kover.gradle.plugin.dsl.CoverageUnit.LINE
+                    aggregationForGroup = kotlinx.kover.gradle.plugin.dsl.AggregationType.COVERED_PERCENTAGE
+                }
+            }
         }
     }
 }
