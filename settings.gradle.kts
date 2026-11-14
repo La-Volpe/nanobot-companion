@@ -17,3 +17,4 @@ rootProject.name = "nanobot-companion"
 
 include(":core")
 include(":core-cli")
+include(":app")

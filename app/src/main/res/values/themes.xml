@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Activity's own frame is the design's surface colour; Compose draws everything
+         inside it, so this exists only to avoid a white flash before the first frame. -->
+    <style name="Theme.NanobotCompanion" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/surface</item>
+        <item name="android:statusBarColor">@color/surface</item>
+    </style>
+</resources>

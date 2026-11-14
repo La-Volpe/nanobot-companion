@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">nanobot Companion</string>
+
+    <!-- The eight connection failures (docs/decisions.md D29 §9). The name after the underscore
+         is the core's copy key, so `ConnectionCopyTest` can pair them one for one. -->
+    <string name="connection_authFailed">That key was refused. Check the gateway\'s key and try again.</string>
+    <string name="connection_tlsRejected">This gateway\'s certificate is not trusted. If it is your own, allow it in this gateway\'s settings.</string>
+    <string name="connection_unreachable">No gateway at that address. Check the address and that the gateway is running.</string>
+    <string name="connection_timeout">The gateway did not answer in time. Try again.</string>
+    <string name="connection_protocolTooNew">This gateway speaks a newer protocol than this app. Update the app.</string>
+    <string name="connection_missingCapability">This gateway does not offer that feature. The rest of the chat still works.</string>
+    <string name="connection_missingField">The gateway\'s answer was incomplete. Check its version.</string>
+    <string name="connection_serverError">The gateway refused the request.</string>
+    <string name="connection_serverErrorRetryable">The gateway refused the request. Try again in a moment.</string>
+
+    <!-- The three refusals the phone makes before a request exists (design: the invalid-URL
+         and missing-key states). -->
+    <string name="refusal_addressMissing">Enter the address of your gateway.</string>
+    <string name="refusal_addressNeedsScheme">Enter a full address, including http:// or https://.</string>
+    <string name="refusal_keyMissing">The gateway rejected the request: no API key. /webui/bootstrap needs the WebUI secret.</string>
+
+    <!-- Onboarding (design artifact data-view="onboarding"). -->
+    <string name="connect_kicker">nanobot Companion</string>
+    <string name="connect_title">Connect nanobot</string>
+    <string name="connect_body">Point the app at the gateway on your Mac or server. Nothing leaves your network.</string>
+    <string name="connect_address_label">Gateway address</string>
+    <string name="connect_address_hint">http://192.168.1.10:8787</string>
+    <string name="connect_key_label">API key</string>
+    <string name="connect_key_hint">WebUI secret from the gateway</string>
+    <string name="connect_key_required">required</string>
+    <string name="connect_unverified_title">Allow unverified certificate</string>
+    <string name="connect_unverified_body">Self-signed HTTPS on a home server</string>
+    <string name="connect_unverified_remedy">Turn this on if this gateway is yours, then connect again.</string>
+    <string name="connect_submit">Connect</string>
+    <string name="connect_connecting">Connecting</string>
+    <string name="connect_footer">The key is encrypted on this device and renews the session token, which expires in minutes.</string>
+    <string name="connect_connected_to">Connected to %1$s</string>
+    <string name="connect_connected">Connected</string>
+
+    <!-- Drawer (A2): brand, search, the two sections, and the states search can be in. -->
+    <string name="drawer_open">Open the session list</string>
+    <string name="drawer_brand">nanobot</string>
+    <string name="drawer_new_chat">New chat</string>
+    <string name="drawer_search_hint">Search conversations</string>
+    <string name="drawer_search_clear">Clear search</string>
+    <string name="drawer_no_match">No conversations match “%1$s”</string>
+    <string name="drawer_archived">Archived</string>
+    <string name="drawer_untitled">Untitled session</string>
+    <string name="drawer_automations">Automations</string>
+    <string name="drawer_settings">Settings</string>
+    <string name="drawer_session_actions">Session actions</string>
+
+    <!-- Chat (A3). -->
+    <string name="chat_composer_hint">Type a message…</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_stop">Stop</string>
+    <string name="chat_send_refused">The gateway did not take that message.</string>
+    <string name="chat_disconnect">Disconnect</string>
+    <string name="chat_empty_title">Nothing here yet</string>
+    <string name="chat_empty_body">Send the first message to start this conversation.</string>
+    <string name="chat_connection_idle">Connection: idle</string>
+    <string name="chat_connection_connecting">Connection: connecting</string>
+    <string name="chat_connection_connected">Connection: connected</string>
+    <string name="chat_connection_reconnecting">Connection: reconnecting</string>
+    <string name="chat_connection_disconnected">Connection: disconnected</string>
+    <string name="chat_connection_error">Connection: error</string>
+</resources>

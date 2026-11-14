@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The gateway on a home network speaks http on a port the user types (the design's own hint is
+  http://192.168.1.10:8787), and Android refuses cleartext by default since targetSdk 28. This
+  permits it, and still requires a trusted certificate for every https address — the
+  unverified-certificate switch is a decision about the anchor, not a licence to skip TLS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
