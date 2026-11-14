@@ -97,7 +97,7 @@ struct RootView: View {
                             Button {
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { drawerOpen = true }
                             } label: {
-                                Image(systemName: "line.3.horizontal")
+                                WebUIIcon(name: "Menu", size: 18)
                             }
                             .accessibilityIdentifier("chat.openDrawer")
                         }
@@ -287,6 +287,6 @@ struct ChatShellPlaceholder: View {
                 .accessibilityIdentifier("chat.disconnect")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(Palette.canvas)
     }
 }

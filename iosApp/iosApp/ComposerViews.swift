@@ -43,7 +43,7 @@ struct ComposerBar: View {
         .padding(.horizontal, 12)
         .padding(.top, 6)
         .padding(.bottom, Design.composerBottomPadding)
-        .background(Color(.systemBackground))
+        .background(Palette.canvas)
     }
 
     private var metaRow: some View {
@@ -88,7 +88,7 @@ struct ComposerBar: View {
                         Text(model.modelLabel)
                             .font(.system(size: Design.Interface.bodySize))
                             .lineLimit(1)
-                        Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
+                        WebUIIcon(name: "ChevronDown", size: 10)
                     }
                     .foregroundStyle(.primary)
                     .frame(minHeight: Design.minimumTarget)
@@ -99,7 +99,7 @@ struct ComposerBar: View {
             }
             .padding(.horizontal, 8)
             .background(
-                Capsule().fill(Color(.secondarySystemBackground))
+                Capsule().fill(Palette.secondarySurface)
             )
         }
     }
@@ -108,19 +108,20 @@ struct ComposerBar: View {
         model.primaryState(recording: voice.phase == .recording)
     }
 
-    private func primarySymbol(_ state: ComposerViewModel.PrimaryState) -> String {
+    /// The WebUI's own glyphs, not SF Symbols: the composer's stop and send are the buttons
+    /// the browser draws (`product-icons.tsx`).
+    private func primaryGlyph(_ state: ComposerViewModel.PrimaryState) -> String {
         switch state {
-        case .voice: "mic"
-        case .send: "arrow.up"
-        case .stop: "stop.fill"
+        case .voice: "Voice"
+        case .send: "Send"
+        case .stop: "Stop"
         }
     }
 
     private var field: some View {
         HStack(alignment: .bottom, spacing: 8) {
             Button(action: onAttach) {
-                Image(systemName: "paperclip")
-                    .font(.system(size: 15))
+                WebUIIcon(name: "Attach", size: 18)
                     .frame(width: Design.minimumTarget, height: Design.minimumTarget)
                     .contentShape(Rectangle())
                     .foregroundStyle(.secondary)
@@ -141,7 +142,7 @@ struct ComposerBar: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: Design.Radius.field, style: .continuous)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(Palette.secondarySurface)
             )
             .accessibilityIdentifier("chat.composer")
             .onChange(of: model.draft) { _, _ in
@@ -162,11 +163,10 @@ struct ComposerBar: View {
             }
             Task { await primaryAction() }
         } label: {
-            Image(systemName: primarySymbol(primary))
-                .font(.system(size: 15, weight: .bold))
+            WebUIIcon(name: primaryGlyph(primary), size: 19)
                 .frame(width: Design.minimumTarget, height: Design.minimumTarget)
-                .background(Color.primary, in: Circle())
-                .foregroundStyle(Color(.systemBackground))
+                .background(Palette.primary, in: Circle())
+                .foregroundStyle(Palette.onPrimary)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -265,7 +265,7 @@ struct QueueChip: View {
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: Design.Radius.field, style: .continuous)
-                .fill(Color(.secondarySystemBackground))
+                .fill(Palette.secondarySurface)
         )
     }
 }
@@ -416,7 +416,7 @@ struct SheetRow: View {
                 }
                 Spacer(minLength: 4)
                 if checked {
-                    Image(systemName: "checkmark").font(.system(size: 12, weight: .semibold))
+                    WebUIIcon(name: "Check", size: 12)
                 }
             }
             .frame(minHeight: Design.minimumTarget)
@@ -441,7 +441,7 @@ struct VoiceMeter: View {
             HStack(spacing: 2) {
                 ForEach(0..<20, id: \.self) { index in
                     Capsule()
-                        .fill(Color.red.opacity(0.7))
+                        .fill(Palette.destructive.opacity(0.7))
                         .frame(width: 2, height: barHeight(index))
                 }
             }

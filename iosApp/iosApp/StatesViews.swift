@@ -43,8 +43,7 @@ struct ConnectionBannerView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 12))
+            WebUIIcon(name: "Warning", size: 13)
             Text(banner.text)
                 .font(.system(size: Design.Interface.captionSize))
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -94,7 +93,7 @@ struct StateRowView: View {
         .padding(.vertical, 9)
         .background(
             RoundedRectangle(cornerRadius: Design.Radius.field, style: .continuous)
-                .fill(row.isError ? Color.red.opacity(0.1) : Color(.secondarySystemBackground))
+                .fill(row.isError ? Color.red.opacity(0.1) : Palette.secondarySurface)
         )
     }
 }
@@ -126,8 +125,7 @@ struct SubagentDockView: View {
     var body: some View {
         ForEach(rows) { row in
             HStack(spacing: 9) {
-                Image(systemName: "person.2")
-                    .font(.system(size: 13))
+                WebUIIcon(name: "FullAccess", size: 14)
                     .frame(width: 24, height: 24)
                     .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                     .foregroundStyle(.secondary)
@@ -143,8 +141,7 @@ struct SubagentDockView: View {
                 Button {
                     onStop(row.id)
                 } label: {
-                    Image(systemName: "stop.fill")
-                        .font(.system(size: 11))
+                    WebUIIcon(name: "Stop", size: 12)
                         .frame(width: Design.minimumTarget, height: Design.minimumTarget)
                         .contentShape(Rectangle())
                 }
@@ -156,7 +153,7 @@ struct SubagentDockView: View {
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: Design.Radius.field, style: .continuous)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(Palette.secondarySurface)
             )
         }
     }
@@ -171,7 +168,7 @@ struct DeliveryRowView: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "exclamationmark.triangle").font(.system(size: 11))
+            WebUIIcon(name: "Warning", size: 12)
             Text(delivery.title)
                 .font(.system(size: Design.Interface.microSize, weight: .semibold))
                 .accessibilityIdentifier("states.delivery")

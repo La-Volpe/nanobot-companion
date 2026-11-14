@@ -111,7 +111,7 @@ struct ReadingCodeBlock: View {
             .foregroundStyle(.secondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 2)
-            .background(Color(.tertiarySystemBackground))
+            .background(Palette.code)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 8) {
@@ -135,7 +135,7 @@ struct ReadingCodeBlock: View {
                 .padding(.vertical, 10)
             }
         }
-        .background(Color(.secondarySystemBackground))
+        .background(Palette.secondarySurface)
         .clipShape(RoundedRectangle(cornerRadius: Design.Radius.field, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: Design.Radius.field, style: .continuous)
@@ -181,7 +181,7 @@ struct ReadingTableView: View {
                     .padding(.vertical, 6)
             }
         }
-        .background(isHeader ? Color(.secondarySystemBackground) : Color.clear)
+        .background(isHeader ? Palette.secondarySurface : Color.clear)
     }
 
     private func alignment(_ index: Int) -> Alignment {

@@ -44,7 +44,7 @@ struct ChatView: View {
             }
             composerZone
         }
-        .background(Color(.systemBackground))
+        .background(Palette.canvas)
     }
 
     @ViewBuilder
@@ -61,7 +61,7 @@ struct ChatView: View {
                         .padding(.vertical, 9)
                         .background(
                             RoundedRectangle(cornerRadius: Design.Radius.bubble, style: .continuous)
-                                .fill(Color(.secondarySystemBackground))
+                                .fill(Palette.bubble)
                         )
                         .foregroundStyle(.primary)
                     if pending {

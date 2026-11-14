@@ -19,29 +19,28 @@ struct DrawerView: View {
             footer
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(Color(.secondarySystemBackground))
+        .background(Palette.sidebar)
     }
 
     private var brand: some View {
         HStack(spacing: 10) {
-            Circle()
-                .fill(Color.primary)
-                .frame(width: 26, height: 26)
-                .overlay(Text("n").font(.system(size: 15, weight: .bold)).foregroundStyle(Color(.secondarySystemBackground)))
+            NanobotMark(height: 30)
             Text("nanobot")
                 .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Palette.foreground)
             Spacer()
             Button(action: onNewChat) {
-                Image(systemName: "square.and.pencil")
+                WebUIIcon(name: "NewChat", size: 19)
                     .frame(width: Design.minimumTarget, height: Design.minimumTarget)
             }
             .accessibilityIdentifier("drawer.newChat")
             Button(action: onSettings) {
-                Image(systemName: "gearshape")
+                WebUIIcon(name: "Settings", size: 19)
                     .frame(width: Design.minimumTarget, height: Design.minimumTarget)
             }
             .accessibilityIdentifier("drawer.settings")
         }
+        .foregroundStyle(Palette.sidebarForeground)
         .padding(.leading, 16)
         .padding(.trailing, 8)
         .padding(.top, 8)
@@ -49,9 +48,8 @@ struct DrawerView: View {
 
     private var search: some View {
         HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
+            WebUIIcon(name: "Search", size: 14)
+                .foregroundStyle(Palette.mutedForeground)
             TextField("Search sessions", text: $model.searchText)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -60,14 +58,14 @@ struct DrawerView: View {
                 Button {
                     model.searchText = ""
                 } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    WebUIIcon(name: "Close", size: 14).foregroundStyle(Palette.mutedForeground)
                 }
                 .accessibilityIdentifier("drawer.clearSearch")
             }
         }
         .padding(.horizontal, 10)
         .frame(height: 36)
-        .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(Palette.secondarySurface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .padding(.horizontal, 16)
         .padding(.top, 10)
         .padding(.bottom, 10)
@@ -129,13 +127,11 @@ struct DrawerView: View {
             model.showsArchived.toggle()
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: "archivebox")
-                    .font(.system(size: 13))
+                WebUIIcon(name: "Archive", size: 15)
                 Text("Archived")
                     .font(.system(size: 15))
                 Spacer()
-                Image(systemName: model.showsArchived ? "chevron.down" : "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
+                WebUIIcon(name: model.showsArchived ? "ChevronDown" : "ChevronRight", size: 12)
                     .foregroundStyle(.secondary)
             }
             .foregroundStyle(.secondary)
@@ -151,8 +147,7 @@ struct DrawerView: View {
             Divider()
             Button(action: onAutomations) {
                 HStack(spacing: 8) {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 14))
+                    WebUIIcon(name: "Automations", size: 16)
                     Text("Automations")
                         .font(.system(size: 15))
                     Spacer()
