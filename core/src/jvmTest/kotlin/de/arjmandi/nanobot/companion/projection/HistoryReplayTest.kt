@@ -5,9 +5,6 @@ import de.arjmandi.nanobot.companion.wire.FrameCodec
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
 
 /**
  * The parity claim the whole client rests on (plan.md D9, C4.6): history and the live
@@ -23,14 +20,9 @@ class HistoryReplayTest {
                 ThreadReducer.reduce(state, frame, nowMs = 0).state
             }
 
-    private fun replayedState(): ThreadState {
-        val history = Json.parseToJsonElement(File(Fixtures.latest, "history.json").readText()) as JsonObject
-        return (history["events"] as JsonArray)
-            .map { FrameCodec.decode(it.toString()) }
-            .fold(ThreadState(chatId = "UUID-2")) { state, frame ->
-                ThreadReducer.reduce(state, frame, nowMs = 0).state
-            }
-    }
+    /** The public replay the apps and `core-cli watch --verify` use, not a test-only copy. */
+    private fun replayedState(): ThreadState =
+        HistoryReplay.fromPage(File(Fixtures.latest, "history.json").readText(), chatId = "UUID-2")
 
     @Test
     fun replayedHistoryEqualsLiveState() {

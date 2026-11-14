@@ -3,12 +3,18 @@ package de.arjmandi.nanobot.companion.cli
 import de.arjmandi.nanobot.companion.cli.record.RecordCommand
 
 /**
- * The harness. `record` is live from C2.5; the rest arrive with C8.3.
+ * The harness (plan.md C8.3). `record` captures fixtures; the rest drive `:core` against a
+ * live gateway, and two of them are the instruments for G1's soak and transcript-parity items.
  */
 fun main(args: Array<String>) {
     when (args.firstOrNull()) {
         null, "--help", "-h" -> println(usage())
         "record" -> RecordCommand.run(args.drop(1))
+        "connect" -> HarnessCommands.connect(args.drop(1))
+        "sessions" -> HarnessCommands.sessions(args.drop(1))
+        "send" -> HarnessCommands.send(args.drop(1))
+        "watch" -> HarnessCommands.watch(args.drop(1))
+        "soak" -> HarnessCommands.soak(args.drop(1))
         else -> {
             System.err.println("unknown command: ${args[0]} (try --help)")
             kotlin.system.exitProcess(2)
@@ -27,11 +33,17 @@ private fun usage(): String =
                     [--profile .dev/profile.json] [--out core/src/commonTest/resources/fixtures]
                     [--scenario plain|tool|error|failure|all] [--prompt TEXT]
                     [--gateway-rev REV] [--nanobot-src DIR]
+                    [--reads-only]        capture only the HTTP reads into the newest set
 
-    planned (phase C8):
-      connect     bootstrap a gateway and open a socket
-      sessions    list sessions
-      send        send one message and stream the reply
-      watch       follow a chat's frames as plain lines
-      soak        reconnect/attach storm harness
+      connect     bootstrap a gateway, open a socket, print what answered
+      sessions    list the gateway's sessions as plain lines
+      send        send one message and print the settled transcript
+                    [--chat CHAT_ID] [--prompt TEXT]
+      watch       follow one chat and print a plain, diffable transcript
+                    [--chat CHAT_ID] [--prompt TEXT | --prompts "a|b|c"] [--out FILE]
+                    [--verify] [--history-out FILE]    compare with the WebUI's thread page
+      soak        reconnect/send soak harness (plan.md C8.4)
+                    [--sends 200] [--reconnects 50] [--minutes 30] [--prompt TEXT]
+
+    every command takes [--profile .dev/profile.json]
     """.trimIndent()
