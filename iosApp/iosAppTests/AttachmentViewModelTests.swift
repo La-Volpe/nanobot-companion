@@ -97,6 +97,24 @@ struct AttachmentViewModelTests {
         #expect(model.lastRejection != nil)
     }
 
+    /// P13's other half: a card is a promise about the chat it was picked in. The shell used to
+    /// keep one card list across every chat, so a photo uploaded in one chat stayed on screen in
+    /// the next — shown, sent nowhere, and cleared by that chat's own send.
+    @Test func cardsBelongToTheChatTheyWerePickedIn() async {
+        let uploader = FakeUploader()
+        let model = AttachmentViewModel(driver: uploader, limits: limits)
+
+        model.use(uploader, chatId: "chat-a")
+        await model.add(image("in-a.png"))
+        #expect(model.references == ["ref-1"])
+
+        model.use(uploader, chatId: "chat-b")
+        #expect(model.attachments.isEmpty, "the next chat does not inherit a card its send cannot carry")
+
+        model.use(uploader, chatId: "chat-a")
+        #expect(model.references == ["ref-1"], "and going back finds it, because the upload is still pending there")
+    }
+
     @Test func removingACardTakesItBackOut() async {
         let uploader = FakeUploader()
         let model = model(uploader)
