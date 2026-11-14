@@ -71,4 +71,22 @@ class ConnectionStateTest {
         assertEquals("3", state.detail?.substringBefore('/'), "the screen can say which protocol the host wants")
         assertEquals("1", state.detail?.substringAfter('/'), "and which one this app speaks")
     }
+    /**
+     * A failed connect answers with the state a screen renders, not only with the error the
+     * taxonomy was derived from: Swift cannot read the internal `connectionFailure()` mapping
+     * (C8.2), and re-deriving the eight entries in Swift would be a second taxonomy to keep in
+     * step. The result carries both, and they agree.
+     */
+    @Test
+    fun aFailedConnectCarriesTheStateTheScreenRenders() {
+        val error = CoreError.ServerError(status = 503)
+        val failure = error.connectionFailure()
+        val result = ConnectResult.Failed(error = error, failure = failure.failure, detail = failure.detail)
+
+        assertEquals(error, result.error, "the transport's own word is kept for logs and tests")
+        assertEquals(ConnectionFailure.ServerError, result.failure, "the screen switches on the taxonomy")
+        assertEquals("503", result.detail, "and has the one detail its sentence needs")
+        assertTrue(result.failure.retryable, "a 503 is worth trying again")
+    }
+
 }
