@@ -6,6 +6,14 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// `-Pcontract` is the opt-in for the live-gateway tests (plan.md §3.4). Fast runs never see
+// them: every contract test asserts the flag and returns skipped without it.
+tasks.withType<Test>().configureEach {
+    // Presence is the flag: `-Pcontract` alone is the documented invocation, and that sets
+    // the property to an empty string rather than to "true".
+    systemProperty("nanobot.contract", providers.gradleProperty("contract").isPresent.toString())
+}
+
 kotlin {
     // D2: every public symbol is deliberate, because Swift and Compose both consume it.
     explicitApi()
@@ -31,7 +39,7 @@ kotlin {
             // api: CoreDeps and the facade expose CoroutineDispatcher/StateFlow to Swift and Compose.
             api(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
-            implementation(libs.ktor.client.core)
+            api(libs.ktor.client.core)
             implementation(libs.ktor.client.websockets)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.json)
@@ -54,6 +62,8 @@ kotlin {
             // A real WebSocket server in-process, so the frame pump is tested against a socket.
             implementation(libs.ktor.server.test.host)
             implementation(libs.ktor.server.websockets)
+            // The contract tests talk to a real gateway over the JVM engine.
+            implementation(libs.ktor.client.java)
         }
     }
 }
