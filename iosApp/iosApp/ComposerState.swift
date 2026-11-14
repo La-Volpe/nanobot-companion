@@ -100,8 +100,9 @@ enum ComposerSheet: Equatable {
 /// `CoreChat` implements it over a `ChatHandle`; tests and the debug menu answer directly.
 @MainActor
 protocol ComposerDriving: AnyObject {
-    /// Send a prompt on an idle chat. False when the gateway did not take it.
-    func sendPrompt(_ text: String) async -> Bool
+    /// Send a prompt on an idle chat, with the uploads the composer is showing (P13). False when
+    /// the gateway did not take it.
+    func sendPrompt(_ text: String, media: [SentAttachment]) async -> Bool
     /// Queue what was typed while a turn runs (C5.5).
     func enqueue(_ text: String)
     func stop() async
@@ -117,7 +118,7 @@ protocol ComposerDriving: AnyObject {
 /// The composer a screen holds before a gateway is open: it answers nothing.
 @MainActor
 final class NoopComposer: ComposerDriving {
-    func sendPrompt(_ text: String) async -> Bool { false }
+    func sendPrompt(_ text: String, media: [SentAttachment]) async -> Bool { false }
     func enqueue(_ text: String) {}
     func stop() async {}
     func sendQueuedNow() async {}

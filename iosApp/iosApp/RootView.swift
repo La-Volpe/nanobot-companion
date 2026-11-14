@@ -37,8 +37,15 @@ struct RootView: View {
         _connected = State(initialValue: container.startsConnected)
         _chat = StateObject(wrappedValue: ChatViewModel(chat: NoopChat()))
         _activity = StateObject(wrappedValue: ActivityViewModel())
-        _composer = StateObject(wrappedValue: ComposerViewModel(driver: NoopComposer()))
-        _attachments = StateObject(wrappedValue: AttachmentViewModel(driver: NoopAttachments()))
+        // The composer sends what the cards show, so the two models are introduced once here
+        // rather than at the tap (P13).
+        let attachmentModel = AttachmentViewModel(driver: NoopAttachments())
+        _attachments = StateObject(wrappedValue: attachmentModel)
+        _composer = StateObject(wrappedValue: {
+            let model = ComposerViewModel(driver: NoopComposer())
+            model.attach(attachments: attachmentModel)
+            return model
+        }())
         _voice = StateObject(wrappedValue: VoiceViewModel(recording: MicrophoneRecorder(), driver: NoopVoice()))
         let credentials = container.credentials
         _states = StateObject(wrappedValue: StatesViewModel())
@@ -215,7 +222,7 @@ struct RootView: View {
             // The scripted chat answers the composer's commands too, so a tap proves the
             // button rule and the queue without a gateway (I8's debug menu does the same).
             composer.attach(ScriptedComposer(chat: scripted))
-            attachments.use(ScriptedUploader(), clear: true)
+            attachments.use(ScriptedUploader(), chatId: selected?.chatId)
             voice.use(ScriptedVoice(), recording: ScriptedRecorder())
             await scripted.open()
             return
@@ -235,7 +242,7 @@ struct RootView: View {
         driver = live
         chat.attach(driver)
         composer.attach(live)
-        attachments.use(live, clear: false)
+        attachments.use(live, chatId: selected?.chatId)
         voice.use(live)
         await driver.open()
     }

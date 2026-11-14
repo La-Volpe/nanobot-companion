@@ -15,6 +15,12 @@ final class AttachmentViewModel: ObservableObject {
     let limits: UploadLimits
 
     private var driver: AttachmentDriving
+    /// The chat the cards on screen belong to. Nil is the chat being composed before the gateway
+    /// names it, which is why it is a key rather than an optional id.
+    private var chatKey = ""
+    /// Every chat's cards, kept apart: a card names an upload reference that belongs to one chat's
+    /// session, so showing it in another one promises a message that chat cannot carry (P13).
+    private var cardsByChat: [String: [PendingAttachment]] = [:]
     /// Stable, so a card's identity survives the attachment list changing around it.
     private var nextId = 0
 
@@ -34,9 +40,13 @@ final class AttachmentViewModel: ObservableObject {
     }
 
     /// The screen swaps in the chat once a gateway is open, or a scripted uploader in a flow test.
-    func use(_ driver: AttachmentDriving, clear: Bool) {
+    /// Switching chats swaps the cards with it, because each chat keeps its own.
+    func use(_ driver: AttachmentDriving, chatId: String?) {
         self.driver = driver
-        if clear { self.attachments = []; lightbox = nil; lastRejection = nil }
+        chatKey = chatId ?? ""
+        attachments = cardsByChat[chatKey] ?? []
+        lightbox = nil
+        lastRejection = nil
     }
 
     func openSheet() { sheetOpen = true }
@@ -61,6 +71,7 @@ final class AttachmentViewModel: ObservableObject {
                     url: picked.url
                 )
             )
+            cardsByChat[chatKey] = attachments
         case let .rejected(reason):
             lastRejection = reason.copy(limits: limits)
         case .failed:
@@ -70,11 +81,14 @@ final class AttachmentViewModel: ObservableObject {
 
     func remove(id: String) {
         attachments.removeAll { $0.id == id }
+        cardsByChat[chatKey] = attachments
         lightbox = nil
     }
 
+    /// A message this chat's gateway took carries its uploads, so only its cards go.
     func clear() {
         attachments = []
+        cardsByChat[chatKey] = []
         lightbox = nil
     }
 
@@ -90,5 +104,13 @@ final class AttachmentViewModel: ObservableObject {
     /// What the send carries: the references the gateway handed back (C6.6).
     var references: [String] {
         attachments.compactMap(\.reference)
+    }
+
+    /// The same cards as a message names them — reference and file name — so the send can say
+    /// what it is carrying instead of leaving it to a side effect (P13).
+    var uploads: [SentAttachment] {
+        attachments.compactMap { card in
+            card.reference.map { SentAttachment(reference: $0, name: card.name) }
+        }
     }
 }

@@ -19,6 +19,9 @@ final class ComposerViewModel: ObservableObject {
     @Published private(set) var copiedBlockId: String?
 
     private var driver: ComposerDriving
+    /// The cards the composer is showing. They belong to the composer, not to the view: the send
+    /// has to carry them and only a message the gateway took may spend them (P13).
+    private var attachments: AttachmentViewModel?
     /// Injected so a test can hold the confirmation open instead of sleeping through it.
     private let sleep: @Sendable (TimeInterval) async -> Void
 
@@ -38,6 +41,11 @@ final class ComposerViewModel: ObservableObject {
     /// The screen swaps the driver once a gateway is open and the chat has an id.
     func attach(_ driver: ComposerDriving) {
         self.driver = driver
+    }
+
+    /// The upload cards, once the shell has built them.
+    func attach(attachments: AttachmentViewModel) {
+        self.attachments = attachments
     }
 
     var canSend: Bool { !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -109,11 +117,15 @@ final class ComposerViewModel: ObservableObject {
         }
         draft = ""
         lastRefusal = nil
-        let accepted = await driver.sendPrompt(text)
+        let accepted = await driver.sendPrompt(text, media: attachments?.uploads ?? [])
         if !accepted {
-            // A refused send gives the text back rather than losing it (C6.1).
+            // A refused send gives the text back rather than losing it (C6.1), and its uploads
+            // stay on screen to go with the next try.
             draft = text
             lastRefusal = "The gateway did not take that message."
+        } else {
+            // A message the gateway took carries the uploads, so the cards go with it (D49).
+            attachments?.clear()
         }
     }
 

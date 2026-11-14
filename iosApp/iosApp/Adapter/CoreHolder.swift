@@ -244,8 +244,20 @@ final class CoreChat: ChatDriving {
     }
 
     func send(_ text: String) async -> String? {
+        await sendDraft(text: text, media: [])
+    }
+
+    /// The one place an outbound draft is built, so a caller that has uploads says so and a
+    /// caller that has none says that instead (P13: the composer's cards used to be drawn and
+    /// then left out of this draft).
+    private func sendDraft(text: String, media: [SentAttachment]) async -> String? {
+        let draft = OutboundDraft(
+            text: text,
+            quote: nil,
+            media: media.map { AttachmentRef(reference: $0.reference, name: $0.name) }
+        )
         do {
-            let receipt = try await handle.send(draft: OutboundDraft(text: text, quote: nil, media: []))
+            let receipt = try await handle.send(draft: draft)
             if let accepted = receipt as? SendReceiptAccepted { return accepted.turnId }
             return nil
         } catch {
@@ -489,8 +501,8 @@ final class CoreGateway: GatewayConnecting {
 
 extension CoreChat: ComposerDriving {
 
-    func sendPrompt(_ text: String) async -> Bool {
-        await send(text) != nil
+    func sendPrompt(_ text: String, media: [SentAttachment]) async -> Bool {
+        await sendDraft(text: text, media: media) != nil
     }
 
     func enqueue(_ text: String) {

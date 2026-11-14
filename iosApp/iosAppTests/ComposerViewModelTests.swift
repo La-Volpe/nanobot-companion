@@ -20,7 +20,7 @@ struct ComposerViewModelTests {
         var paletteRows: PaletteSheet?
         var sendNowSucceeds = true
 
-        func sendPrompt(_ text: String) async -> Bool {
+        func sendPrompt(_ text: String, media: [SentAttachment]) async -> Bool {
             sent.append(text)
             return true
         }

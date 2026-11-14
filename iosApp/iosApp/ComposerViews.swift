@@ -221,12 +221,7 @@ struct ComposerBar: View {
             await applyTranscript()
             return
         }
-        if primary == .send {
-            await model.primaryAction()
-            // A message the core took carries the uploads and clears them; the cards go with it.
-            if model.lastRefusal == nil { attachments.clear() }
-            return
-        }
+        // Stop, queue and send are all the model's; so is what the send carries.
         await model.primaryAction()
     }
 

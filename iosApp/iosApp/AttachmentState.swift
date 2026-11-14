@@ -46,6 +46,13 @@ enum AttachmentKind: Equatable {
     }
 }
 
+/// One upload as a message names it (C6.6): the gateway's reference and the file's name, never
+/// the bytes. The composer hands these to the send, so what it draws is what goes out.
+struct SentAttachment: Equatable {
+    let reference: String
+    let name: String?
+}
+
 /// One attachment in the composer, as a card.
 struct PendingAttachment: Identifiable, Equatable {
     let id: String

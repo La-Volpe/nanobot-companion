@@ -27,3 +27,6 @@ captures/
 .pi/beat-log.md
 .pi/subagent-schedules/
 .pi/current-run
+
+# Python bytecode from the parity instruments
+__pycache__/

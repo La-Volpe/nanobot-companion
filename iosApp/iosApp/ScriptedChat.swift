@@ -112,7 +112,7 @@ final class ScriptedComposer: ComposerDriving {
         self.chat = chat
     }
 
-    func sendPrompt(_ text: String) async -> Bool {
+    func sendPrompt(_ text: String, media: [SentAttachment]) async -> Bool {
         await chat.send(text) != nil
     }
 
