@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>nanobot Companion records a voice note only while you hold the microphone, and sends it to your gateway to be transcribed.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>nanobot Companion attaches the photo or video you pick to your message; nothing is read from your library otherwise.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>OpenSans-variable.ttf</string>
