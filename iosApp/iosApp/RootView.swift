@@ -72,6 +72,20 @@ struct RootView: View {
                 ConnectView(model: connect) { connected = true }
             }
         }
+        // The store is the reason a second launch is not a second setup: an address and a key
+        // that are already on the device reconnect before the connect screen can show. A launch
+        // that carries its own key (the live instrument) has already been connected by then.
+        .task {
+            guard !connected, container.prefilledKey == nil else { return }
+            let address = container.credentials.address ?? ""
+            guard !address.isEmpty, container.credentials.storedKey?.isEmpty == false else { return }
+            await connect.connect()
+            if case .connected = connect.phase { connected = true }
+        }
+        // A drawer you can only reach by pressing a button is a drawer on a desktop. A drag
+        // from the leading edge opens it, a drag across it closes it, and the release decides
+        // which way it settles.
+        .simultaneousGesture(drawerSwipe)
         .onChange(of: holder.sessions) { _, rows in
             drawer.update(rows: rows, loaded: holder.sessionsLoaded)
         }
@@ -257,6 +271,24 @@ struct RootView: View {
     private static func nowMs() -> Int64 {
         Int64(Date().timeIntervalSince1970 * 1000)
     }
+
+    /// Swipe to open and to close. The open half only fires from the leading edge, so a
+    /// horizontal drag on a long answer still scrolls the thread instead of opening a drawer.
+    private var drawerSwipe: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onEnded { value in
+                let horizontal = value.translation.width
+                guard abs(horizontal) > abs(value.translation.height) else { return }
+                if drawerOpen, horizontal < -50 {
+                    closeDrawer()
+                } else if !drawerOpen, value.startLocation.x <= edgeSwipeZone, horizontal > 50 {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { drawerOpen = true }
+                }
+            }
+    }
+
+    /// How far from the edge a drag may start and still count as "open the drawer".
+    private var edgeSwipeZone: CGFloat { 24 }
 
     private func closeDrawer() {
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { drawerOpen = false }
