@@ -130,3 +130,41 @@ public data class ComposerState(
     /** `ready.limits`: the composer validates against the gateway's own numbers (C6.1, C6.6). */
     public val limits: Limits? = null,
 )
+
+/**
+ * The five things an automation row can do (plan.md C7.2). There is no sixth: an automation
+ * is created by asking the agent, and the gateway has no create endpoint to call — so a
+ * "new automation" button belongs in the composer, not here (design README).
+ */
+public enum class AutomationActionKind(public val wire: String) {
+    Enable("automation.enable"),
+    Disable("automation.disable"),
+    Run("automation.run"),
+    Delete("automation.delete"),
+    ChangeChat("automation.change_chat"),
+}
+
+/**
+ * Re-binding an automation to another chat. The revision is the gateway's own optimistic
+ * guard (`binding_revision`): a stale one refuses with `automation_chat_conflict` instead of
+ * silently moving a job two clients both edited.
+ */
+public data class AutomationChatChange(
+    public val targetId: String,
+    public val revision: String,
+    public val message: String,
+)
+
+/** What one action did, typed per action so the platform can pick the sentence (C7.2). */
+public sealed interface AutomationActionResult {
+    public data class Done(public val jobs: List<de.arjmandi.nanobot.companion.wire.AutomationJob>) : AutomationActionResult
+
+    /** The gateway's own status and words: 403 protected, 409 busy, 404 gone, 400 invalid. */
+    public data class Refused(public val status: Int, public val message: String?) : AutomationActionResult
+
+    /** The mutation was accepted and answers with no list: a recovery decision, not a job page. */
+    public data object Accepted : AutomationActionResult
+
+    public data object NotConnected : AutomationActionResult
+    public data object Timeout : AutomationActionResult
+}

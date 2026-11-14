@@ -1,6 +1,8 @@
 package de.arjmandi.nanobot.companion.facade
 
 import de.arjmandi.nanobot.companion.projection.Effect
+import de.arjmandi.nanobot.companion.projection.Notice
+import de.arjmandi.nanobot.companion.projection.ThreadReducer
 import de.arjmandi.nanobot.companion.projection.ThreadState
 import de.arjmandi.nanobot.companion.projection.TurnControl
 import de.arjmandi.nanobot.companion.projection.TurnControlState
@@ -14,6 +16,9 @@ import kotlinx.coroutines.flow.StateFlow
 /** The gateway's own transcription bounds, from `transcription_ws.py` (C6.5). */
 internal const val MIN_TRANSCRIPTION_MS: Long = 650
 internal const val MAX_TRANSCRIPTION_MS: Long = 120_000
+
+/** A request the caller got wrong, before any round trip: the gateway's own word for it. */
+private const val BAD_REQUEST: Int = 400
 
 /**
  * One chat (plan.md §2). The handle is a view over a [ChatSession] the core owns, so two
@@ -82,6 +87,30 @@ public class ChatHandle internal constructor(
         if (durationMs > MAX_TRANSCRIPTION_MS) return TranscriptionResult.Rejected(TranscriptionRejection.TooLong)
         val chatId = session.id.value ?: return TranscriptionResult.Rejected(TranscriptionRejection.NotConnected)
         return core.transcribe(chatId, session, pcm, durationMs)
+    }
+
+    /**
+     * The recovery notice's two buttons (C7.3). Both are socket mutations carrying the
+     * recovery id, and the gateway's refusal is what comes back — a refused continue leaves
+     * the decision on screen rather than pretending the task resumed.
+     */
+    public suspend fun continueRecovery(): AutomationActionResult {
+        val chatId = session.id.value ?: return AutomationActionResult.NotConnected
+        val notice = session.thread.value.notices.filterIsInstance<Notice.Recovery>().firstOrNull()
+            ?: return AutomationActionResult.Refused(BAD_REQUEST, "no_recovery_notice")
+        return core.recoveryAction(chatId, notice.id, "recovery.continue")
+    }
+
+    public suspend fun dismissRecovery(): AutomationActionResult {
+        val chatId = session.id.value ?: return AutomationActionResult.NotConnected
+        val notice = session.thread.value.notices.filterIsInstance<Notice.Recovery>().firstOrNull()
+            ?: return AutomationActionResult.Refused(BAD_REQUEST, "no_recovery_notice")
+        return core.recoveryAction(chatId, notice.id, "recovery.dismiss")
+    }
+
+    /** A notice the client owns — the sandbox warning — goes away when the user says so. */
+    public fun dismissNotice(id: String) {
+        session.thread.value = ThreadReducer.dismiss(session.thread.value, id)
     }
 
     /** Stop is the text `/stop` on the running turn; the gateway has no stop frame (C5.5). */
