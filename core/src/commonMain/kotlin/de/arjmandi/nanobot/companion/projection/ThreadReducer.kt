@@ -14,11 +14,13 @@ import de.arjmandi.nanobot.companion.wire.RetryStatusFrame
 import de.arjmandi.nanobot.companion.wire.ReasoningEndFrame
 import de.arjmandi.nanobot.companion.wire.SessionUpdatedFrame
 import de.arjmandi.nanobot.companion.wire.StreamEndFrame
+import de.arjmandi.nanobot.companion.wire.SubagentTaskFrame
 import de.arjmandi.nanobot.companion.wire.TurnEndFrame
 import de.arjmandi.nanobot.companion.wire.TurnModelUpdatedFrame
 import de.arjmandi.nanobot.companion.wire.UnknownFrame
 import de.arjmandi.nanobot.companion.wire.UserMessageFrame
 import de.arjmandi.nanobot.companion.wire.child
+import de.arjmandi.nanobot.companion.wire.decimal
 import de.arjmandi.nanobot.companion.wire.flag
 import de.arjmandi.nanobot.companion.wire.integer
 import de.arjmandi.nanobot.companion.wire.text
@@ -40,6 +42,7 @@ internal object ThreadReducer {
         is UserMessageFrame -> addPrompt(state, frame)
         is MessageFrame -> addToolEvents(state, frame)
         is FileEditFrame -> addFileEdits(state, frame)
+        is SubagentTaskFrame -> subagentTask(state, frame)
         is MessageAcceptedFrame -> settleOptimisticPrompt(state, frame)
         is TurnEndFrame -> settleTurn(state, frame)
         is TurnModelUpdatedFrame -> {
@@ -221,6 +224,31 @@ internal object ThreadReducer {
             )
         }
         return upsertActivity(state, frame.turnId, items)
+    }
+
+    /**
+     * One subtask snapshot (`subagent_status.py:43-70`). The gateway repeats the whole task on
+     * every revision and stops sending once it no longer owns it, so a row is replaced in place
+     * by its id and a task with no id cannot be shown at all.
+     */
+    private fun subagentTask(state: ThreadState, frame: SubagentTaskFrame): ThreadState {
+        val task = frame.task ?: return state
+        val id = task.text("task_id")?.takeUnless { it.isBlank() } ?: return state
+        val subagent = Subagent(
+            id = id,
+            label = task.text("label")?.takeUnless { it.isBlank() }
+                ?: task.text("task_description")?.takeUnless { it.isBlank() }
+                ?: SUBCATEGORY_FALLBACK,
+            description = task.text("task_description"),
+            state = task.text("state") ?: "queued",
+            iteration = task.integer("iteration") ?: 0,
+            elapsedSeconds = task.decimal("elapsed_seconds") ?: 0.0,
+            originTurnId = task.text("origin_turn_id"),
+        )
+        val existing = state.subagents.indexOfFirst { it.id == id }
+        val merged = state.subagents.toMutableList()
+        if (existing >= 0) merged[existing] = subagent else merged += subagent
+        return state.copy(subagents = merged.toList())
     }
 
     /**
@@ -440,6 +468,9 @@ internal object ThreadReducer {
     }
 
     private fun ErrorFrame.turnIdForNotice(): String = "error-$detail"
+
+    /** A subtask the gateway labelled with nothing still needs a name in the dock. */
+    private const val SUBCATEGORY_FALLBACK = "Subtask"
 
     private const val NEW_STREAM = "stream-unknown"
     private const val REASONING_STREAM = "reasoning"

@@ -16,6 +16,8 @@ public data class ThreadState(
     public val contextWindowTokens: Int? = null,
     public val modelPreset: String? = null,
     public val modelName: String? = null,
+    /** The subtasks this chat's agent is running (`subagent_task`, C7.2's dock in I8). */
+    public val subagents: List<Subagent> = emptyList(),
 ) {
     public val activeTurn: Turn? get() = turns.lastOrNull { it.id == activeTurnId }
 
@@ -85,6 +87,28 @@ public sealed interface ActivityItem {
 }
 
 public enum class ToolStatus { Running, Done, Failed }
+
+/**
+ * One subtask the parent agent owns (`nanobot/agent/subagent_status.py`). The gateway sends the
+ * whole snapshot on every revision and stops once it no longer owns the task, so this is a
+ * value the dock replaces rather than a log it appends to.
+ */
+public data class Subagent(
+    public val id: String,
+    public val label: String,
+    public val description: String?,
+    public val state: String,
+    public val iteration: Int,
+    public val elapsedSeconds: Double,
+    public val originTurnId: String?,
+) {
+    /** `queued`, `running` and `stopping` are the states the dock shows; the rest are settled. */
+    public val isActive: Boolean get() = state in ACTIVE_STATES
+
+    internal companion object {
+        val ACTIVE_STATES: Set<String> = setOf("queued", "running", "stopping")
+    }
+}
 
 public enum class TurnStatus { Running, Complete, Failed }
 
