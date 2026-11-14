@@ -202,4 +202,20 @@
     <string name="states_debug_failures">The eight failures</string>
     <string name="states_debug_chats">Chat states</string>
     <string name="states_debug_clear">Clear every injected state</string>
+    <!-- Automations (A7): the page lists, runs, pauses and deletes; the agent creates. -->
+    <string name="automations_title">Automations</string>
+    <string name="automations_back">Back</string>
+    <string name="automations_group">Scheduled</string>
+    <string name="automations_empty">No automations yet. Ask nanobot in a chat and it schedules one.</string>
+    <string name="automations_help">nanobot creates these when you ask in a chat. This page lists, runs, pauses and deletes them; it does not invent schedules behind your back.</string>
+    <string name="automations_ask">Ask nanobot to create one</string>
+    <string name="automations_run_now">Run now</string>
+    <string name="automations_pause">Pause</string>
+    <string name="automations_resume">Resume</string>
+    <string name="automations_delete">Delete automation</string>
+    <string name="automations_delete_title">Delete this automation?</string>
+    <string name="automations_delete_body">“%1$s” and its run history are removed from the gateway.</string>
+    <string name="automations_delete_confirm">Delete</string>
+    <string name="automations_cancel">Cancel</string>
+    <string name="automations_system">System</string>
 </resources>

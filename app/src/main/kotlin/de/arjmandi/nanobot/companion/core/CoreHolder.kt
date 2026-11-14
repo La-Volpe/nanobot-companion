@@ -108,6 +108,32 @@ class CoreHolder(
         )
     }
 
+    /** Whether the last automations read failed, so an empty page can tell "none" from "no answer". */
+    var automationsReadFailed: Boolean = false
+        private set
+
+    /** The automations page's read (A7). */
+    suspend fun refreshAutomations() {
+        val core = stack?.core ?: run {
+            automationsReadFailed = true
+            return
+        }
+        automationsReadFailed = runCatching { core.refreshAutomations() }.getOrNull() != null
+    }
+
+    /** The jobs the core last read. */
+    val automationJobs: List<de.arjmandi.nanobot.companion.wire.AutomationJob>
+        get() = stack?.core?.automations?.value?.jobs ?: emptyList()
+
+    /** One automation action, over the same socket the thread uses. */
+    suspend fun runAutomation(
+        id: String,
+        action: de.arjmandi.nanobot.companion.facade.AutomationActionKind,
+    ): de.arjmandi.nanobot.companion.facade.AutomationActionResult {
+        val core = stack?.core ?: return de.arjmandi.nanobot.companion.facade.AutomationActionResult.NotConnected
+        return core.runAutomation(id, action, null)
+    }
+
     /** Settings → Overview, from the same read the model sheet uses (C7.1). No uptime: there is none. */
     suspend fun settingsSnapshot(): de.arjmandi.nanobot.companion.settings.SettingsSnapshot {
         val core = stack?.core ?: return de.arjmandi.nanobot.companion.settings.SettingsSnapshot()

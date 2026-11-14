@@ -11,6 +11,8 @@ import de.arjmandi.nanobot.companion.composer.EmptyComposerDriver
 import de.arjmandi.nanobot.companion.core.ChatSession
 import de.arjmandi.nanobot.companion.core.CoreHolder
 import de.arjmandi.nanobot.companion.core.SessionSummary
+import de.arjmandi.nanobot.companion.automations.AutomationsViewModel
+import de.arjmandi.nanobot.companion.automations.CoreAutomations
 import de.arjmandi.nanobot.companion.drawer.DrawerViewModel
 import de.arjmandi.nanobot.companion.settings.SettingsViewModel
 import de.arjmandi.nanobot.companion.states.ConnectionStatus
@@ -47,6 +49,12 @@ class MainViewModel(
     var settingsOpen by mutableStateOf(false)
         private set
 
+    /** The automations page (A7): its own screen, opened from the drawer's pinned row. */
+    var automationsOpen by mutableStateOf(false)
+        private set
+
+    val automations: AutomationsViewModel by lazy { AutomationsViewModel(CoreAutomations(holder)) }
+
     /** The DEBUG menu (A8): reachable in a debug build only, and it injects the state objects. */
     var debugOpen by mutableStateOf(false)
         private set
@@ -79,6 +87,24 @@ class MainViewModel(
 
     fun attachSettings(settings: SettingsViewModel) {
         this.settings = settings
+    }
+
+    fun openAutomations() {
+        drawerOpen = false
+        automationsOpen = true
+    }
+
+    fun closeAutomations() {
+        automationsOpen = false
+    }
+
+    /**
+     * The design's one way out of the page: the agent creates automations, so the page hands the
+     * user a prompt in the composer rather than a form.
+     */
+    fun askNanobotForAutomation() {
+        automationsOpen = false
+        chat?.composer?.draft = "Create an automation that "
     }
 
     fun openSettings() {
