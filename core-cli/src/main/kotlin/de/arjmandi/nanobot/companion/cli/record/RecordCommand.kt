@@ -1,0 +1,85 @@
+package de.arjmandi.nanobot.companion.cli.record
+
+import java.io.File
+import kotlin.system.exitProcess
+
+/**
+ * `core-cli record [--profile PATH] [--out DIR] [--prompt TEXT] [--gateway-rev REV]
+ * [--nanobot-src DIR]`
+ *
+ * The provenance header the plan asks for is `manifest.json`: a JSON file cannot
+ * carry a comment, and a sidecar is what the codec reads anyway.
+ */
+internal object RecordCommand {
+
+    private const val DEFAULT_PROMPT = "Reply with exactly: pong"
+
+    fun run(args: List<String>) {
+        val flags = parse(args)
+        val repo = repoRoot()
+        val profileFile = File(flags["profile"] ?: File(repo, ".dev/profile.json").path)
+        if (!profileFile.isFile) {
+            fail("no profile at $profileFile; start the gateway with tools/nanobot-dev.sh start")
+        }
+        val nanobotSrc = File(flags["nanobot-src"] ?: System.getProperty("user.home") + "/Dev/nanobot")
+        val commit = flags["gateway-rev"] ?: gitRevision(nanobotSrc)
+            ?: fail("cannot read the gateway revision from $nanobotSrc; pass --gateway-rev <sha>")
+
+        val recorder = Recorder(
+            profile = GatewayProfile.read(profileFile.readText()),
+            outRoot = File(flags["out"] ?: File(repo, "core/src/commonTest/resources/fixtures").path),
+            prompt = flags["prompt"] ?: DEFAULT_PROMPT,
+            gatewayCommit = commit,
+            homeDir = System.getProperty("user.home"),
+        )
+
+        val set = try {
+            recorder.run()
+        } catch (failure: Exception) {
+            fail("recording failed: ${failure.message}")
+        }
+        println("recorded ${set.path}")
+        File(set, "ws").listFiles().orEmpty().sortedBy { it.name }.forEach { println("  ws/${it.name}") }
+    }
+
+    private fun parse(args: List<String>): Map<String, String> {
+        val flags = mutableMapOf<String, String>()
+        var index = 0
+        while (index < args.size) {
+            val key = args[index]
+            if (!key.startsWith("--")) fail("unexpected argument: $key")
+            val value = args.getOrNull(index + 1) ?: fail("$key needs a value")
+            flags[key.removePrefix("--")] = value
+            index += 2
+        }
+        return flags
+    }
+
+    private fun gitRevision(nanobotSrc: File): String? {
+        if (!nanobotSrc.isDirectory) return null
+        return try {
+            val process = ProcessBuilder("git", "-C", nanobotSrc.path, "rev-parse", "--short", "HEAD")
+                .redirectErrorStream(true)
+                .start()
+            process.inputStream.bufferedReader().readText().trim()
+                .takeIf { process.waitFor() == 0 && it.isNotEmpty() }
+        } catch (missingGit: java.io.IOException) {
+            null
+        }
+    }
+
+    /** Gradle runs :core-cli from the root project, but a run from any subdirectory should work. */
+    private fun repoRoot(): File {
+        var dir: File? = File(System.getProperty("user.dir")).absoluteFile
+        while (dir != null) {
+            if (File(dir, "settings.gradle.kts").isFile) return dir
+            dir = dir.parentFile
+        }
+        return File(System.getProperty("user.dir")).absoluteFile
+    }
+
+    private fun fail(message: String): Nothing {
+        System.err.println("record: $message")
+        exitProcess(1)
+    }
+}

@@ -1,0 +1,1 @@
+{"event":"delta","chat_id":"UUID-2","text":"pong","stream_id":"stream-1","response_sources":[{"provider":"ollama","model":"deepseek-v4.1-flash:cloud","preset":"primary","fallback":false}],"response_input_ids":["user:turn-1"],"turn_id":"turn-1","turn_phase":"answer","turn_seq":3}

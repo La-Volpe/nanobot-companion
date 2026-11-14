@@ -20,6 +20,12 @@ application {
 dependencies {
     implementation(project(":core"))
     implementation(libs.kotlinx.coroutines.core)
+    // The recorder is a harness, not the library: it reads wire JSON directly and
+    // talks to the gateway itself so it can capture frames before :core can.
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.websockets)
+    implementation(libs.ktor.client.java)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
 }
