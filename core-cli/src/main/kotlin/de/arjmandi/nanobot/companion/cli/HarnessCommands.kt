@@ -47,7 +47,12 @@ internal object HarnessCommands {
         Harness.open(profile(flags)).use { harness ->
             val handle = if (flags["chat"] == null) harness.connect() else {
                 harness.connect()
-                harness.chat(flags["chat"])
+                harness.chat(flags["chat"]).also { named ->
+                    // A named chat has to be opened, not just bound: `chat(id)` only registers a
+                    // handle, and the stored turns arrive from the thread page that `open()` reads
+                    // (D46). Without this the transcript of an existing chat is empty.
+                    named.open()
+                }
             }
             when (val receipt = handle.send(OutboundDraft(text = prompt))) {
                 is SendReceipt.Rejected -> throw HarnessError("send rejected: ${receipt.reason}")
@@ -71,7 +76,12 @@ internal object HarnessCommands {
         Harness.open(profile(flags)).use { harness ->
             val handle = if (flags["chat"] == null) harness.connect() else {
                 harness.connect()
-                harness.chat(flags["chat"])
+                harness.chat(flags["chat"]).also { named ->
+                    // A named chat has to be opened, not just bound: `chat(id)` only registers a
+                    // handle, and the stored turns arrive from the thread page that `open()` reads
+                    // (D46). Without this the transcript of an existing chat is empty.
+                    named.open()
+                }
             }
             for (prompt in prompts) {
                 when (val receipt = handle.send(OutboundDraft(text = prompt))) {
