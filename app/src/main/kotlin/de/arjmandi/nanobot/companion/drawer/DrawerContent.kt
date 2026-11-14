@@ -1,7 +1,9 @@
 package de.arjmandi.nanobot.companion.drawer
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,15 +97,14 @@ private fun Brand(onNewChat: () -> Unit, onSettings: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "n",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier
-                    .size(26.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape)
-                    .padding(6.dp),
+            // nanobot's mark, day art in light mode and the sleeping-cap variant in dark: the
+            // disc with an "n" in it was a placeholder, not the brand.
+            Image(
+                painter = painterResource(
+                    if (isSystemInDarkTheme()) R.drawable.nanobot_mark_night else R.drawable.nanobot_mark
+                ),
+                contentDescription = null,
+                modifier = Modifier.size(26.dp),
             )
             Text(
                 text = stringResource(R.string.drawer_brand),

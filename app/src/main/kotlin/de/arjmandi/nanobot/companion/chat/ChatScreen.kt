@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -45,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -66,7 +68,6 @@ import de.arjmandi.nanobot.companion.states.ConnectionBannerRow
 import de.arjmandi.nanobot.companion.states.GoalStripRow
 import de.arjmandi.nanobot.companion.states.StateRowView
 import de.arjmandi.nanobot.companion.states.SubagentDockRow
-import androidx.compose.material3.TextButton
 import de.arjmandi.nanobot.companion.states.snackbarActionLabel
 import de.arjmandi.nanobot.companion.states.snackbarText
 import de.arjmandi.nanobot.companion.ui.Design
@@ -250,7 +251,12 @@ private fun ComposerZone(
                 onClick = { composer.openAttachSheet() },
                 modifier = Modifier.size(Design.minimumTarget).testTag("composer.attach"),
             ) {
-                Text(text = "\uD83D\uDCCE", fontSize = 15.sp)
+                Icon(
+                    painter = painterResource(R.drawable.ic_webui_attach),
+                    contentDescription = stringResource(R.string.composer_attach_title),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
             }
             OutlinedTextField(
                 value = composer.draft,

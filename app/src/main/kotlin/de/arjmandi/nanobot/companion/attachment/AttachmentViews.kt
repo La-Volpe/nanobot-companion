@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -85,7 +87,12 @@ fun AttachmentStrip(
                                 .testTag("attach.remove"),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(text = "\u00d7", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(
+                                painter = painterResource(R.drawable.ic_webui_close),
+                                contentDescription = stringResource(R.string.attach_remove),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp),
+                            )
                         }
                     }
                 }

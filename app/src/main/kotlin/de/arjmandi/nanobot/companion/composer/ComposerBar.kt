@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -25,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,7 +88,12 @@ fun ComposerMetaRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(text = "\u25be", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(
+                    painter = painterResource(R.drawable.ic_webui_chevron_down),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(10.dp),
+                )
             }
         }
     }
@@ -189,14 +196,18 @@ fun ComposerPrimaryButton(
             .size(Design.minimumTarget)
             .testTag(label),
     ) {
-        Text(
-            text = when (state) {
-                PrimaryState.Voice -> "\u25CF"
-                PrimaryState.Send -> "\u2191"
-                PrimaryState.Stop -> "\u25A0"
-            },
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
+        // The composer's own glyphs from the WebUI (`product-icons.tsx`): voice, send, stop.
+        Icon(
+            painter = painterResource(
+                when (state) {
+                    PrimaryState.Voice -> R.drawable.ic_webui_voice
+                    PrimaryState.Send -> R.drawable.ic_webui_send
+                    PrimaryState.Stop -> R.drawable.ic_webui_stop
+                }
+            ),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.size(20.dp),
         )
     }
 }
@@ -212,7 +223,14 @@ fun SheetRow(title: String, subtitle: String, checked: Boolean, identifier: Stri
             Text(text = title, fontSize = Design.Interface.bodySize, color = MaterialTheme.colorScheme.onSurface)
             Text(text = subtitle, fontSize = Design.Interface.microSize, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (checked) Text(text = "\u2713", fontSize = Design.Interface.captionSize, fontWeight = FontWeight.SemiBold)
+        if (checked) {
+            Icon(
+                painter = painterResource(R.drawable.ic_webui_check),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(Design.Interface.captionSize.value.dp),
+            )
+        }
     }
 }
 

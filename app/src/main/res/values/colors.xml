@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="surface">#FDFCFB</color>
+    <!-- The launcher icon's canvas: the design's warm sidebar tone, the same one the iOS
+         icon uses, so both home screens carry the same tile. -->
+    <color name="ic_launcher_background">#F7F7F6</color>
 </resources>
