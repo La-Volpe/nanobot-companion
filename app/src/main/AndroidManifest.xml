@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- The voice composer records with AudioRecord and sends the WAV to the gateway's own
+         transcription endpoint (A6, C6.5). Nothing is recorded without the user starting it. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <!-- One address on the user's own network: a home gateway, over http or https. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
