@@ -12,16 +12,44 @@ struct RootView: View {
     @State private var drawerOpen = false
     @State private var selected: SessionSummary?
     @StateObject private var chat: ChatViewModel
+    @StateObject private var activity: ActivityViewModel
+    @StateObject private var composer: ComposerViewModel
+    @StateObject private var attachments: AttachmentViewModel
+    @StateObject private var voice: VoiceViewModel
+    @StateObject private var settings: SettingsViewModel
+    @StateObject private var states: StatesViewModel
+    @State private var debugOpen = false
+    @State private var settingsOpen = false
+    @State private var photosPresented = false
+    @State private var filesPresented = false
     @State private var chatDriver: CoreChat?
 
     init(container: Container) {
         self.container = container
         self.holder = container.holder
         _connect = StateObject(
-            wrappedValue: ConnectViewModel(gateway: container.gateway, credentials: container.credentials)
+            wrappedValue: ConnectViewModel(
+                gateway: container.gateway,
+                credentials: container.credentials,
+                prefilledKey: container.prefilledKey
+            )
         )
         _connected = State(initialValue: container.startsConnected)
         _chat = StateObject(wrappedValue: ChatViewModel(chat: NoopChat()))
+        _activity = StateObject(wrappedValue: ActivityViewModel())
+        _composer = StateObject(wrappedValue: ComposerViewModel(driver: NoopComposer()))
+        _attachments = StateObject(wrappedValue: AttachmentViewModel(driver: NoopAttachments()))
+        _voice = StateObject(wrappedValue: VoiceViewModel(recording: MicrophoneRecorder(), driver: NoopVoice()))
+        let credentials = container.credentials
+        _states = StateObject(wrappedValue: StatesViewModel())
+        _settings = StateObject(
+            wrappedValue: SettingsViewModel(
+                credentials: credentials,
+                notifier: LocalNotifier(),
+                defaults: UserDefaults.standard,
+                disconnect: {}
+            )
+        )
         // A scripted launch seeds the rows before the view exists, so the drawer starts from
         // what the holder already has rather than waiting for a change that never comes.
         _drawer = StateObject(
@@ -48,7 +76,15 @@ struct RootView: View {
     private var shell: some View {
         NavigationStack {
             ZStack(alignment: .leading) {
-                ChatView(model: chat)
+                ChatView(
+                    model: chat,
+                    activity: activity,
+                    composer: composer,
+                    attachments: attachments,
+                    voice: voice,
+                    states: states,
+                    onAttach: { composer.openAttachSheet() }
+                )
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
                             Button {
@@ -65,6 +101,61 @@ struct RootView: View {
                         try? await holder.refreshSessions()
                     }
                     .task { await openChat() }
+                    .task {
+                        // Settings → Gateway is the way out: one closure, set once the shell exists.
+                        settings.disconnectGateway = { disconnect() }
+                    }
+                    .environment(\.readingSize, ReadingScale.size(for: settings.readingSize))
+            .onChange(of: holder.connectionStatus) { _, status in
+                        states.update(connection: status, wasConnected: holder.everConnected)
+                    }
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            ConnectionDotView(dot: states.dot)
+                                .padding(.trailing, 4)
+                        }
+                        #if DEBUG
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button {
+                                debugOpen = true
+                            } label: {
+                                Image(systemName: "ladybug")
+                            }
+                            .accessibilityIdentifier("chat.debug")
+                        }
+                        #endif
+                    }
+                    .sheet(isPresented: $debugOpen) {
+                        #if DEBUG
+                        DebugMenu(states: states, composer: composer)
+                        #else
+                        EmptyView()
+                        #endif
+                    }
+                    .sheet(isPresented: $settingsOpen) {
+                        SettingsView(model: settings, holder: holder)
+                    }
+                    // The composer's sheets are one value, so a sheet is either open or not.
+                    .sheet(isPresented: Binding(
+                        get: { composer.sheet != nil },
+                        set: { presented in if !presented { composer.closeSheet() } }
+                    )) {
+                        ComposerSheets(
+                            model: composer,
+                            attachments: attachments,
+                            loadPresets: loadPresets,
+                            onPickPhotos: { photosPresented = true },
+                            onPickFiles: { filesPresented = true }
+                        )
+                        .presentationDetents([.medium, .large])
+                        .presentationDragIndicator(.visible)
+                    }
+                    .attachmentPickers(model: attachments, photos: $photosPresented, files: $filesPresented)
+                    .overlay {
+                        if attachments.lightbox != nil {
+                            LightboxView(model: attachments)
+                        }
+                    }
 
                 if drawerOpen {
                     Color.black.opacity(0.22)
@@ -86,7 +177,10 @@ struct RootView: View {
                             Task { await openChat() }
                         },
                         onAutomations: closeDrawer,
-                        onSettings: closeDrawer
+                        onSettings: {
+                            closeDrawer()
+                            settingsOpen = true
+                        }
                     )
                     .frame(width: 310)
                     .transition(.move(edge: .leading))
@@ -103,22 +197,52 @@ struct RootView: View {
         let driver: ChatDriving
         #if DEBUG
         if container.scripted {
-            let scripted = ScriptedChat { state in chat.update(thread: state) }
+            let scripted = ScriptedChat { state in
+                let thread = state.withMarkdown()
+                chat.update(thread: thread)
+                activity.update(thread: thread)
+                composer.update(streaming: thread.turns.contains { $0.running })
+                states.update(notices: thread.notices, subagents: thread.subagents, nowMs: Self.nowMs())
+            }
             chatDriver = nil
             chat.attach(scripted)
+            // The scripted chat answers the composer's commands too, so a tap proves the
+            // button rule and the queue without a gateway (I8's debug menu does the same).
+            composer.attach(ScriptedComposer(chat: scripted))
+            attachments.use(ScriptedUploader(), clear: true)
+            voice.use(ScriptedVoice(), recording: ScriptedRecorder())
             await scripted.open()
             return
         }
         #endif
         guard let handle = holder.chat(id: selected?.chatId) else { return }
-        let live = CoreChat(holder: holder, handle: handle) { state in
+        let live = CoreChat(holder: holder, handle: handle, onChange: { state in
             chat.update(thread: state)
-        }
+            activity.update(thread: state)
+            composer.update(streaming: state.turns.contains { $0.running })
+            states.update(notices: state.notices, subagents: state.subagents, nowMs: Self.nowMs())
+        }, onComposer: { snapshot in
+            composer.update(snapshot: snapshot)
+        })
         live.start()
         chatDriver = live
         driver = live
         chat.attach(driver)
+        composer.attach(live)
+        attachments.use(live, clear: false)
+        voice.use(live)
         await driver.open()
+    }
+
+    /// The model sheet's list is the gateway's (`/api/settings` → `model_presets`), read when
+    /// the sheet opens rather than at connect.
+    private func loadPresets() async -> [ChatModelPreset] {
+        await holder.refreshSettings()
+        return holder.presets
+    }
+
+    private static func nowMs() -> Int64 {
+        Int64(Date().timeIntervalSince1970 * 1000)
     }
 
     private func closeDrawer() {

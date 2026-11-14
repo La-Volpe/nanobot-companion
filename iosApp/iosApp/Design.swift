@@ -21,6 +21,23 @@ enum Design {
     /// The design's 44 pt rule, used by every tappable row and control.
     static let minimumTarget: CGFloat = 44
 
+    /// The warm orange from the design system: identity only — the mark, the Full-access
+    /// warning and status accents. It is never a primary button and never a glow.
+    static let brand = Color(red: 0.85, green: 0.45, blue: 0.18)
+
+    /// The composer's bottom inset (`--status-h` plus the design's own padding on iOS).
+    static let composerBottomPadding: CGFloat = 12
+
+    /// A press shorter than this arms tap-to-dictate instead of ending the recording
+    /// (artifact: 300 ms on the pointer, while the gateway's own floor is 650 ms).
+    static let tapThresholdMs: Int = 300
+
+    /// The attachment grid's thumbnail (artifact: `.img-thumb` is 124 px wide; the phone's
+    /// 3-up grid with 6 pt gaps works out at 84).
+    enum Attachment {
+        static let thumbSize: CGFloat = 84
+    }
+
     /// The interface scale from the design README (iOS: 15 / 13 / 11). The sizes are constants
     /// so a test can assert the mapping instead of trusting the call site.
     enum Interface {
@@ -33,6 +50,39 @@ enum Design {
         static let micro = Font.system(size: microSize)
         static let title = Font.system(size: 24, weight: .semibold)
         static let label = Font.system(size: microSize, weight: .semibold)
+    }
+
+    /// The activity cluster's numbers (artifact: `.reasoning`, `.tool-row`, `.diff`).
+    enum Activity {
+        /// Reasoning is reading text, two points under the reading scale.
+        static let reasoningSize: CGFloat = 15
+        /// The diff is the smallest type in the app and is monospaced.
+        static let diffSize: CGFloat = 11.5
+        /// A tool row is a row a thumb can land on, like every other row here.
+        static let rowHeight: CGFloat = 44
+
+        /// The design picks the glyph by the tool's name, not by its arguments.
+        static func icon(forTool name: String) -> String {
+            switch name {
+            case "run_command", "exec", "shell": "terminal"
+            case "web_search", "search": "globe"
+            case "edit_file", "write_file", "apply_patch": "doc.text"
+            default: "doc"
+            }
+        }
+    }
+}
+
+/// The reading size the user chose (Settings → Appearance), carried through the environment so
+/// prose, code and the composer follow it and navigation does not.
+private struct ReadingSizeKey: EnvironmentKey {
+    static let defaultValue: CGFloat = ReadingType.size
+}
+
+extension EnvironmentValues {
+    var readingSize: CGFloat {
+        get { self[ReadingSizeKey.self] }
+        set { self[ReadingSizeKey.self] = newValue }
     }
 }
 

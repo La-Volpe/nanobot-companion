@@ -20,16 +20,45 @@ final class KeychainSecrets: SecretStoring {
 final class CoreHolder: ObservableObject {
 
     /// Idle until a gateway is opened, so a view has a connection state before it connects.
-    @Published private(set) var connection: ConnectionState = ConnectionStateIdle.shared
+    @Published private(set) var connection: ConnectionState = ConnectionStateIdle.shared {
+        didSet {
+            connectionStatus = ConnectionStatus(connection)
+            if connectionStatus == .open { everConnected = true }
+        }
+    }
+
+    /// The connection as the states screen draws it (I8), and whether it has ever been open —
+    /// a socket that was up and dropped is "reconnecting", not "disconnected".
+    @Published private(set) var connectionStatus: ConnectionStatus = .idle
+    @Published private(set) var everConnected = false
 
     /// The drawer's rows (I2). A plain Swift value, not a framework type: the screens read this.
     @Published private(set) var sessions: [SessionSummary] = []
     @Published private(set) var sessionsLoaded = false
 
+    /// The `/model` presets the sheet lists (I5), from the settings read the gateway answers.
+    @Published private(set) var presets: [ChatModelPreset] = []
+
+    /// What the two palettes are drawn from; the core maps it, this only keeps the last read.
+    private(set) var paletteCatalog = CoreHolder.emptyPalette
+
+    /// The last settings read, kept so a preset list survives the screen that asked for it.
+    private var settings = CoreHolder.emptySettings {
+        didSet { presets = settings.modelPresets.map(ChatModelPreset.init(preset:)) }
+    }
+
     private var companion: Companion?
     private var subscriptions: [Cancellable] = []
 
     var isReachable: Bool { companion != nil }
+
+    /// The core's own empty values: a Kotlin data class with every field defaulted has no
+    /// no-argument initializer in Swift, and this adapter is the only place that has to know.
+    static let emptySettings = SettingsState(
+        version: nil, environment: nil, modelName: nil, modelPreset: nil, provider: nil,
+        contextWindowTokens: nil, transcription: nil, usage: nil, modelPresets: [], loaded: false
+    )
+    static let emptyPalette = PaletteCatalog(commands: [], sessions: [], apps: [])
 
     /// Opens a stack for a gateway. Called once onboarding has an address, a key, and an
     /// answer for the unverified-certificate switch.
@@ -42,6 +71,8 @@ final class CoreHolder: ObservableObject {
         )
         self.companion = companion
         observe(ObservableState<ConnectionState>(flow: companion.core.connection), into: \.connection)
+        observe(ObservableState<SettingsState>(flow: companion.core.settings), into: \.settings)
+        observe(ObservableState<PaletteCatalog>(flow: companion.core.palette), into: \.paletteCatalog)
         let list = ObservableState<SessionListState>(flow: companion.core.sessions)
         subscriptions.append(
             list.subscribe { [weak self] state in
@@ -66,8 +97,12 @@ final class CoreHolder: ObservableObject {
         companion?.close()
         companion = nil
         connection = ConnectionStateIdle.shared
+        connectionStatus = .idle
+        everConnected = false
         sessions = []
         sessionsLoaded = false
+        settings = CoreHolder.emptySettings
+        paletteCatalog = CoreHolder.emptyPalette
     }
 
     #if DEBUG
@@ -86,6 +121,35 @@ final class CoreHolder: ObservableObject {
 
     func refreshSessions() async throws {
         try await companion?.core.refreshSessions()
+    }
+
+    /// The settings read as Settings → Overview draws it: the same payload the model sheet's
+    /// presets come from, mapped once here.
+    var settingsSnapshot: SettingsViewModel.Snapshot {
+        SettingsViewModel.Snapshot(
+            version: settings.version?.current,
+            commit: settings.version?.commit,
+            os: settings.environment?.os,
+            pythonVersion: settings.environment?.pythonVersion,
+            modelName: settings.modelName,
+            modelPreset: settings.modelPreset,
+            provider: settings.provider,
+            contextWindowTokens: settings.contextWindowTokens.map { Int($0.int32Value) },
+            transcriptionProvider: settings.transcription?.provider,
+            transcriptionModel: settings.transcription?.model,
+            presets: settings.modelPresets.map(\.name)
+        )
+    }
+
+    /// The settings read the model sheet and Settings → Overview both draw from (C6.2, C7.1).
+    func refreshSettings() async {
+        _ = try? await companion?.core.refreshSettings()
+    }
+
+    /// Commands and CLI apps for the palette sheets; the core reads them when a sheet opens
+    /// (C6.4), so this is a read per open, not a read per keystroke.
+    func refreshPaletteReads() async {
+        _ = try? await companion?.core.refreshPalettes()
     }
 
     /// One subscription, kept so `close()` can end it. The bridge delivers on the main queue,
@@ -139,13 +203,21 @@ struct SessionSummary: Identifiable, Equatable {
 final class CoreChat: ChatDriving {
     private let handle: ChatHandle
     private let onChange: (ChatThreadState) -> Void
+    private let onComposer: (ComposerSnapshot) -> Void
     private var subscription: Cancellable?
+    private var composerSubscription: Cancellable?
     private let holder: CoreHolder
 
-    init(holder: CoreHolder, handle: ChatHandle, onChange: @escaping (ChatThreadState) -> Void) {
+    init(
+        holder: CoreHolder,
+        handle: ChatHandle,
+        onChange: @escaping (ChatThreadState) -> Void,
+        onComposer: @escaping (ComposerSnapshot) -> Void = { _ in }
+    ) {
         self.holder = holder
         self.handle = handle
         self.onChange = onChange
+        self.onComposer = onComposer
     }
 
     func start() {
@@ -153,11 +225,18 @@ final class CoreChat: ChatDriving {
         subscription = thread.subscribe { [weak self] state in
             MainActor.assumeIsolated { self?.onChange(ChatThreadState(state: state)) }
         }
+        // The composer's model, ring and queue live on the handle, so they arrive the same way.
+        let composer = ObservableState<ComposerState>(flow: handle.composer)
+        composerSubscription = composer.subscribe { [weak self] state in
+            MainActor.assumeIsolated { self?.onComposer(ComposerSnapshot(state: state)) }
+        }
     }
 
     func stopObserving() {
         subscription?.cancel()
         subscription = nil
+        composerSubscription?.cancel()
+        composerSubscription = nil
     }
 
     func open() async {
@@ -193,10 +272,159 @@ extension ChatThreadState {
                     answer: segments.joined(),
                     // A turn is streaming while it runs and its last segment is still open.
                     answerStreaming: turn.status == TurnStatus.running && segments.last?.closed == false,
-                    running: turn.status == TurnStatus.running
+                    running: turn.status == TurnStatus.running,
+                    activity: turn.activity.compactMap(ChatActivityItem.init(item:)),
+                    startedAtMs: turn.startedAtMs?.int64Value,
+                    blocks: Reading.blocks(turn.answer.text)
                 )
-            }
+            },
+            notices: state.notices.compactMap(ThreadNotice.init(notice:)),
+            subagents: state.subagents.map(SubagentRow.init(subagent:))
         )
+    }
+}
+
+extension ThreadNotice {
+    /// The core's `Notice` is a sealed interface: seven casts, and an unknown one is dropped
+    /// rather than drawn as a blank row.
+    init?(notice: Notice) {
+        if let compaction = notice as? NoticeCompaction {
+            self = .compaction(id: compaction.id, phase: compaction.phase, reason: compaction.reason)
+        } else if let recovery = notice as? NoticeRecovery {
+            self = .recovery(id: recovery.id, status: recovery.status, canContinue: recovery.canContinue, reason: recovery.reason)
+        } else if let retry = notice as? NoticeRetry {
+            self = .retry(
+                id: retry.id,
+                attempt: Int(retry.attempt),
+                maxAttempts: retry.maxAttempts.map { Int($0.int32Value) },
+                errorKind: retry.errorKind,
+                retryAtMs: retry.retryAtMs.map { Int($0.int64Value) }
+            )
+        } else if let goal = notice as? NoticeGoal {
+            self = .goal(id: goal.id, active: goal.active, status: goal.status, summary: goal.summary)
+        } else if let failure = notice as? NoticeFailure {
+            self = .failure(id: failure.id, errorKind: failure.errorKind, message: failure.message)
+        } else if let fallback = notice as? NoticePresetFallback {
+            self = .presetFallback(id: fallback.id, modelName: fallback.modelName)
+        } else if let sandbox = notice as? NoticeSandbox {
+            self = .sandbox(id: sandbox.id, issue: sandbox.issue.name)
+        } else {
+            return nil
+        }
+    }
+}
+
+extension SubagentRow {
+    init(subagent: Subagent) {
+        self.init(
+            id: subagent.id,
+            label: subagent.label,
+            state: subagent.state,
+            iteration: Int(subagent.iteration),
+            elapsedSeconds: subagent.elapsedSeconds
+        )
+    }
+}
+
+extension ConnectionStatus {
+    /// The core's four states plus its failure, as the dot and banner read them.
+    init(_ state: ConnectionState) {
+        switch state {
+        case let open as ConnectionStateOpen:
+            _ = open
+            self = .open
+        case let connecting as ConnectionStateConnecting:
+            _ = connecting
+            self = .connecting
+        case let offline as ConnectionStateOffline:
+            _ = offline
+            self = .offline
+        case let failed as ConnectionStateFailed:
+            self = .failed(ConnectionFailureKind(failure: failed.failure), detail: failed.detail)
+        default:
+            self = .idle
+        }
+    }
+}
+
+extension ConnectionFailureKind {
+    /// The taxonomy, named once more in Swift (D38's lowercased case names).
+    init(failure: ConnectionFailure) {
+        switch failure {
+        case ConnectionFailure.authfailed: self = .authFailed
+        case ConnectionFailure.tlsrejected: self = .tlsRejected
+        case ConnectionFailure.unreachable: self = .unreachable
+        case ConnectionFailure.timeout: self = .timeout
+        case ConnectionFailure.protocoltoonew: self = .protocolTooNew
+        case ConnectionFailure.missingcapability: self = .missingCapability
+        case ConnectionFailure.missingfield: self = .missingField
+        default: self = .serverError
+        }
+    }
+}
+
+/// `ActivityItem` is a sealed interface, so the four cases are four casts and nothing else:
+/// an item this build does not know is dropped rather than drawn as a blank row.
+extension ChatThreadState {
+    /// A thread built in Swift — the DEBUG scripted chat — still gets the core's markdown, so a
+    /// flow test draws the same blocks a live turn does instead of a wall of raw text.
+    func withMarkdown() -> ChatThreadState {
+        var copy = self
+        copy.turns = turns.map { turn in
+            var parsed = turn
+            parsed.blocks = Reading.blocks(turn.answer)
+            return parsed
+        }
+        return copy
+    }
+}
+
+extension ChatActivityItem {
+    init?(item: ActivityItem) {
+        if let reasoning = item as? ActivityItemReasoning {
+            self.init(id: item.id, kind: .reasoning(text: reasoning.text, done: reasoning.done))
+        } else if let tool = item as? ActivityItemTool {
+            self.init(
+                id: item.id,
+                kind: .tool(
+                    name: tool.name,
+                    summary: tool.summary,
+                    status: ToolRunStatus(tool.status),
+                    detail: tool.detail
+                )
+            )
+        } else if let edit = item as? ActivityItemFileEdit {
+            self.init(
+                id: item.id,
+                kind: .fileEdit(
+                    FileEditState(
+                        path: edit.path,
+                        status: ToolRunStatus(edit.status),
+                        added: Int(edit.added),
+                        deleted: Int(edit.deleted),
+                        operation: edit.operation,
+                        diff: edit.diff ?? ""
+                    )
+                )
+            )
+        } else if let search = item as? ActivityItemSearch {
+            self.init(id: item.id, kind: .search(query: search.query, sources: search.sources))
+        } else {
+            return nil
+        }
+    }
+}
+
+private extension ToolRunStatus {
+    /// The core's enum cases arrive as class instances with lowercased Swift names (D38).
+    init(_ status: ToolStatus) {
+        if status == ToolStatus.failed {
+            self = .failed
+        } else if status == ToolStatus.running {
+            self = .running
+        } else {
+            self = .done
+        }
     }
 }
 
@@ -252,6 +480,264 @@ final class CoreGateway: GatewayConnecting {
         case ConnectionFailure.missingcapability: .missingCapability
         case ConnectionFailure.missingfield: .missingField
         default: .serverError
+        }
+    }
+}
+
+
+// MARK: - the composer, as a chat drives it
+
+extension CoreChat: ComposerDriving {
+
+    func sendPrompt(_ text: String) async -> Bool {
+        await send(text) != nil
+    }
+
+    func enqueue(_ text: String) {
+        handle.enqueue(text: text)
+    }
+
+    func sendQueuedNow() async {
+        _ = try? await handle.sendQueuedNow()
+    }
+
+    func discardQueued() {
+        handle.discardQueued()
+    }
+
+    func setModelPreset(_ preset: String) async {
+        try? await handle.setModelPreset(preset: preset)
+    }
+
+    func setWorkspaceScope(_ access: WorkspaceAccess) async {
+        try? await handle.setWorkspaceScope(mode: access == .full ? WorkspaceScope.full : WorkspaceScope.default_)
+    }
+
+    /// The two palettes are the core's rules applied to the reads (`PaletteQuery`, C6.4). The
+    /// read is refreshed when a sheet opens, which is what the WebUI does too.
+    func loadPalette(text: String, cursor: Int) async -> PaletteSheet? {
+        await holder.refreshPaletteReads()
+        guard let state = PaletteQuery.shared.forComposer(
+            catalog: holder.paletteCatalog,
+            text: text,
+            cursor: Int32(cursor)
+        ) else { return nil }
+        return PaletteSheet(state: state)
+    }
+}
+
+extension ComposerSnapshot {
+    /// `core.ComposerState` → what the row draws. The ring's two numbers come from the thread's
+    /// own usage (`turn_end.usage.context_tokens` over `context_window_tokens`, D15.4).
+    init(state: ComposerState) {
+        self.init(
+            modelName: state.modelName,
+            modelPreset: state.modelPreset,
+            contextWindowTokens: state.contextWindowTokens.map { Int($0.int32Value) },
+            usedTokens: state.usage.map { Int($0.contextTokens) },
+            access: state.accessMode == WorkspaceScope.full ? .full : .default,
+            queued: state.queued
+        )
+    }
+}
+
+extension ChatModelPreset {
+    init(preset: ModelPreset) {
+        self.init(
+            name: preset.name,
+            model: preset.model,
+            provider: preset.provider,
+            contextWindowTokens: preset.contextWindowTokens.map { Int($0.int32Value) },
+            active: preset.active,
+            isDefault: preset.isDefault
+        )
+    }
+}
+
+extension PaletteSheet {
+    /// A `PaletteState` is already the resolved sheet: which mode, which rows, in which order.
+    /// Only the copy is the platform's, so the group headings are named here.
+    init(state: PaletteState) {
+        let rows = state.groups.flatMap { group -> [PaletteRow] in
+            let heading = PaletteSheet.groupTitle(group.kind)
+            return group.items.map { item in
+                PaletteRow(
+                    id: "\(heading)-\(item.label)",
+                    label: item.label,
+                    subtitle: item.subtitle,
+                    group: heading,
+                    insert: PaletteSheet.insertion(for: item)
+                )
+            }
+        }
+        self.init(mode: state.mode == core.PaletteMode.slash ? .slash : .mention, title: PaletteSheet.title(state.mode), rows: rows)
+    }
+
+    private static func title(_ mode: core.PaletteMode) -> String {
+        mode == core.PaletteMode.slash ? "Commands" : "Mention"
+    }
+
+    private static func groupTitle(_ kind: PaletteGroupKind) -> String {
+        switch kind {
+        case PaletteGroupKind.sessions: "Nanobot conversations"
+        case PaletteGroupKind.cliapps: "CLI apps"
+        default: "Commands"
+        }
+    }
+
+    /// A picked row replaces the typed token with its own text plus a space, so typing carries on.
+    private static func insertion(for item: PaletteItem) -> String {
+        item.label + " "
+    }
+}
+
+// MARK: - attachments and voice
+
+extension CoreChat: StateDriving {
+
+    func dismissNotice(id: String) {
+        handle.dismissNotice(id: id)
+    }
+
+    func recovery(action: String) async {
+        switch action {
+        case "continue": _ = try? await handle.continueRecovery()
+        default: _ = try? await handle.dismissRecovery()
+        }
+    }
+
+    func cancelSubagent(id: String) async {
+        _ = try? await handle.cancelSubagent(taskId: id)
+    }
+}
+
+extension CoreChat: AttachmentDriving {
+
+    /// One picked file: the core validates it against `ready.limits` before a byte leaves the
+    /// device and returns the gateway's reference or a typed refusal (C6.6).
+    func upload(name: String, mimeType: String, data: Data) async -> AttachmentOutcome {
+        let file = PickedFile(name: name, mimeType: mimeType, bytes: data.kotlinByteArray)
+        let result = try? await handle.upload(file: file)
+        switch result {
+        case let uploaded as UploadResultUploaded:
+            return .uploaded(reference: uploaded.reference)
+        case let rejected as UploadResultRejected:
+            return .rejected(AttachmentReject(rejection: rejected.reason))
+        default:
+            return .failed
+        }
+    }
+}
+
+extension CoreChat: VoiceDriving {
+
+    /// The recording goes out as a data URL and comes back as text on the same gateway turn
+    /// (`transcription_ws.py`, C6.5). The core owns both bounds.
+    func transcribe(pcm: Data, durationMs: Int) async -> VoiceOutcome {
+        let result = try? await handle.transcribe(pcm: pcm.kotlinByteArray, durationMs: Int64(durationMs))
+        switch result {
+        case let transcribed as TranscriptionResultTranscribed:
+            return .transcribed(transcribed.text)
+        case let rejected as TranscriptionResultRejected:
+            return .refused(rejected.reason.name)
+        case let failed as TranscriptionResultFailed:
+            return .refused(failed.detail)
+        default:
+            return .refused("not_connected")
+        }
+    }
+}
+
+extension AttachmentReject {
+    /// The seven typed refusals, named once. `copyKey` is the core's; the sentence is ours.
+    init(rejection: AttachmentRejection) {
+        switch rejection {
+        case is AttachmentRejectionEmptyFile: self = .empty
+        case is AttachmentRejectionTooManyFiles: self = .tooMany
+        case is AttachmentRejectionFileTooLarge: self = .fileTooLarge
+        case is AttachmentRejectionTotalTooLarge: self = .totalTooLarge
+        case is AttachmentRejectionTooManyVideos: self = .tooManyVideos
+        case is AttachmentRejectionVideoTooLarge: self = .videoTooLarge
+        default: self = .unsupported
+        }
+    }
+}
+
+extension Data {
+    /// Swift `Data` → the Kotlin `ByteArray` the facade takes. One copy per upload, which is
+    /// what a frame-sized file costs anyway.
+    var kotlinByteArray: KotlinByteArray {
+        let array = KotlinByteArray(size: Int32(count))
+        for (index, byte) in enumerated() {
+            array.set(index: Int32(index), value: Int8(bitPattern: byte))
+        }
+        return array
+    }
+}
+
+// MARK: - markdown
+
+/// The adapter's one translation of the core's markdown tree into the Swift values the views
+/// draw. Everything here is a cast: the parser's decisions are the core's.
+enum Reading {
+
+    static func blocks(_ text: String) -> [ReadingBlock] {
+        guard !text.isEmpty else { return [] }
+        return mark(MarkdownFacadeKt.markdownDocument(text: text).blocks)
+    }
+
+    static func mark(_ blocks: [MarkdownBlock]) -> [ReadingBlock] {
+        blocks.compactMap { block in
+            if let heading = block as? MarkdownBlockHeading {
+                return .heading(level: Int(heading.level), inlines: mark(heading.inlines))
+            }
+            if let paragraph = block as? MarkdownBlockParagraph {
+                return .paragraph(inlines: mark(paragraph.inlines))
+            }
+            if let list = block as? MarkdownBlockListBlock {
+                return .list(
+                    ordered: list.ordered,
+                    start: Int(list.start),
+                    items: list.items.map { ReadingListItem(depth: Int($0.depth), inlines: mark($0.inlines)) }
+                )
+            }
+            if let fence = block as? MarkdownBlockCodeFence {
+                return .code(language: fence.language, code: fence.code, closed: fence.closed)
+            }
+            if let table = block as? MarkdownBlockTable {
+                return .table(
+                    header: table.header.map(mark),
+                    alignments: table.alignments.map(mark),
+                    rows: table.rows.map { row in row.map(mark) }
+                )
+            }
+            if let quote = block as? MarkdownBlockQuote {
+                return .quote(mark(quote.blocks))
+            }
+            if block is MarkdownBlockRule {
+                return .rule
+            }
+            return nil
+        }
+    }
+
+    static func mark(_ inlines: [Inline]) -> [ReadingInline] {
+        inlines.compactMap { inline in
+            if let text = inline as? InlineText { return .text(text.text) }
+            if let code = inline as? InlineCode { return .code(code.text) }
+            if let emphasis = inline as? InlineEmphasis { return .emphasis(mark(emphasis.inlines)) }
+            if let strong = inline as? InlineStrong { return .strong(mark(strong.inlines)) }
+            if let link = inline as? InlineLink { return .link(mark(link.inlines), destination: link.destination) }
+            return nil
+        }
+    }
+
+    static func mark(_ alignment: core.Alignment) -> ReadingAlignment {
+        switch alignment {
+        case core.Alignment.right: .right
+        case core.Alignment.center: .center
+        case core.Alignment.left: .left
+        default: .none
         }
     }
 }

@@ -5,16 +5,23 @@ import Foundation
 /// whether the frames came from the live socket or from a replayed history).
 struct ChatThreadState: Equatable {
     var turns: [ChatTurnState] = []
+    /// The notices the core reduced (C7.3), owned by `StatesViewModel` on screen.
+    var notices: [ThreadNotice] = []
+    /// The subtasks this chat's agent owns (I8's dock).
+    var subagents: [SubagentRow] = []
 
-    /// Rows in reading order: the prompt, then the answer once there is one to show.
+    /// Rows in reading order: the prompt, what nanobot did to answer it, then the answer.
     var rows: [ChatRow] {
         turns.flatMap { turn in
             var rows: [ChatRow] = []
             if let prompt = turn.prompt, !prompt.isEmpty {
                 rows.append(ChatRow(id: "\(turn.id)-prompt", kind: .user(prompt, pending: turn.promptPending)))
             }
+            if !turn.activity.isEmpty {
+                rows.append(ChatRow(id: "\(turn.id)-activity", kind: .activity(turn.id)))
+            }
             if !turn.answer.isEmpty {
-                rows.append(ChatRow(id: "\(turn.id)-answer", kind: .answer(turn.answer, streaming: turn.answerStreaming)))
+                rows.append(ChatRow(id: "\(turn.id)-answer", kind: .answer(turn.readingBlocks, streaming: turn.answerStreaming)))
             }
             return rows
         }
@@ -33,12 +40,27 @@ struct ChatTurnState: Equatable {
     let answer: String
     let answerStreaming: Bool
     let running: Bool
+    /// What nanobot did on the way to the answer (I4), drawn as one cluster above it.
+    var activity: [ChatActivityItem] = []
+    /// The core's local compose time, which is the only start time a turn has.
+    var startedAtMs: Int64? = nil
+    /// The answer as the core parsed it (I5). Empty means the adapter has not parsed yet, and
+    /// the row falls back to the plain text so a test can build a turn without a document.
+    var blocks: [ReadingBlock] = []
+
+    /// What the row draws: the parsed document, or the text as one paragraph when there is none.
+    var readingBlocks: [ReadingBlock] {
+        if !blocks.isEmpty { return blocks }
+        return answer.isEmpty ? [] : [.paragraph(inlines: [.text(answer)])]
+    }
 }
 
 struct ChatRow: Identifiable, Equatable {
     enum Kind: Equatable {
         case user(String, pending: Bool)
-        case answer(String, streaming: Bool)
+        /// A turn's activity cluster; the row carries the turn id, not a copy of its items.
+        case activity(String)
+        case answer([ReadingBlock], streaming: Bool)
     }
 
     let id: String
@@ -47,7 +69,8 @@ struct ChatRow: Identifiable, Equatable {
     var text: String {
         switch kind {
         case let .user(text, _): text
-        case let .answer(text, _): text
+        case .activity: ""
+        case let .answer(blocks, _): blocks.map(\.plainText).joined(separator: "\n")
         }
     }
 

@@ -1,17 +1,36 @@
 import SwiftUI
+import UIKit
 
 /// The thread (plan.md I3): history, streaming answer, one composer row. The view draws
 /// `ChatViewModel.rows` and calls one of two commands; every branch is in the model.
 struct ChatView: View {
     @ObservedObject var model: ChatViewModel
+    @ObservedObject var activity: ActivityViewModel
+    @ObservedObject var composer: ComposerViewModel
+    @ObservedObject var attachments: AttachmentViewModel
+    @ObservedObject var voice: VoiceViewModel
+    @ObservedObject var states: StatesViewModel
+    /// I6 wires the picker here; until it exists the button says it is not built yet.
+    var onAttach: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 0) {
+            if let banner = states.banner {
+                ConnectionBannerView(banner: banner) { states.retryConnection() }
+            }
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 14) {
                         ForEach(model.rows) { row in
                             rowView(row)
+                        }
+                        ForEach(states.rows) { row in
+                            StateRowView(row: row) { action in states.perform(action, in: row) }
+                        }
+                        if let delivery = states.delivery {
+                            DeliveryRowView(delivery: delivery) {
+                                Task { await states.resend() }
+                            }
                         }
                         Color.clear.frame(height: 1).id("bottom")
                     }
@@ -23,7 +42,7 @@ struct ChatView: View {
                     withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo("bottom", anchor: .bottom) }
                 }
             }
-            composer
+            composerZone
         }
         .background(Color(.systemBackground))
     }
@@ -53,14 +72,21 @@ struct ChatView: View {
                     }
                 }
             }
-        case let .answer(text, streaming):
+        case let .activity(turnId):
+            if let cluster = activity.cluster(for: turnId) {
+                ActivityClusterView(cluster: cluster) { activity.toggle(turnId: turnId) }
+            }
+        case let .answer(blocks, streaming):
             VStack(alignment: .leading, spacing: 6) {
-                Text(text)
-                    .font(ReadingType.font(size: 17))
-                    .lineSpacing(ReadingType.lineSpacing)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier("chat.answer")
+                ReadingBlocksView(
+                    blocks: blocks,
+                    idPrefix: row.id,
+                    isCopied: { composer.isCopied($0) },
+                    onCopy: { blockId in
+                        UIPasteboard.general.string = blocks.map(\.plainText).joined(separator: "\n")
+                        composer.copy(blockId: blockId)
+                    }
+                )
                 if streaming {
                     RoundedRectangle(cornerRadius: 1)
                         .fill(Color.primary)
@@ -71,41 +97,14 @@ struct ChatView: View {
         }
     }
 
-    private var composer: some View {
+    private var composerZone: some View {
         VStack(spacing: 0) {
             Divider()
-            HStack(alignment: .bottom, spacing: 10) {
-                TextField(
-                    "",
-                    text: $model.draft,
-                    prompt: Text("Message nanobot").foregroundColor(.secondary),
-                    axis: .vertical
-                )
-                .lineLimit(1...5)
-                .font(ReadingType.font(size: 17))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: Design.Radius.field, style: .continuous)
-                        .fill(Color(.secondarySystemBackground))
-                )
-                .accessibilityIdentifier("chat.composer")
-
-                Button {
-                    Task { await model.primaryAction() }
-                } label: {
-                    Image(systemName: model.showsStop ? "stop.fill" : "arrow.up")
-                        .font(.system(size: 15, weight: .bold))
-                        .frame(width: Design.minimumTarget, height: Design.minimumTarget)
-                        .background(Color.primary, in: Circle())
-                        .foregroundStyle(Color(.systemBackground))
-                }
-                .disabled(!model.showsStop && !model.canSend)
-                .opacity(model.showsStop || model.canSend ? 1 : 0.4)
-                .accessibilityIdentifier(model.showsStop ? "chat.stop" : "chat.send")
+            SubagentDockView(rows: states.dock) { states.cancelSubagent(id: $0) }
+            if let goal = states.goalStrip {
+                GoalStripView(text: goal)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            ComposerBar(model: composer, attachments: attachments, voice: voice, onAttach: onAttach)
         }
     }
 }
