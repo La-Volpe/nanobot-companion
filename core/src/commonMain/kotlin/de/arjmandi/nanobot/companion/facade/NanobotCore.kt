@@ -21,6 +21,9 @@ import de.arjmandi.nanobot.companion.transport.ConnectionAttempt
 import de.arjmandi.nanobot.companion.transport.CoreError
 import de.arjmandi.nanobot.companion.transport.PaletteClient
 import de.arjmandi.nanobot.companion.transport.PaletteOutcome
+import de.arjmandi.nanobot.companion.projection.HistoryReplay
+import de.arjmandi.nanobot.companion.transport.ThreadPageClient
+import de.arjmandi.nanobot.companion.transport.ThreadPageOutcome
 import de.arjmandi.nanobot.companion.transport.SessionListClient
 import de.arjmandi.nanobot.companion.transport.SettingsClient
 import de.arjmandi.nanobot.companion.transport.SettingsOutcome
@@ -150,6 +153,9 @@ public class NanobotCore internal constructor(
 
     /** The in-flight drawer read; a second `session_updated` replaces it instead of queueing. */
     private var drawerRefresh: Job? = null
+
+    /** Chats whose stored history this socket has already replayed (D46). */
+    private val hydrated = mutableSetOf<String>()
 
     public val connection: StateFlow<ConnectionState> = _connection.asStateFlow()
     public val sessions: StateFlow<SessionListState> = _sessions.asStateFlow()
@@ -481,13 +487,34 @@ public class NanobotCore internal constructor(
     internal suspend fun write(frame: Outbound): Boolean = engine.send(frame)
 
     /**
-     * One `attach` for a chat the screen opened (I3). The frames that answer it are the chat's
-     * history, reduced by the same reducer as a live turn (plan.md D9).
+     * One `attach` for a chat the screen opened (I3), then the history page (D46). The socket's
+     * `attached` carries the session's runtime facts, not its turns, so an opened chat only shows
+     * what came before once the WebUI's own page read has been reduced into the same thread — by
+     * the same reducer as a live turn (plan.md D9).
      */
     internal suspend fun openChat(chatId: String) {
         val routed = ChatRouter.open(chatSet, chatId)
         chatSet = routed.set
         routed.effects.mapNotNull { (it as? Effect.Send)?.frame }.forEach { engine.send(it) }
+        // Once per chat per socket: the page cannot have changed under a chat this core has
+        // already replayed, and a second read would double nothing but the round trip.
+        if (!hydrated.add(chatId)) return
+        replayHistory(chatId)
+    }
+
+    /**
+     * The stored turns of one chat, under whatever the socket already showed. A read that fails
+     * leaves the thread as it is: an empty thread is honest, invented rows are not.
+     */
+    private suspend fun replayHistory(chatId: String) {
+        val token = payload?.apiToken ?: return
+        val client = http ?: return
+        val outcome = ThreadPageClient(client, profile.url).fetch(token, SESSION_KEY_PREFIX + chatId)
+        val page = (outcome as? ThreadPageOutcome.Loaded)?.page ?: return
+        val stored = HistoryReplay.fromEvents(page, chatId, deps.clock.nowMs())
+        val merged = HistoryReplay.merge(stored = stored, live = chatSet.thread(chatId))
+        chatSet = chatSet.copy(threads = chatSet.threads + (chatId to merged))
+        publish(chatId, merged)
     }
 
     /**
@@ -636,6 +663,9 @@ public class NanobotCore internal constructor(
 
     private companion object {
         val NOT_A_FILE_CHAR: Regex = Regex("[^A-Za-z0-9._-]")
+
+        /** A chat id is a session key's own uuid: the gateway stores sessions as `websocket:<id>` (D15.6). */
+        const val SESSION_KEY_PREFIX: String = "websocket:"
 
         /** The gateway's own word for a refused scope; read from inbound_commands.py. */
         const val SCOPE_REJECTED: String = "workspace_scope_rejected"

@@ -132,6 +132,34 @@ class LiveGatewayContractTest {
     }
 
     @Test
+    fun openingAStoredChatReplaysItsHistoryThroughTheFacade() = runTest(timeout = 5.minutes) {
+        assumeTrue("contract tests run with -Pcontract", contract)
+        onRealDispatchers {
+        val core = core()
+        assertIs<ConnectResult.Connected>(core.connect())
+        val listed = core.sessions.first { it.loaded }
+        val stored = listed.rows.firstOrNull { it.preview.isNotBlank() }
+            ?: error("the dev gateway has no session with history; run one turn first")
+
+        // A chat this socket never watched: everything that lands here came from the page read
+        // (D46), which is exactly what the app was missing after a reconnect.
+        val handle = core.chat(stored.chatId)
+        handle.open()
+
+        val replayed = handle.thread.first { it.turns.isNotEmpty() }
+        assertTrue(
+            replayed.turns.all { it.prompt?.text?.isNotBlank() == true },
+            "every replayed turn has its stored prompt",
+        )
+        assertTrue(
+            replayed.turns.any { it.answer.text.isNotBlank() },
+            "and at least one stored answer came back: ${replayed.turns.map { it.answer.text.take(20) }}",
+        )
+        core.disconnect(forget = false)
+        }
+    }
+
+    @Test
     fun refusesAWrongSecret() = runTest(timeout = 2.minutes) {
         assumeTrue("contract tests run with -Pcontract", contract)
         val real = profile()

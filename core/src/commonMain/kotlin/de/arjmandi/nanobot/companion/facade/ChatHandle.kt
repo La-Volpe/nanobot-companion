@@ -37,8 +37,9 @@ public class ChatHandle internal constructor(
     public val composer: StateFlow<ComposerState> get() = session.composer
 
     /**
-     * Open this chat: one `attach`, and the gateway replays the history into [thread] (I3).
-     * A screen calls this when it appears; calling it again on the same chat is free.
+     * Open this chat (I3): one `attach` for the live subscription, then the stored turns from
+     * the gateway's own thread page, reduced into [thread] (D46). A screen calls this when it
+     * appears; calling it again on the same chat is free.
      */
     @Throws(Throwable::class)
     public suspend fun open() {
