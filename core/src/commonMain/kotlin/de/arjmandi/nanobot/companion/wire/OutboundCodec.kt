@@ -76,8 +76,23 @@ internal sealed interface Outbound {
 /** The reference an upload returns; the message carries the reference, not the bytes (C6.6). */
 internal data class UploadReference(val reference: String, val name: String? = null)
 
-/** A quoted earlier message, rendered as the user bubble's quote (C4.9). */
-internal data class QuotedContext(val text: String, val turnId: String? = null)
+/**
+ * A quoted excerpt of an earlier reply (C4.9). It goes out as a plain string on the
+ * envelope — the gateway's `normalize_webui_quote` ignores anything else — and the gateway
+ * uses it as model-only context, so the bubble's quote stays a client-side fact.
+ */
+internal data class QuotedContext(val text: String) {
+
+    internal companion object {
+        /** The gateway keeps 4000 characters and truncates silently, so the client does it visibly. */
+        const val MAX_CHARS: Int = 4_000
+
+        fun of(text: String): QuotedContext? {
+            val normalised = text.replace("\r\n", "\n").replace('\r', '\n').trim()
+            return normalised.takeIf { it.isNotEmpty() }?.let { QuotedContext(it.take(MAX_CHARS)) }
+        }
+    }
+}
 
 internal object OutboundCodec {
 
@@ -132,15 +147,9 @@ internal object OutboundCodec {
                 ),
             )
         }
-        frame.quotedContext?.let { quote ->
-            put(
-                "quoted_context",
-                buildJsonObject {
-                    put("text", quote.text)
-                    quote.turnId?.let { put("turn_id", it) }
-                },
-            )
-        }
+        // A string, not an object: the WebUI's own client sends the trimmed excerpt and the
+        // gateway's normalizer rejects every other type (C4.9, runtime_context.py).
+        frame.quotedContext?.let { quote -> put("quoted_context", quote.text) }
         frame.intent?.let { put("intent", it) }
         if (frame.userShell) put("user_shell", true)
     }

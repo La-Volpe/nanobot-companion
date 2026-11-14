@@ -47,15 +47,17 @@ class OutboundCodecTest {
                 turnId = "turn-2",
                 content = "and this?",
                 media = listOf(UploadReference(reference = "ref-1", name = "report.pdf")),
-                quotedContext = QuotedContext(text = "earlier message", turnId = "turn-1"),
+                quotedContext = QuotedContext(text = "earlier message"),
             ),
         )
 
         val media = (encoded["media"] as kotlinx.serialization.json.JsonArray).single() as JsonObject
         assertEquals("ref-1", media.text("reference"))
         assertEquals("report.pdf", media.text("name"))
-        assertEquals("earlier message", encoded.obj("quoted_context").text("text"))
-        assertEquals("turn-1", encoded.obj("quoted_context").text("turn_id"))
+        // A string, not an object: webui/src/lib/types.ts:1866 and the gateway's
+        // normalize_webui_quote (D23). This assertion previously expected an object and
+        // was wrong, which is how the quote was silently lost.
+        assertEquals("earlier message", (encoded["quoted_context"] as JsonPrimitive).content)
     }
 
     @Test
