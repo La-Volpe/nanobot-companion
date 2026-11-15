@@ -124,15 +124,25 @@ final class SystemNotificationCentre: NSObject, BannerPosting {
 
     private let centre = UNUserNotificationCenter.current()
 
-    /// A tap arrived; the shell is who can open a chat, so it is handed the id.
-    var onOpenChat: ((String) -> Void)?
+    /// Where the reader's sound preference lives. The banners and the Settings row read the same
+    /// key through the same store, so the switch silences the very next banner (T34).
+    private let defaults: SettingsStoring
 
-    override init() {
+    init(defaults: SettingsStoring = UserDefaults.standard) {
+        self.defaults = defaults
         super.init()
         // Set before the app finishes launching, which is the only moment a cold-launch tap is
         // delivered to a delegate that exists.
         centre.delegate = self
     }
+
+    /// `nil` is a silent banner; the phone's default tone is the only one this app ever asks for.
+    private func sound() -> UNNotificationSound? {
+        (defaults.flag(SettingsViewModel.notificationSoundKey) ?? true) ? .default : nil
+    }
+
+    /// A tap arrived; the shell is who can open a chat, so it is handed the id.
+    var onOpenChat: ((String) -> Void)?
 
     func permission() async -> core.NotificationPermission {
         let settings = await centre.notificationSettings()
@@ -154,7 +164,7 @@ final class SystemNotificationCentre: NSObject, BannerPosting {
         let content = UNMutableNotificationContent()
         content.title = TaskNoticeCopy.title(for: notice.outcome)
         content.body = TaskNoticeCopy.body
-        content.sound = .default
+        content.sound = sound()
         content.userInfo = ["chatId": notice.chatId]
         // One id per chat: a second banner for the same chat replaces the first instead of
         // stacking, and opening the chat can withdraw it by the same id.
@@ -186,7 +196,9 @@ extension SystemNotificationCentre: UNUserNotificationCenterDelegate {
         _ centre: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        [.banner, .sound]
+        // The banner always shows; the sound follows the sound the request carries, which is the
+        // reader's own switch (T34) — in front of the app and away from it are one decision.
+        notification.request.content.sound == nil ? [.banner] : [.banner, .sound]
     }
 
     nonisolated func userNotificationCenter(
@@ -213,7 +225,8 @@ extension SystemNotificationCentre: Notifying {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
-        content.sound = .default
+        // The test notification is a banner like any other, so it obeys the same switch (T34).
+        content.sound = sound()
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         try? await centre.add(request)
     }

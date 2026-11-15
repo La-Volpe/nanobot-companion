@@ -32,8 +32,11 @@ struct SettingsViewModelTests {
 
     final class FakeDefaults: SettingsStoring {
         var values: [String: String] = [:]
+        var flags: [String: Bool] = [:]
         func string(_ key: String) -> String? { values[key] }
         func set(_ value: String, for key: String) { values[key] = value }
+        func flag(_ key: String) -> Bool? { flags[key] }
+        func set(_ value: Bool, for key: String) { flags[key] = value }
     }
 
     final class FakeCredentials: CredentialsStoring {
@@ -78,6 +81,24 @@ struct SettingsViewModelTests {
             transcriptionModel: "whisper-large-v3",
             presets: ["default", "primary"]
         )
+    }
+
+    /// T34: the notification sound is a preference of the reader's, on until they say otherwise,
+    /// and the next launch reads the same key the banners do.
+    @Test func theNotificationSoundIsOnUntilItIsTurnedOffAndTheChoiceOutlivesTheApp() {
+        let defaults = FakeDefaults()
+        let first = model(defaults: defaults)
+        #expect(first.notificationSound, "a fresh install may play the app's tone")
+
+        first.setNotificationSound(false)
+
+        #expect(first.notificationSound == false)
+        #expect(
+            defaults.flags[SettingsViewModel.notificationSoundKey] == false,
+            "the key the notifier reads is the key the row writes"
+        )
+        let afterRelaunch = model(defaults: defaults)
+        #expect(afterRelaunch.notificationSound == false, "the choice survives the app that made it")
     }
 
     @Test func overviewSaysWhetherItIsStillReadingAndEndsInASentenceWhenItCannot() async {

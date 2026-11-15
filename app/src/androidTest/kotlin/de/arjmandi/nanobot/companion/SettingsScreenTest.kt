@@ -89,6 +89,8 @@ class SettingsScreenTest {
     private object Memory : SettingsStoring {
         override fun string(key: String): String? = null
         override fun set(key: String, value: String) = Unit
+        override fun flag(key: String): Boolean? = null
+        override fun set(key: String, value: Boolean) = Unit
     }
 
     private fun model(credentials: Credentials = Credentials(), notifier: Notifier = Notifier()) =
@@ -137,6 +139,41 @@ class SettingsScreenTest {
         compose.onNodeWithTag("settings.toggle.Needs attention").performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(true, model.notificationToggles.last().isOn)
+    }
+
+    /**
+     * T34: the sound is a switch of the reader's own, beside the permission state, and the choice
+     * is the key the notifier reads (so the next banner obeys it).
+     */
+    @Test
+    fun theNotificationSoundSitsBesideThePermissionAndIsRemembered() {
+        val store = RecordingPreferences()
+        val model = SettingsViewModel(Credentials(), Notifier(), store, disconnectGateway = {})
+        screen(model)
+
+        compose.onNodeWithTag("settings.permission").performScrollTo().assertIsDisplayed()
+        assertEquals(true, model.notificationSound, "a fresh install may play the app's tone")
+
+        compose.onNodeWithTag("settings.notificationSound").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        assertEquals(false, model.notificationSound, "one tap silences the banners")
+        assertEquals(
+            false,
+            store.flags[SettingsViewModel.KEY_NOTIFICATION_SOUND],
+            "and the key the notifier reads is the key the row writes",
+        )
+    }
+
+    /** The preferences as the screen writes them, so a test can see the key the notifier reads. */
+    private class RecordingPreferences : SettingsStoring {
+        val flags = mutableMapOf<String, Boolean>()
+        override fun string(key: String): String? = null
+        override fun set(key: String, value: String) = Unit
+        override fun flag(key: String): Boolean? = flags[key]
+        override fun set(key: String, value: Boolean) {
+            flags[key] = value
+        }
     }
 
     @Test

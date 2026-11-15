@@ -175,6 +175,15 @@ struct SettingsView: View {
             )
             .frame(minHeight: Design.minimumTarget)
             .accessibilityIdentifier("settings.permission")
+            // The sound is the reader's own choice, and it sits next to the state it modifies (T34).
+            Toggle(isOn: Binding(
+                get: { model.notificationSound },
+                set: { model.setNotificationSound($0) }
+            )) {
+                Text("Sound").font(.system(size: Design.Interface.bodySize))
+            }
+            .frame(minHeight: Design.minimumTarget)
+            .accessibilityIdentifier("settings.notificationSound")
             if let action = model.permissionAction {
                 Button {
                     Task { await model.applyPermissionChoice() }

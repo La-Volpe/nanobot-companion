@@ -101,6 +101,11 @@ class AndroidNotifier(private val context: Context) : Notifying, BannerPosting {
         }
     }
 
+    /** The reader's own switch, read at post time so a change applies to the next banner (T34). */
+    private fun soundEnabled(): Boolean =
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .getBoolean(SettingsViewModel.KEY_NOTIFICATION_SOUND, true)
+
     private fun post(id: Int, title: String, body: String, chatId: String?): Boolean {
         // The permission is the screen's business: a post without it throws, so this is the one
         // place the notifier checks rather than pretending it delivered.
@@ -112,6 +117,9 @@ class AndroidNotifier(private val context: Context) : Notifying, BannerPosting {
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(tapIntent(chatId))
             .setAutoCancel(true)
+            // `setSilent` is the per-notification switch the channel leaves to the app: the
+            // channel's importance is the reader's system setting, this is the app's own (T34).
+            .setSilent(!soundEnabled())
             .build()
         return runCatching {
             NotificationManagerCompat.from(context).notify(id, notification)
@@ -163,5 +171,12 @@ class SharedPreferencesSettings(private val preferences: android.content.SharedP
 
     override fun set(key: String, value: String) {
         preferences.edit().putString(key, value).apply()
+    }
+
+    override fun flag(key: String): Boolean? =
+        if (preferences.contains(key)) preferences.getBoolean(key, true) else null
+
+    override fun set(key: String, value: Boolean) {
+        preferences.edit().putBoolean(key, value).apply()
     }
 }

@@ -186,6 +186,22 @@ fun SettingsScreen(
                     .heightIn(min = Design.minimumTarget)
                     .testTag("settings.permission"),
             )
+            // The sound is the reader's own choice, beside the state it modifies (T34).
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = Design.minimumTarget),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_notification_sound),
+                    fontSize = Design.Interface.bodySize,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = model.notificationSound,
+                    onCheckedChange = { model.chooseNotificationSound(it) },
+                    modifier = Modifier.testTag("settings.notificationSound"),
+                )
+            }
             if (model.permission != NotificationPermission.Granted) {
                 TextButton(
                     onClick = {
