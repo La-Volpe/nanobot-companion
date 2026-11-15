@@ -31,10 +31,6 @@ class MainViewModel(
     private val session: (chatId: String?) -> ChatSession,
 ) {
 
-    /** Onboarding until a gateway opened, then the shell. */
-    var connected by mutableStateOf(false)
-        private set
-
     /** The drawer, opened from the bar and closed by a choice or the scrim. */
     var drawerOpen by mutableStateOf(false)
         private set
@@ -86,10 +82,6 @@ class MainViewModel(
 
     /** The bar's title: the gateway's name for the row, or the app's own before anything is picked. */
     val title: String get() = selected?.displayTitle ?: "nanobot"
-
-    fun enterShell() {
-        connected = true
-    }
 
     fun attachSettings(settings: SettingsViewModel) {
         this.settings = settings
@@ -203,13 +195,14 @@ class MainViewModel(
     }
 
     /**
-     * After a reconnect: the new socket has been told about no chats at all, so the thread on
-     * screen attaches again and a turn that was running keeps arriving. Only a chat the drawer
-     * named can be re-attached — the greeting's chat is already the one the composer sends on.
+     * After a reconnect: the new socket has been told about no chats at all, so the chat on screen
+     * attaches again and a turn that was running keeps arriving. It is also the command that gives
+     * a launch whose reopen failed its thread: that launch reached the shell with a banner and no
+     * greeting, and a green dot over a loading skeleton is the app claiming a chat it never asked
+     * for (the iOS twin of this is `reattachChat`).
      */
     suspend fun reattachChatOnScreen() {
-        val row = selected ?: return
-        chat?.open(row.chatId)
+        openChat(selected?.chatId)
     }
 
     /** Picking a row: the drawer closes and the thread moves to that chat. */
@@ -236,7 +229,6 @@ class MainViewModel(
     suspend fun presets(): List<de.arjmandi.nanobot.companion.composer.ChatModelPreset>? = holder.presets()
 
     fun disconnect() {
-        connected = false
         debugOpen = false
         settingsOpen = false
         selected = null
