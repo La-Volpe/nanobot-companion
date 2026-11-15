@@ -55,6 +55,13 @@ internal class Redactor(
 
     private fun rewriteField(key: String, value: JsonElement, dates: Map<String, String>): JsonElement {
         if (value is JsonPrimitive && value.isString) {
+            // The agent's timezone is the recording machine's locale, under two names:
+            // `agent.timezone` and the flattened `agents.defaults.timezone` (T26). It is a place,
+            // not a fact about the gateway, so it becomes the one zone that names nobody.
+            if (isTimezone(key)) {
+                applied += "timezone fields become UTC"
+                return JsonPrimitive(TIMEZONE)
+            }
             when (key) {
                 in CREDENTIAL_FIELDS -> {
                     applied += "credential fields (${CREDENTIAL_FIELDS.joinToString()}) become REDACTED"
@@ -102,12 +109,16 @@ internal class Redactor(
         return null
     }
 
+    private fun isTimezone(key: String): Boolean =
+        key == "timezone" || key.endsWith(".timezone") || key == "tz"
+
     private fun alias(value: String, prefix: String): String = aliases.getOrPut(value) {
         "$prefix-${aliases.values.count { it.startsWith("$prefix-") } + 1}"
     }
 
     private companion object {
         const val REDACTED = "REDACTED"
+        const val TIMEZONE = "UTC"
         val CREDENTIAL_FIELDS = listOf("token", "api_token", "secret", "password")
         val OPAQUE_FIELDS = listOf("stream_id")
         // Every absolute moment in a payload churns between two recordings of the same
