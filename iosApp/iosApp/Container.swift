@@ -27,6 +27,11 @@ final class Container {
     /// Set when the launch asked for a scripted thread; the shell builds the chat around this.
     var scripted = false
 
+    /// The markdown fixture launch (`NANOBOT_SCENARIO=markdown`): the chat streams
+    /// `ScriptedChat.document` instead of answering, which is how a construct no gateway reply
+    /// happens to contain still reaches the renderers.
+    var markdownFixture = false
+
     /// Set when the launch asked the composer to open with attachments on screen. The system
     /// photo picker cannot be driven by a UI test, so this is how the cards' own states are
     /// proved: a pick that landed, and one whose upload failed.
@@ -94,10 +99,11 @@ final class Container {
             }
             // A scripted gateway answers the settings read too, so a tap can walk Overview.
             container.holder.seedSettingsForUITest(.scriptedGateway)
-            if environment["NANOBOT_THREAD"] != nil {
+            if environment["NANOBOT_THREAD"] != nil || scripted == .markdown {
                 // The chat is created by the shell, which is where its callback lands.
                 container.scripted = true
             }
+            container.markdownFixture = scripted == .markdown
             container.scriptedAttachments = environment["NANOBOT_ATTACH"] != nil
             return container
         }

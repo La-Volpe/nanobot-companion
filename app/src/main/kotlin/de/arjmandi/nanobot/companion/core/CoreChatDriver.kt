@@ -107,17 +107,18 @@ internal fun ThreadState.toView(
 
 internal fun Turn.toView(mediaBase: String = ""): ChatTurnView {
     val segments = answer.segments
+    // A turn streams while it runs and its last segment is still open.
+    val streaming = status == TurnStatus.Running && segments.lastOrNull()?.closed == false
     return ChatTurnView(
         id = id,
         prompt = prompt?.text,
         promptPending = prompt?.optimistic == true,
         answer = segments.joinToString("") { it.text },
-        // A turn streams while it runs and its last segment is still open.
-        answerStreaming = status == TurnStatus.Running && segments.lastOrNull()?.closed == false,
+        answerStreaming = streaming,
         running = status == TurnStatus.Running,
         activity = activity.mapNotNull(ActivityItem::toView),
         startedAtMs = startedAtMs,
-        blocks = MarkdownView(markdownDocument(answer.text).blocks.map(MarkdownBlock::toView)),
+        blocks = MarkdownView(markdownDocument(answer.text, streaming).blocks.map(MarkdownBlock::toView)),
         media = answer.media.map { it.toView(mediaBase) },
         promptMedia = prompt?.media.orEmpty().map { it.toView(mediaBase) },
     )
@@ -192,7 +193,8 @@ internal fun MarkdownBlock.toView(): MdBlock = when (this) {
     MarkdownBlock.Rule -> MdBlock.Rule
 }
 
-internal fun ListItem.toView(): MdListItem = MdListItem(depth = depth, inlines = inlines.mapNotNull(Inline::toView))
+internal fun ListItem.toView(): MdListItem =
+    MdListItem(depth = depth, inlines = inlines.mapNotNull(Inline::toView), checked = checked)
 
 internal fun Alignment.toView(): MdAlignment = when (this) {
     Alignment.None -> MdAlignment.None
@@ -206,6 +208,7 @@ internal fun Inline.toView(): MdInline = when (this) {
     is Inline.Code -> MdInline.Code(text)
     is Inline.Emphasis -> MdInline.Emphasis(inlines.mapNotNull(Inline::toView))
     is Inline.Strong -> MdInline.Strong(inlines.mapNotNull(Inline::toView))
+    is Inline.Strikethrough -> MdInline.Strikethrough(inlines.mapNotNull(Inline::toView))
     is Inline.Link -> MdInline.Link(inlines.mapNotNull(Inline::toView), destination)
 }
 

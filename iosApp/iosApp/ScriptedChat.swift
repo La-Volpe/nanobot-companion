@@ -11,18 +11,94 @@ final class ScriptedChat: ChatDriving {
     private var turns: [ChatTurnState] = []
     private var stopRequested = false
     private(set) var opens = 0
+    /// The markdown launch streams `document` instead of answering, so a construct the parser
+    /// handles can be photographed on a device without a model in the loop.
+    private let fixture: Bool
 
-    init(onChange: @escaping (ChatThreadState) -> Void) {
+    init(fixture: Bool = false, onChange: @escaping (ChatThreadState) -> Void) {
+        self.fixture = fixture
         self.onChange = onChange
     }
 
     func open() async {
         opens += 1
+        if fixture {
+            turns = [ChatTurnState(id: "markdown-1", prompt: "Show me the markdown", promptPending: false,
+                                   answer: "", answerStreaming: true, running: true,
+                                   startedAtMs: Int64(Date().timeIntervalSince1970 * 1000) - 800)]
+            onChange(ChatThreadState(turns: turns))
+            streamFixture()
+            return
+        }
         turns = [ChatTurnState(id: "history-1", prompt: "earlier question", promptPending: false,
                                answer: "an earlier answer", answerStreaming: false, running: false,
                                activity: Self.historyActivity,
                                startedAtMs: Int64(Date().timeIntervalSince1970 * 1000) - 8_000)]
         onChange(ChatThreadState(turns: turns))
+    }
+
+    /// One answer holding every construct the matrix covers, in the order a reader meets them:
+    /// a table (the row still arriving mid-stream), a nested list, task items, then the two
+    /// fences — the mermaid one is source on this client, before and after the turn ends.
+    static let document = """
+    ## Limit table
+
+    | limit | value |
+    |-------|------:|
+    | files | 4 |
+    | per file | 6 MiB |
+
+    ## What changed
+
+    - streaming
+      - the tail is held back
+        - until a blank line follows
+    - tables
+      - a row arrives one cell at a time
+
+    - [x] the reducer is shared
+    - [ ] the soak runs nightly
+
+    ## Blocks
+
+    ```kotlin
+    val x = 1
+    ```
+
+    ```mermaid
+    graph TD
+      A-->B
+    ```
+    """
+
+    /// The fixture arrives as deltas, cut where a real reply is cut: one chunk ends inside a
+    /// table row, so the screenshot taken here is the unstable tail a reader watches.
+    private func streamFixture() {
+        let chunks = [
+            "## Limit table\n\n| limit | value |\n|-------|------:|\n| files |",
+            " 4 |\n| per file | 6 MiB |\n\n## What changed\n\n- streaming\n",
+            "  - the tail is held back\n    - until a blank line follows\n- tables\n",
+            "  - a row arrives one cell at a time\n\n- [x] the reducer is shared\n",
+            "- [ ] the soak runs nightly\n\n## Blocks\n\n```kotlin\nval x = 1\n```\n",
+            "\n```mermaid\ngraph TD\n  A-->B\n```\n",
+        ]
+        Task { [weak self] in
+            for chunk in chunks {
+                try? await Task.sleep(nanoseconds: 900_000_000)
+                guard let self else { return }
+                self.update("markdown-1") { turn in
+                    ChatTurnState(id: turn.id, prompt: turn.prompt, promptPending: false,
+                                  answer: turn.answer + chunk, answerStreaming: true, running: true,
+                                  startedAtMs: turn.startedAtMs)
+                }
+            }
+            guard let self else { return }
+            self.update("markdown-1") { turn in
+                ChatTurnState(id: turn.id, prompt: turn.prompt, promptPending: false,
+                              answer: turn.answer, answerStreaming: false, running: false,
+                              startedAtMs: turn.startedAtMs)
+            }
+        }
     }
 
     /// The activity the scripted history carries, so the cluster is on screen in a flow test and

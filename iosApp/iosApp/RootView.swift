@@ -330,7 +330,7 @@ struct RootView: View {
         let driver: ChatDriving
         #if DEBUG
         if container.scripted {
-            let scripted = ScriptedChat { state in
+            let scripted = ScriptedChat(fixture: container.markdownFixture) { state in
                 let thread = state.withMarkdown()
                 chat.update(thread: thread)
                 activity.update(thread: thread)

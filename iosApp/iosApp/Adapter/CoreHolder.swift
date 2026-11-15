@@ -449,19 +449,20 @@ extension ChatThreadState {
         self.init(
             turns: state.turns.map { turn in
                 let segments = turn.answer.segments
+                // A turn is streaming while it runs and its last segment is still open.
+                let streaming = turn.status == TurnStatus.running && segments.last?.closed == false
                 return ChatTurnState(
                     id: turn.id,
                     prompt: turn.prompt?.text,
                     promptPending: turn.prompt?.optimistic ?? false,
                     answer: segments.joined(),
-                    // A turn is streaming while it runs and its last segment is still open.
-                    answerStreaming: turn.status == TurnStatus.running && segments.last?.closed == false,
+                    answerStreaming: streaming,
                     running: turn.status == TurnStatus.running,
                     activity: turn.activity.compactMap(ChatActivityItem.init(item:)),
                     startedAtMs: turn.startedAtMs?.int64Value,
                     media: turn.answer.media.map { MediaRow(attachment: $0, mediaBase: mediaBase) },
                     promptMedia: turn.prompt?.media.map { MediaRow(attachment: $0, mediaBase: mediaBase) } ?? [],
-                    blocks: Reading.blocks(turn.answer.text)
+                    blocks: Reading.blocks(turn.answer.text, streaming: streaming)
                 )
             },
             notices: state.notices.compactMap(ThreadNotice.init(notice:)),
@@ -595,7 +596,7 @@ extension ChatThreadState {
         var copy = self
         copy.turns = turns.map { turn in
             var parsed = turn
-            parsed.blocks = Reading.blocks(turn.answer)
+            parsed.blocks = Reading.blocks(turn.answer, streaming: turn.answerStreaming)
             return parsed
         }
         return copy
@@ -916,9 +917,9 @@ extension Data {
 /// draw. Everything here is a cast: the parser's decisions are the core's.
 enum Reading {
 
-    static func blocks(_ text: String) -> [ReadingBlock] {
+    static func blocks(_ text: String, streaming: Bool = false) -> [ReadingBlock] {
         guard !text.isEmpty else { return [] }
-        return mark(MarkdownFacadeKt.markdownDocument(text: text).blocks)
+        return mark(MarkdownFacadeKt.markdownDocument(text: text, streaming: streaming).blocks)
     }
 
     static func mark(_ blocks: [MarkdownBlock]) -> [ReadingBlock] {
@@ -933,7 +934,13 @@ enum Reading {
                 return .list(
                     ordered: list.ordered,
                     start: Int(list.start),
-                    items: list.items.map { ReadingListItem(depth: Int($0.depth), inlines: mark($0.inlines)) }
+                    items: list.items.map {
+                        ReadingListItem(
+                            depth: Int($0.depth),
+                            inlines: mark($0.inlines),
+                            checked: $0.checked?.boolValue
+                        )
+                    }
                 )
             }
             if let fence = block as? MarkdownBlockCodeFence {
@@ -962,6 +969,7 @@ enum Reading {
             if let code = inline as? InlineCode { return .code(code.text) }
             if let emphasis = inline as? InlineEmphasis { return .emphasis(mark(emphasis.inlines)) }
             if let strong = inline as? InlineStrong { return .strong(mark(strong.inlines)) }
+            if let struck = inline as? InlineStrikethrough { return .strikethrough(mark(struck.inlines)) }
             if let link = inline as? InlineLink { return .link(mark(link.inlines), destination: link.destination) }
             return nil
         }
