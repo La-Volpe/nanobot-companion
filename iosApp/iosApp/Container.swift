@@ -13,6 +13,10 @@ final class Container {
     var scriptedChat: ChatDriving?
     /// The gateway key a live-session launch prefills (DEBUG only): typed keys land in test logs.
     var prefilledKey: String?
+    /// The gateway address the same launch carries. It is a prefill, not a replacement for the
+    /// store: a connect through it is stored like any other, so the launch after the instrument is
+    /// the owner's own and does not ask again.
+    var prefilledAddress: String?
     /// Set when the launch asked for a scripted thread; the shell builds the chat around this.
     var scripted = false
 
@@ -45,20 +49,20 @@ final class Container {
     static func forLaunch() -> Container {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
-        // The live-session instrument: a real gateway, a real socket, and the key through the
-        // environment rather than a typed string in the test log.
-        if let url = environment["NANOBOT_LIVE_URL"] {
-            return Container(
-                credentials: InMemoryCredentials(
-                    address: url,
-                    allowUnverifiedCertificate: environment["NANOBOT_LIVE_UNVERIFIED"] != nil
-                ),
-                prefilledKey: environment["NANOBOT_LIVE_SECRET"]
-            )
-        }
         // A reset launch: the store is emptied before the screens exist, so an instrument that
         // tests "first launch" starts from a first launch instead of yesterday's Keychain.
-        if environment["NANOBOT_FORGET"] != nil {
+        let reset = environment["NANOBOT_FORGET"] != nil
+        // The live-session instrument: a real gateway, a real socket, and the key through the
+        // environment rather than a typed string in the test log. The store is the production one,
+        // because the run after this launch is a plain launch from the home screen and it has to
+        // find what this one used.
+        if let url = environment["NANOBOT_LIVE_URL"] {
+            let container = Container(prefilledKey: environment["NANOBOT_LIVE_SECRET"])
+            if reset { container.credentials.forget() }
+            container.prefilledAddress = url
+            return container
+        }
+        if reset {
             let container = Container()
             container.credentials.forget()
             return container

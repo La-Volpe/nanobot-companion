@@ -6,9 +6,9 @@ struct RootView: View {
 
     @ObservedObject private var holder: CoreHolder
     @StateObject private var connect: ConnectViewModel
+    @StateObject private var launch: LaunchModel
     @StateObject private var drawer: DrawerViewModel
 
-    @State private var connected = false
     @State private var drawerOpen = false
     @State private var selected: SessionSummary?
     @StateObject private var chat: ChatViewModel
@@ -34,14 +34,22 @@ struct RootView: View {
     init(container: Container) {
         self.container = container
         self.holder = container.holder
-        _connect = StateObject(
-            wrappedValue: ConnectViewModel(
-                gateway: container.gateway,
-                credentials: container.credentials,
-                prefilledKey: container.prefilledKey
+        let connect = ConnectViewModel(
+            gateway: container.gateway,
+            credentials: container.credentials,
+            prefilledAddress: container.prefilledAddress,
+            prefilledKey: container.prefilledKey
+        )
+        _connect = StateObject(wrappedValue: connect)
+        // The launch asks the connect model whether there is a gateway to reopen, because that
+        // model is where a launch-carried address wins over a stored one.
+        _launch = StateObject(
+            wrappedValue: LaunchModel(
+                startsConnected: container.startsConnected,
+                hasStoredGateway: { connect.resolveStoredGateway() },
+                connect: { await Self.reopenStoredGateway(connect: connect, holder: container.holder) }
             )
         )
-        _connected = State(initialValue: container.startsConnected)
         _chat = StateObject(wrappedValue: ChatViewModel(chat: NoopChat()))
         _activity = StateObject(wrappedValue: ActivityViewModel())
         // The composer sends what the cards show, so the two models are introduced once here
@@ -79,21 +87,22 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if connected {
+            switch launch.screen {
+            case .deciding:
+                launchPlaceholder
+            case .onboarding:
+                ConnectView(model: connect) { launch.finishedOnboarding() }
+            case .shell:
                 shell
-            } else {
-                ConnectView(model: connect) { connected = true }
             }
         }
-        // The store is the reason a second launch is not a second setup: an address and a key
-        // that are already on the device reconnect before the connect screen can show. A launch
-        // that carries its own key (the live instrument) has already been connected by then.
-        .task {
-            guard !connected, container.prefilledKey == nil else { return }
-            let address = container.credentials.address ?? ""
-            guard !address.isEmpty, container.credentials.storedKey?.isEmpty == false else { return }
-            await connect.connect()
-            if case .connected = connect.phase { connected = true }
+        // One decision per launch, made before a screen is drawn: see `LaunchModel`.
+        .task { await launch.begin() }
+        // A store read that happened while the phone was locked comes back empty, so a launch that
+        // is still waiting for an address looks again once there is someone to show it to.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await launch.resumed() }
         }
         // A drawer you can only reach by pressing a button is a drawer on a desktop. A drag
         // from the leading edge opens it, a drag across it closes it, and the release decides
@@ -108,6 +117,18 @@ struct RootView: View {
         .onChange(of: holder.sessionsFailed) { _, failed in
             drawer.update(rows: holder.sessions, loaded: holder.sessionsLoaded, failed: failed)
         }
+    }
+
+    /// What a launch shows while it reads the store and lets the stored gateway answer. Drawing
+    /// onboarding here is what read as "the app forgot my gateway": the question, for a moment,
+    /// is still the question.
+    private var launchPlaceholder: some View {
+        VStack(spacing: 10) {
+            NanobotMark(height: 64)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Palette.canvas)
+        .accessibilityIdentifier("launch.deciding")
     }
 
     private var shell: some View {
@@ -166,7 +187,7 @@ struct RootView: View {
                     // to the foreground is where a chat client earns its keep. What the failure
                     // meant is the taxonomy's answer and the banner says it; nothing here decides.
                     .onChange(of: scenePhase) { _, phase in
-                        guard phase == .active, connected else { return }
+                        guard phase == .active else { return }
                         Task {
                             await recovery.resumed(status: holder.connectionStatus, everConnected: holder.everConnected)
                         }
@@ -340,6 +361,16 @@ struct RootView: View {
         await driver.open()
     }
 
+    /// The stored gateway, opened without asking. The connect screen's own command does the work,
+    /// so a key the gateway accepts is remembered exactly as a typed one is; a failure keeps the
+    /// stack, because the banner's "Try again" is a reconnect on it.
+    private static func reopenStoredGateway(connect: ConnectViewModel, holder: CoreHolder) async {
+        guard await connect.reopenStoredGateway() else { return }
+        // The shell's own first read ran before this socket existed, so the drawer is filled here
+        // or it stays empty under a live connection.
+        try? await holder.refreshSessions()
+    }
+
     /// The banner's one button. The core's connect bootstraps a fresh single-use token, so this is
     /// a real handshake; a failure leaves the banner up with the taxonomy's own sentence.
     private func retryConnection() async {
@@ -350,8 +381,15 @@ struct RootView: View {
     /// re-attached from here: the greeting's chat is already the one the composer sends on, and a
     /// new handle for it would swap the thread under the reader.
     private func reattachChat() async {
+        guard let driver = chatDriver else {
+            // A reopen that failed before the socket existed left the shell with no chat at all,
+            // so a retry that works opens the greeting's one; otherwise the thread sits empty
+            // under a green dot.
+            await openChat()
+            return
+        }
         guard selected != nil else { return }
-        await chatDriver?.open()
+        await driver.open()
     }
 
     /// The model sheet's list is the gateway's (`/api/settings` → `model_presets`), read when
@@ -389,7 +427,7 @@ struct RootView: View {
     }
 
     private func disconnect() {
-        connected = false
+        launch.signedOut()
         selected = nil
         connect.clearMessage()
         container.gateway.disconnect()

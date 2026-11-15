@@ -31,13 +31,11 @@ final class LiveSessionTests: XCTestCase {
     func testTheSimulatorRunsATurnAgainstTheLiveGateway() throws {
         let app = try liveApp()
 
-        let connect = app.buttons["connect.submit"]
-        XCTAssertTrue(connect.waitForExistence(timeout: 15), "onboarding is the first screen. Tree:\n\(app.debugDescription)")
-        connect.tap()
-
+        // A launch that carries the gateway opens it: the connect screen is not the first screen
+        // any more, which is the whole point of remembering one.
         XCTAssertTrue(
-            app.textFields["chat.composer"].waitForExistence(timeout: 25),
-            "the socket opened and the greeting arrived. Tree:\n\(app.debugDescription)"
+            app.textFields["chat.composer"].waitForExistence(timeout: 30),
+            "the launch's own gateway did not open the chat. Tree:\n\(app.debugDescription)"
         )
         print("live: connected \(url)")
 
@@ -69,9 +67,10 @@ final class LiveSessionTests: XCTestCase {
     func testATurnCanBeStoppedMidStream() throws {
         let app = try liveApp()
 
-        XCTAssertTrue(app.buttons["connect.submit"].waitForExistence(timeout: 15))
-        app.buttons["connect.submit"].tap()
-        XCTAssertTrue(app.textFields["chat.composer"].waitForExistence(timeout: 25))
+        XCTAssertTrue(
+            app.textFields["chat.composer"].waitForExistence(timeout: 30),
+            "the launch's own gateway did not open the chat. Tree:\n\(app.debugDescription)"
+        )
 
         let composer = app.textFields["chat.composer"]
         composer.tap()
@@ -102,9 +101,10 @@ final class LiveSessionTests: XCTestCase {
         // the screen above it.
         let app = try liveApp()
 
-        XCTAssertTrue(app.buttons["connect.submit"].waitForExistence(timeout: 15))
-        app.buttons["connect.submit"].tap()
-        XCTAssertTrue(app.textFields["chat.composer"].waitForExistence(timeout: 25))
+        XCTAssertTrue(
+            app.textFields["chat.composer"].waitForExistence(timeout: 30),
+            "the launch's own gateway did not open the chat. Tree:\n\(app.debugDescription)"
+        )
 
         // One turn first, so the chat has history to resume into.
         let composer = app.textFields["chat.composer"]
@@ -183,9 +183,10 @@ final class LiveSessionTests: XCTestCase {
     func testTheBannersTryAgainReconnectsOnTheLiveGateway() throws {
         let app = try liveApp()
 
-        XCTAssertTrue(app.buttons["connect.submit"].waitForExistence(timeout: 15))
-        app.buttons["connect.submit"].tap()
-        XCTAssertTrue(app.textFields["chat.composer"].waitForExistence(timeout: 25), "connected. Tree:\n\(app.debugDescription)")
+        XCTAssertTrue(
+            app.textFields["chat.composer"].waitForExistence(timeout: 30),
+            "the launch's own gateway did not open the chat. Tree:\n\(app.debugDescription)"
+        )
 
         XCTAssertTrue(app.buttons["chat.debug"].waitForExistence(timeout: 10))
         app.buttons["chat.debug"].tap()

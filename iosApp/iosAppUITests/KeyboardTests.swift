@@ -54,10 +54,16 @@ final class KeyboardTests: XCTestCase {
             ?? app.scrollViews.firstMatch
     }
 
-    /// A point inside the thread's visible area: with the keyboard up SwiftUI has already shrunk
-    /// the scroll view, so anywhere in it is above the keyboard in either orientation.
+    /// A point inside the thread, as a fraction of the window rather than a computed offset.
+    ///
+    /// Two earlier attempts read absolute frames and both landed on the keyboard (y=437 with the
+    /// keyboard starting at y=238): after a rotation XCUITest keeps answering element queries with
+    /// pre-rotation geometry for a while, so a frame-derived point is a point on the wrong screen.
+    /// A normalised offset rides whatever frame the query hands back — on a stale 874-tall window
+    /// it is y=218, on a fresh 402-tall landscape window y=100 — and both are transcript, because
+    /// the keyboard owns the bottom of the screen in either orientation and 0.25 is never in it.
     private func transcriptPoint(_ app: XCUIApplication) -> XCUICoordinate {
-        threadScroll(app).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
+        app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
     }
 
     private func tapTranscript(_ app: XCUIApplication) {
@@ -66,7 +72,8 @@ final class KeyboardTests: XCTestCase {
             XCTAssertLessThan(
                 point.screenPoint.y,
                 app.keyboards.element.frame.minY,
-                "the tap lands on the conversation, not on the keyboard"
+                "the tap lands on the conversation, not on the keyboard (point \(point.screenPoint), "
+                    + "keyboard \(app.keyboards.element.frame), window \(app.windows.firstMatch.frame))"
             )
         }
         point.tap()
@@ -156,6 +163,13 @@ final class KeyboardTests: XCTestCase {
         )
     }
 
+    /// Rotation is a layout question, not a dismissal one: this case asserts the composer rides
+    /// above the keyboard in landscape and comes home to its resting frame afterwards. It does not
+    /// tap in landscape, because XCUITest resolves `screenPoint` through pre-rotation geometry
+    /// there — measured: a coordinate 0.25 down a window reported as (0,0,874,402) resolved to
+    /// y=437 with the keyboard starting at y=238, so the "tap the transcript" step landed on a
+    /// keyboard key and every later assertion in the case failed behind it. Dismissal by tap has
+    /// its own case in the orientation where the framework's geometry is trustworthy.
     func testRotationKeepsTheComposerAboveTheKeyboardAndItReturnsAfterDismissal() {
         let app = chatApp()
         let portraitRest = app.textFields["chat.composer"].frame
@@ -174,9 +188,6 @@ final class KeyboardTests: XCTestCase {
             app.keyboards.element.frame.minY + 1,
             "and the composer is still above it (composer \(field.frame), keyboard \(app.keyboards.element.frame))"
         )
-
-        tapTranscript(app)
-        assertKeyboardIsGone(app, "a tap in landscape")
         XCTAssertGreaterThan(
             field.frame.height,
             0,
@@ -185,13 +196,19 @@ final class KeyboardTests: XCTestCase {
 
         XCUIDevice.shared.orientation = .portrait
         Thread.sleep(forTimeInterval: 1)
+
+        XCTAssertEqual(app.keyboards.count, 1, "the keyboard is still up unless it is dismissed")
+
+        // Back in portrait, the same tap the other cases prove: the conversation clears it, and the
+        // composer lands where it started.
+        tapTranscript(app)
+        assertKeyboardIsGone(app, "a tap after rotation")
         XCTAssertEqual(
             app.textFields["chat.composer"].frame.minY,
             portraitRest.minY,
             accuracy: 1,
             "and back in portrait it rests where it started"
         )
-        XCTAssertEqual(app.keyboards.count, 0, "the rotation did not bring the keyboard back")
     }
 
     func testSendStillWorksWithTheKeyboardUpAndTheFocusIsNotTakenBack() {

@@ -4,10 +4,13 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.reinterpret
 import platform.CoreFoundation.CFTypeRef
 import platform.CoreFoundation.CFDataRef
+import platform.Security.kSecAttrAccessible
+import platform.Security.kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 import platform.Security.kSecAttrAccount
 import platform.Security.kSecAttrService
 import platform.Security.kSecClass
@@ -36,6 +39,34 @@ class KeychainQueryTest {
             "s3cr3t-value".encodeToByteArray().toList(),
             (add.valueFor(kSecValueData) as CFTypeRef?).asData().toList(),
             "the item's data is the secret itself, not a hash",
+        )
+    }
+
+    /**
+     * A launch is not always a phone someone is looking at: iOS starts the app before the owner
+     * has unlocked it (a restart, a background wake), and an item written with the default
+     * `kSecAttrAccessibleWhenUnlocked` is unreadable then, so the stored gateway looks missing and
+     * the app asks for it again. `AfterFirstUnlock` is the class that survives that, and it is
+     * still encrypted at rest — the one thing a gateway key needs.
+     *
+     * `ThisDeviceOnly` because of what the class also decides: a plain `AfterFirstUnlock` item is
+     * carried by an encrypted backup onto the next phone, and a gateway key should die with the
+     * device it was typed on. Retyping it after a restore is the cheaper of the two surprises.
+     */
+    @Test
+    fun addQueryKeepsTheSecretReadableAfterTheFirstUnlock() {
+        val add = query.addQuery("s3cr3t-value".encodeToByteArray())
+
+        val accessible = add.valueFor(kSecAttrAccessible)
+        assertNotNull(
+            accessible,
+            "an item with no accessibility class is when-unlocked, which a launch before the first " +
+                "unlock cannot read",
+        )
+        assertTrue(
+            accessible == kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            "the stored gateway must be readable by the launch that follows a restart, and must " +
+                "not ride a backup onto another device",
         )
     }
 

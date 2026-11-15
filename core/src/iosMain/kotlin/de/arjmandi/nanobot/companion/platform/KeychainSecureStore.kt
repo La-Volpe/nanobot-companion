@@ -33,6 +33,8 @@ import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
 import platform.Security.errSecSuccess
+import platform.Security.kSecAttrAccessible
+import platform.Security.kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 import platform.Security.kSecAttrAccount
 import platform.Security.kSecAttrService
 import platform.Security.kSecClass
@@ -119,8 +121,29 @@ internal class KeychainQuery(private val service: String, private val alias: Str
 
     fun copyQuery(): CFDictionaryRef = dictionary(entries(matchOne = true))
 
+    /**
+     * A write carries an accessibility class; a read and a delete do not, so an item stored before
+     * this line existed is still readable and still removable.
+     *
+     * The class is `AfterFirstUnlock*` rather than the default: iOS starts the app before the owner
+     * has unlocked it (after a restart, from a background wake), and a when-unlocked item is
+     * unreadable then — the stored gateway looks forgotten and the app asks for it again, which is
+     * exactly the report this fixes. The key is still encrypted at rest either way.
+     *
+     * `ThisDeviceOnly` on top of that, deliberately: without it the item rides an encrypted backup
+     * onto the next phone, so one gateway's key outlives the device it was typed on. The cost is
+     * typing it once after a restore, which is cheaper than a secret nobody remembers copying.
+     */
     fun addQuery(value: ByteArray): CFDictionaryRef =
-        dictionary(entries() + KeychainEntry.Data("valueData", kSecValueData, value))
+        dictionary(
+            entries() +
+                KeychainEntry.Constant(
+                    "accessible",
+                    kSecAttrAccessible,
+                    kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+                ) +
+                KeychainEntry.Data("valueData", kSecValueData, value),
+        )
 }
 
 @OptIn(ExperimentalForeignApi::class)
