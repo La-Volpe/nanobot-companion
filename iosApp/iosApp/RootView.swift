@@ -183,6 +183,11 @@ struct RootView: View {
                     .task {
                         states.update(connection: holder.connectionStatus, wasConnected: holder.everConnected)
                     }
+                    // The scene phase the shell *starts* in is not a change, so `onChange` below
+                    // never fired for it: a launch that came straight into the app told the core
+                    // it was away, and every turn finishing in the chat on screen became a banner
+                    // for that same chat (T32).
+                    .task { holder.setForeground(scenePhase == .active) }
                     // iOS suspends a backgrounded app and the socket dies with it, so the return
                     // to the foreground is where a chat client earns its keep. What the failure
                     // meant is the taxonomy's answer and the banner says it; nothing here decides.
