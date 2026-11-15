@@ -228,4 +228,14 @@
     <string name="automations_delete_confirm">Delete</string>
     <string name="automations_cancel">Cancel</string>
     <string name="automations_system">System</string>
+
+    <!-- Media rows on a turn (A9): what a picture, a clip, a recording and a file card say. -->
+    <string name="media_imageFailed">Could not load this image.</string>
+    <string name="media_audioFailed">Could not play this recording.</string>
+    <string name="media_videoUnavailable">Video player not installed in this build.</string>
+    <string name="media_retry">Retry</string>
+    <string name="media_video">Video</string>
+    <string name="media_audio">Audio</string>
+    <string name="media_file">Attachment</string>
+    <string name="media_unavailable">Unavailable</string>
 </resources>

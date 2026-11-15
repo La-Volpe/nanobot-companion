@@ -5,6 +5,7 @@ import de.arjmandi.nanobot.companion.composer.ComposerDriving
 import de.arjmandi.nanobot.companion.composer.PaletteSheet
 import de.arjmandi.nanobot.companion.composer.WorkspaceAccess
 import de.arjmandi.nanobot.companion.markdown.MarkdownView
+import de.arjmandi.nanobot.companion.media.MediaRow
 import de.arjmandi.nanobot.companion.markdown.MdBlock
 import de.arjmandi.nanobot.companion.markdown.MdInline
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,10 @@ data class ChatTurnView(
     val startedAtMs: Long? = null,
     /** The answer as the core parsed it (A5); empty means the row falls back to one paragraph. */
     val blocks: MarkdownView = MarkdownView(emptyList()),
+    /** What the answer carries: pictures, clips and recordings (`message.media_urls`, A9). */
+    val media: List<MediaRow> = emptyList(),
+    /** What the prompt was sent with (`user_message.media_urls`). */
+    val promptMedia: List<MediaRow> = emptyList(),
 ) {
     /** What the row draws: the parsed document, or the text as one paragraph when there is none. */
     val readingBlocks: MarkdownView

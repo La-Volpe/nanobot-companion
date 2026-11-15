@@ -115,6 +115,30 @@ class UploadFlowTest {
         )
     }
 
+    /**
+     * Both apps hand the send the references their own cards hold, and `upload()` has already
+     * staged the same reference on the session, so the naive envelope names one file twice. The
+     * dev gateway answers that with `detail: attachment_rejected, reason: Duplicate attachment
+     * reference` and no turn at all — measured against the live gateway, not guessed — so the
+     * frame carries each reference once.
+     */
+    @Test
+    fun aReferenceTheComposerAlreadyHoldsIsNotSentTwice() = runTest {
+        val socket = FakeSocket()
+        val core = core({ socket }, uploadClient())
+        val handle = core.chat(chat)
+        connect(socket, core)
+
+        handle.upload(image())
+        assertIs<SendReceipt.Accepted>(
+            handle.send(OutboundDraft(text = "look at this", media = listOf(AttachmentRef(reference = "att-1")))),
+        )
+        runCurrent()
+
+        val media = (Json.parseToJsonElement(socket.sent.single()) as JsonObject)["media"]!!.jsonArray
+        assertEquals(1, media.size, "one file is one reference")
+    }
+
     @Test
     fun failedUploadKeepsDraft() = runTest {
         val socket = FakeSocket()

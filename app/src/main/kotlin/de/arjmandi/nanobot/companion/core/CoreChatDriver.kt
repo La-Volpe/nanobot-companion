@@ -10,6 +10,10 @@ import de.arjmandi.nanobot.companion.chat.ThreadHistory
 import de.arjmandi.nanobot.companion.facade.ChatHandle
 import de.arjmandi.nanobot.companion.facade.markdownDocument
 import de.arjmandi.nanobot.companion.markdown.MdAlignment
+import de.arjmandi.nanobot.companion.media.MediaKindView
+import de.arjmandi.nanobot.companion.media.MediaRow
+import de.arjmandi.nanobot.companion.projection.MediaAttachment
+import de.arjmandi.nanobot.companion.projection.MediaKind
 import de.arjmandi.nanobot.companion.markdown.MdBlock
 import de.arjmandi.nanobot.companion.markdown.MdInline
 import de.arjmandi.nanobot.companion.markdown.MdListItem
@@ -46,14 +50,20 @@ import kotlinx.coroutines.flow.stateIn
 class CoreChatDriver(
     private val handle: ChatHandle,
     scope: CoroutineScope,
+    /**
+     * Where the gateway lives, so the signed `/api/media/<sig>/<payload>` path can be made
+     * loadable. Media is signature-authenticated (`nanobot/webui/media_api.py:207`), so the url
+     * needs an origin and no token.
+     */
+    private val mediaBase: String = "",
 ) : ChatDriver {
 
     override val thread: StateFlow<ChatThreadView> = combine(handle.thread, handle.history) { thread, history ->
-        thread.toView(history.toView())
+        thread.toView(history.toView(), mediaBase)
     }.stateIn(
         scope,
         SharingStarted.Eagerly,
-        handle.thread.value.toView(handle.history.value.toView()),
+        handle.thread.value.toView(handle.history.value.toView(), mediaBase),
     )
 
     override suspend fun open(chatId: String?) {
@@ -85,14 +95,17 @@ internal fun de.arjmandi.nanobot.companion.facade.HistoryStatus.toView(): Thread
     de.arjmandi.nanobot.companion.facade.HistoryStatus.Failed -> ThreadHistory.Failed
 }
 
-internal fun ThreadState.toView(history: ThreadHistory = ThreadHistory.Loaded): ChatThreadView = ChatThreadView(
-    turns = turns.map(Turn::toView),
+internal fun ThreadState.toView(
+    history: ThreadHistory = ThreadHistory.Loaded,
+    mediaBase: String = "",
+): ChatThreadView = ChatThreadView(
+    turns = turns.map { it.toView(mediaBase) },
     notices = notices.mapNotNull(Notice::toView),
     subagents = subagents.map(Subagent::toView),
     history = history,
 )
 
-internal fun Turn.toView(): ChatTurnView {
+internal fun Turn.toView(mediaBase: String = ""): ChatTurnView {
     val segments = answer.segments
     return ChatTurnView(
         id = id,
@@ -105,8 +118,23 @@ internal fun Turn.toView(): ChatTurnView {
         activity = activity.mapNotNull(ActivityItem::toView),
         startedAtMs = startedAtMs,
         blocks = MarkdownView(markdownDocument(answer.text).blocks.map(MarkdownBlock::toView)),
+        media = answer.media.map { it.toView(mediaBase) },
+        promptMedia = prompt?.media.orEmpty().map { it.toView(mediaBase) },
     )
 }
+
+/** `MediaAttachment` (the core's row) → what the thread draws, with a url the loader can open. */
+internal fun MediaAttachment.toView(mediaBase: String): MediaRow = MediaRow(
+    id = id,
+    name = name,
+    url = absoluteUrl(mediaBase).takeIf { it.isNotBlank() },
+    kind = when (kind) {
+        MediaKind.Image -> MediaKindView.Image
+        MediaKind.Video -> MediaKindView.Video
+        MediaKind.Audio -> MediaKindView.Audio
+        MediaKind.File -> MediaKindView.File
+    },
+)
 
 /**
  * `ActivityItem` is a sealed interface, so the four cases are four branches and nothing else: an

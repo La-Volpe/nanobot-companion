@@ -487,8 +487,12 @@ public class NanobotCore internal constructor(
         val turnId = nextTurnId()
         val quote = draft.quote?.let(QuotedContext::of)
         // Attachments are references: whatever was uploaded and not yet sent rides this message.
-        val media = draft.media.map { UploadReference(reference = it.reference, name = it.name) } +
-            session?.media.orEmpty()
+        // A composer that hands the send the references its own cards hold names the same file
+        // twice — once in the draft, once staged on the session — and the gateway refuses that
+        // whole message (`attachment_rejected`, "Duplicate attachment reference"), so one file is
+        // one reference however the two lists overlapped.
+        val media = (draft.media.map { UploadReference(reference = it.reference, name = it.name) } +
+            session?.media.orEmpty()).distinctBy { it.reference }
         val message = Outbound.Message(
             chatId = chatId,
             turnId = turnId,

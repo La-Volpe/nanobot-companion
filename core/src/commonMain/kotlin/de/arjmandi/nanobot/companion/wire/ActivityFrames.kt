@@ -25,6 +25,8 @@ internal data class MessageFrame(
 
 internal data class UserMessageFrame(
     val text: String?,
+    /** The attachments the prompt was sent with; `media_paths` is the same files, agent-side. */
+    val mediaUrls: List<JsonObject>,
     val createdAtMs: Long?,
     val startsTurn: Boolean,
     val inputId: String?,

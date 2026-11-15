@@ -102,7 +102,7 @@ class CoreHolder(
         val handle = chat(id) ?: return null
         val composer = CoreComposerDriver(handle, opened.core, scope)
         return ChatSession(
-            chat = CoreChatDriver(handle, scope),
+            chat = CoreChatDriver(handle, scope, mediaBase = opened.core.profile.url),
             composer = composer,
             snapshots = composer.snapshot,
             attachments = CoreAttachmentDriver(handle),

@@ -40,7 +40,7 @@ internal object ThreadReducer {
         is ReasoningDeltaFrame -> appendReasoning(state, frame.streamId, frame.text, frame.turnId)
         is ReasoningEndFrame -> closeReasoning(state, frame.streamId, frame.turnId, frame.text)
         is UserMessageFrame -> addPrompt(state, frame)
-        is MessageFrame -> addToolEvents(state, frame)
+        is MessageFrame -> addMedia(addToolEvents(state, frame), frame)
         is FileEditFrame -> addFileEdits(state, frame)
         is SubagentTaskFrame -> subagentTask(state, frame)
         is MessageAcceptedFrame -> settleOptimisticPrompt(state, frame)
@@ -162,6 +162,42 @@ internal object ThreadReducer {
                 else -> reasoning.map { if (it.id == id) it.copy(closed = true) else it }
             }
             turn.copy(answer = turn.answer.copy(reasoning = closed, reasoningDone = true))
+        }
+
+    /**
+     * The answer's pictures, clips and recordings (`message.media_urls`,
+     * `nanobot/webui/outbound_delivery.py:465`). A row is keyed by its position in the turn, not by
+     * its url: the stored page re-signs the url on every read
+     * (`tests/.../test_websocket_http_routes.py:3343`), so the newest signature takes the old row's
+     * place instead of growing a second copy of the same picture.
+     */
+    private fun addMedia(state: ThreadState, frame: MessageFrame): ThreadState {
+        if (frame.mediaUrls.isEmpty()) return state
+        val rows = mediaRows(frame.mediaUrls, frame.turnId ?: state.activeTurnId, prefix = "")
+        if (rows.isEmpty()) return state
+        return updateTurn(state, frame.turnId, null) { turn ->
+            turn.copy(answer = turn.answer.copy(media = upsertMedia(turn.answer.media, rows)))
+        }
+    }
+
+    /** One row per entry the gateway actually signed; an entry with no url has nothing to draw. */
+    private fun mediaRows(items: List<JsonObject>, turnId: String?, prefix: String): List<MediaAttachment> =
+        items.mapIndexedNotNull { index, item ->
+            val url = item.text("url")?.trim().orEmpty()
+            if (url.isEmpty()) return@mapIndexedNotNull null
+            val name = item.text("name").orEmpty()
+            MediaAttachment(
+                id = "media:${turnId ?: NEW_STREAM}:$prefix$index",
+                url = url,
+                name = name,
+                kind = mediaKindOf(name = name, url = url, declared = item.text("kind")),
+            )
+        }
+
+    private fun upsertMedia(existing: List<MediaAttachment>, rows: List<MediaAttachment>): List<MediaAttachment> =
+        rows.fold(existing) { kept, row ->
+            val at = kept.indexOfFirst { it.id == row.id }
+            if (at < 0) kept + row else kept.toMutableList().also { it[at] = row }
         }
 
     /**
@@ -321,6 +357,13 @@ internal object ThreadReducer {
             quote = existing?.prompt?.quote,
             optimistic = false,
             createdAtMs = frame.createdAtMs,
+            // An echo of the same prompt that carries no media says nothing about the files, so
+            // the rows a stored page or the accepted frame already gave it stay.
+            media = if (frame.mediaUrls.isEmpty()) {
+                existing?.prompt?.media.orEmpty()
+            } else {
+                mediaRows(frame.mediaUrls, turnId, prefix = "prompt:")
+            },
         )
         return if (existing == null) {
             opened.copy(
