@@ -57,11 +57,21 @@ internal class TurnEngine(
     private val attempt: ConnectionAttempt,
     private val host: EngineHost,
     private val readyTimeoutMs: Long = READY_TIMEOUT_MS,
+    private val heartbeat: HeartbeatPolicy = HeartbeatPolicy(),
 ) {
 
     private var connection: Job? = null
     private var outbound: Channel<Outbound>? = null
     private var closing = false
+
+    /** Wakes the heartbeat: the timer and a return to the foreground ask the same question. */
+    private var askNow: Channel<Unit>? = null
+
+    /** Whether the app is in front of the user; a pocketed phone is not asked anything. */
+    private var watched = false
+
+    /** The chat the greeting minted; the heartbeat asks the gateway about it (C5.3). */
+    private var heartbeatChatId: String? = null
 
     val isOpen: Boolean
         get() = outbound != null
@@ -79,6 +89,18 @@ internal class TurnEngine(
             is ConnectionResult.Failed -> EngineOpen.Failed(opened.error)
             is ConnectionResult.Open -> start(opened.payload, opened.socket)
         }
+    }
+
+    /**
+     * Whether anyone is watching. Coming back from away asks the socket at once — the process was
+     * suspended, no timer ran, and a network change in between leaves a connection nobody read
+     * half-open with no FIN to notice — and while the user is here it is asked every interval.
+     * Nothing is asked in the background: a phone in a pocket has no timer to keep, and the
+     * return is the moment the answer matters.
+     */
+    fun setWatched(watched: Boolean) {
+        this.watched = watched
+        if (watched) askNow?.trySend(Unit)
     }
 
     /** Put one envelope on the wire. False means the socket is not there to carry it. */
@@ -103,6 +125,7 @@ internal class TurnEngine(
         val channel = outbound
         val group = connection
         outbound = null
+        askNow = null
         connection = null
         closing = true
         try {
@@ -117,11 +140,18 @@ internal class TurnEngine(
         host.opening(payload)
 
         val channel = Channel<Outbound>(Channel.UNLIMITED)
+        // One unit per frame in, drained by the heartbeat: the only proof of life a socket can
+        // give is a frame coming back, and every frame counts, not just the answer to a question.
+        val answers = Channel<Unit>(Channel.CONFLATED)
+        val asked = Channel<Unit>(Channel.CONFLATED)
         // One job per connection, so a teardown is one cancel and a leak check is one count.
         val job = Job(scope.coroutineContext[Job])
         val group = CoroutineScope(scope.coroutineContext + job)
         connection = job
         outbound = channel
+        askNow = asked
+        // A new socket is not subscribed to the previous one's chats (C3.4).
+        heartbeatChatId = null
         val ready = CompletableDeferred<Unit>()
 
         group.launch {
@@ -136,14 +166,44 @@ internal class TurnEngine(
             }
         }
 
+        // The heartbeat is a second reader of the same connection, not a second socket: it asks
+        // about the chat the greeting minted, because the gateway answers an `attach` with an
+        // `attached` (inbound_commands.py `attach`) and answers nothing else for free.
+        val heartbeatJob = group.launch {
+            while (true) {
+                // Parked with no timer at all while the app is away, so a sleeping phone keeps
+                // nothing alive; a return wakes this with one trigger.
+                val askedNow = if (watched) {
+                    withTimeoutOrNull(heartbeat.intervalMs) { asked.receive() } != null
+                } else {
+                    asked.receive()
+                    true
+                }
+                // A timer that ran out after the app left is not a reason to ask anything.
+                if (!askedNow && !watched) continue
+                val chatId = heartbeatChatId ?: continue
+                if (closing) return@launch
+                if (!ask(chatId, channel, answers)) {
+                    giveUp(channel, answers)
+                    return@launch
+                }
+            }
+        }
+
         group.launch {
             var error: CoreError? = null
             try {
                 socket.frames.collect { frame ->
+                    answers.trySend(Unit)
                     host.frame(frame).forEach { effect -> execute(effect, channel) }
-                    // `ready` means the host has already processed the greeting: a caller that
-                    // sends the moment connect returns must find the chat the greeting minted.
-                    if (frame is ReadyFrame && !ready.isCompleted) ready.complete(Unit)
+                    if (frame is ReadyFrame) {
+                        // The greeting names the chat the heartbeat asks about: a socket that
+                        // dies without a close is only visible as a question with no answer.
+                        frame.chatId?.let { heartbeatChatId = it }
+                        // `ready` means the host has already processed the greeting: a caller
+                        // that sends the moment connect returns must find the chat it minted.
+                        if (!ready.isCompleted) ready.complete(Unit)
+                    }
                 }
             } catch (failure: CancellationException) {
                 throw failure
@@ -154,7 +214,9 @@ internal class TurnEngine(
                 // it, sends must be refused, and the host must hear about a socket that
                 // left on its own — but not one the client closed on purpose.
                 outbound = null
+                askNow = null
                 channel.close()
+                heartbeatJob.cancel()
                 if (!closing) host.closed(error)
             }
         }
@@ -165,6 +227,47 @@ internal class TurnEngine(
             return EngineOpen.Failed(CoreError.Timeout)
         }
         return EngineOpen.Ready(payload)
+    }
+
+    /**
+     * One question on the wire and the time the gateway gets to answer it. A frame that arrived
+     * before the question was asked is not an answer to it, so anything already buffered is
+     * dropped first — otherwise a busy socket would look alive for an interval after it died.
+     */
+    private suspend fun ask(chatId: String, channel: Channel<Outbound>, answers: Channel<Unit>): Boolean {
+        drain(answers)
+        return try {
+            channel.send(Outbound.Attach(chatId = chatId))
+            withTimeoutOrNull(heartbeat.windowMs) { answers.receive() } != null
+        } catch (failure: CancellationException) {
+            throw failure
+        } catch (failure: Exception) {
+            // A question the socket could not carry is the same answer as one it ignored.
+            false
+        }
+    }
+
+    private fun drain(answers: Channel<Unit>) {
+        while (true) {
+            if (answers.tryReceive().isFailure) return
+        }
+    }
+
+    /**
+     * The socket stopped answering. Report it the way the pump would have — one banner, the
+     * existing "Try again", no second failure surface — and take the same teardown a close
+     * takes. `closing` is what stops the pump from reporting the same death twice.
+     */
+    private suspend fun giveUp(channel: Channel<Outbound>, answers: Channel<Unit>) {
+        closing = true
+        outbound = null
+        askNow = null
+        channel.close()
+        answers.close()
+        host.closed(CoreError.Timeout)
+        // From inside the connection's own job: cancel, never join, or the teardown waits on
+        // the coroutine asking for it.
+        connection?.cancel()
     }
 
     /** One frame to send is the engine's work; everything else belongs to the host. */
