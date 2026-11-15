@@ -11,16 +11,19 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imeNestedScroll
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -49,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -90,6 +94,7 @@ import kotlinx.coroutines.launch
  * model decides. Everything on this screen comes from the core's own thread, so a replayed turn
  * and a live one look the same (D9).
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ChatScreen(
     model: ChatViewModel,
@@ -102,6 +107,9 @@ fun ChatScreen(
     val composer = model.composer
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    // The keyboard's own state, as the platform tells it: the field is focused and the composer is
+    // the only place it can be, so putting the field down is putting the keyboard away.
+    val focusManager = LocalFocusManager.current
     // Copy is the platform's clipboard, not the core's: the block's text is what lands there.
     val clipboard = LocalContext.current.getSystemService(android.content.ClipboardManager::class.java)
     var jumpToTurn by remember { mutableStateOf<String?>(null) }
@@ -157,33 +165,52 @@ fun ChatScreen(
         model.states.banner?.let { banner ->
             ConnectionBannerRow(banner = banner, onRetry = { model.states.retryConnection() })
         }
-        when (model.placeholder) {
-            // The page read is in flight: the shape of a conversation, not "nothing here yet"
-            // (the WebUI's `ThreadLoadingSkeleton` draws the same).
-            ThreadPlaceholder.Skeleton -> ThreadSkeleton(modifier = Modifier.weight(1f))
-            ThreadPlaceholder.Failed -> ThreadReadFailed(modifier = Modifier.weight(1f))
-            ThreadPlaceholder.Empty -> EmptyThread(modifier = Modifier.weight(1f))
-            ThreadPlaceholder.None -> Unit
-        }
-        if (thread.turns.isNotEmpty()) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.weight(1f).fillMaxWidth().testTag("chat.thread"),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            ) {
-                items(thread.turns, key = { it.id }) { turn ->
-                    TurnRow(
-                        turn = turn,
-                        cluster = model.activity.cluster(turn.id),
-                        onToggleActivity = { model.activity.toggle(turn.id) },
-                        onToggleDetails = { model.activity.toggleDetails(it) },
-                        isCopied = composer::isCopied,
-                        onCopy = { blockId, plain ->
-                            clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("answer", plain))
-                            composer.copy(blockId)
-                        },
-                    )
+        // The conversation, and the tap that puts the keyboard away. A tap on the conversation
+        // and not on a control inside it: the gesture only ever sees a tap no row claimed, which is
+        // what keeps a tool row's disclosure, a reasoning fold and a copy button working. It sits
+        // here rather than on the list because a new chat has no list, and an empty thread is
+        // exactly where a stranded keyboard is worst (the iOS fix, `2a5c060`).
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .pointerInput(focusManager) { detectTapGestures { focusManager.clearFocus() } },
+        ) {
+            when (model.placeholder) {
+                // The page read is in flight: the shape of a conversation, not "nothing here yet"
+                // (the WebUI's `ThreadLoadingSkeleton` draws the same).
+                ThreadPlaceholder.Skeleton -> ThreadSkeleton(modifier = Modifier.weight(1f))
+                ThreadPlaceholder.Failed -> ThreadReadFailed(modifier = Modifier.weight(1f))
+                ThreadPlaceholder.Empty -> EmptyThread(modifier = Modifier.weight(1f))
+                ThreadPlaceholder.None -> Unit
+            }
+            if (thread.turns.isNotEmpty()) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        // The platform's interactive dismissal (the twin of iOS's
+                        // `.scrollDismissesKeyboard(.interactively)`): a drag down over the thread
+                        // is handed to the IME before the list, and the list keeps what is left.
+                        .imeNestedScroll()
+                        .testTag("chat.thread"),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                ) {
+                    items(thread.turns, key = { it.id }) { turn ->
+                        TurnRow(
+                            turn = turn,
+                            cluster = model.activity.cluster(turn.id),
+                            onToggleActivity = { model.activity.toggle(turn.id) },
+                            onToggleDetails = { model.activity.toggleDetails(it) },
+                            isCopied = composer::isCopied,
+                            onCopy = { blockId, plain ->
+                                clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("answer", plain))
+                                composer.copy(blockId)
+                            },
+                        )
+                    }
                 }
             }
         }
