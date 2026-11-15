@@ -100,6 +100,10 @@ final class CoreHolder: ObservableObject {
             allowUnverifiedCertificate: allowUnverifiedCertificate
         )
         self.companion = companion
+        // A stack opened while the shell is already in front of the user has to hear that: the
+        // core's notice rule starts from "away", and a shell that only reported the scene phase
+        // when it *changed* would never have told it (T32 — the banner for the chat on screen).
+        companion.core.setForeground(foreground: foreground)
         observe(ObservableState<ConnectionState>(flow: companion.core.connection), into: \.connection)
         observe(ObservableState<SettingsState>(flow: companion.core.settings), into: \.settings)
         observe(ObservableState<PaletteCatalog>(flow: companion.core.palette), into: \.paletteCatalog)
