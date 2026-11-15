@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.arjmandi.nanobot.companion.R
 import de.arjmandi.nanobot.companion.ui.Design
+import de.arjmandi.nanobot.companion.ui.SkeletonRows
 import kotlinx.coroutines.launch
 
 /**
@@ -47,14 +48,14 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     model: SettingsViewModel,
-    loadSnapshot: suspend () -> SettingsSnapshot,
+    loadSnapshot: suspend () -> SettingsSnapshot?,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     var confirmDisconnect by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { model.update(loadSnapshot()) }
+    LaunchedEffect(Unit) { model.refresh(loadSnapshot) }
 
     // On API 33 an app has to be granted the notification permission before it may post; the
     // screen asks on the tap, and the notifier answers honestly afterwards (D8). A permission the
@@ -106,7 +107,26 @@ fun SettingsScreen(
             }
 
             Section("Overview")
-            model.overviewRows.forEach { row ->
+            when (model.overview) {
+                // The read has not answered: the shape of the rows it will draw, rather than rows
+                // whose every value is blank.
+                OverviewState.Loading -> SkeletonRows(
+                    count = 4,
+                    rowHeight = Design.minimumTarget,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    label = stringResource(R.string.settings_overview_loading),
+                )
+                OverviewState.Failed -> Text(
+                    text = stringResource(R.string.settings_overview_failed),
+                    fontSize = Design.Interface.captionSize,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(vertical = 12.dp).testTag("settings.overview.failed"),
+                )
+                OverviewState.Loaded -> Unit
+            }
+            // The rows exist only once the read answered: a skeleton with the gateway's blank
+            // values underneath it is neither one state nor the other.
+            if (model.overview == OverviewState.Loaded) model.overviewRows.forEach { row ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

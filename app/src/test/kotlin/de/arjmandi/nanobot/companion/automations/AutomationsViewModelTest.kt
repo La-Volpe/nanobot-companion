@@ -62,6 +62,7 @@ class AutomationsViewModelTest {
         model.load()
 
         assertTrue("the page must say 'no automations yet'", model.isEmpty)
+        assertEquals(AutomationsPage.Empty, model.page)
         assertNull(model.message)
     }
 
@@ -76,6 +77,30 @@ class AutomationsViewModelTest {
 
         assertEquals(1, model.rows.size)
         assertTrue(model.message != null)
+    }
+
+    @Test
+    fun `a page that has not been read says nothing about having none`() = runTest {
+        val model = AutomationsViewModel(FakeDriver(listOf(row("a"))))
+
+        assertEquals("before the read answers, the page is loading", AutomationsPage.Loading, model.page)
+        assertTrue("so the empty copy must not be drawn", !model.isEmpty)
+    }
+
+    @Test
+    fun `a failed refresh does not say the gateway has no automations`() = runTest {
+        // The page loaded, and the gateway said there is nothing scheduled. Then a refresh failed:
+        // "No automations yet" is a claim the failed read cannot make.
+        val driver = FakeDriver(emptyList())
+        val model = AutomationsViewModel(driver)
+        model.load()
+        assertEquals(AutomationsPage.Empty, model.page)
+
+        driver.loadFails = true
+        model.load()
+
+        assertEquals(AutomationsPage.Failed, model.page)
+        assertTrue("and the sentence the page already has is what says so", model.message != null)
     }
 
     @Test

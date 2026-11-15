@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -35,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import de.arjmandi.nanobot.companion.R
 import de.arjmandi.nanobot.companion.core.SessionSummary
 import de.arjmandi.nanobot.companion.ui.Design
+import de.arjmandi.nanobot.companion.ui.SkeletonRows
 
 /**
  * The session drawer (plan.md A2): brand, search, the session list, and the archived row and
@@ -63,7 +63,14 @@ fun DrawerContent(
 
         Column(modifier = Modifier.weight(1f)) {
             when (val state = model.state) {
-                DrawerViewModel.ListState.Loading -> LoadingState()
+                // A read in flight draws the shape of the rows it will have, not a spinner over a
+                // blank list: an empty drawer and a slow drawer must not look the same.
+                DrawerViewModel.ListState.Loading -> SkeletonRows(
+                    count = 5,
+                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                    label = stringResource(R.string.drawer_loading),
+                )
+                DrawerViewModel.ListState.Failed -> MessageState(model.failureMessage.orEmpty())
                 DrawerViewModel.ListState.Empty, is DrawerViewModel.ListState.NoMatches ->
                     MessageState(model.emptyMessage.orEmpty())
                 is DrawerViewModel.ListState.Rows -> Rows(state.rows, selectedKey, onSelect)
@@ -142,16 +149,6 @@ private fun Search(model: DrawerViewModel) {
             .heightIn(min = Design.minimumTarget)
             .testTag("drawer.search"),
     )
-}
-
-@Composable
-private fun LoadingState() {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp).testTag("drawer.loading"))
-    }
 }
 
 @Composable

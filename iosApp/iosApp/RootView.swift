@@ -69,7 +69,11 @@ struct RootView: View {
         // A scripted launch seeds the rows before the view exists, so the drawer starts from
         // what the holder already has rather than waiting for a change that never comes.
         _drawer = StateObject(
-            wrappedValue: DrawerViewModel(rows: container.holder.sessions, loaded: container.holder.sessionsLoaded)
+            wrappedValue: DrawerViewModel(
+                rows: container.holder.sessions,
+                loaded: container.holder.sessionsLoaded,
+                failed: container.holder.sessionsFailed
+            )
         )
     }
 
@@ -96,10 +100,13 @@ struct RootView: View {
         // which way it settles.
         .simultaneousGesture(drawerSwipe)
         .onChange(of: holder.sessions) { _, rows in
-            drawer.update(rows: rows, loaded: holder.sessionsLoaded)
+            drawer.update(rows: rows, loaded: holder.sessionsLoaded, failed: holder.sessionsFailed)
         }
         .onChange(of: holder.sessionsLoaded) { _, loaded in
-            drawer.update(rows: holder.sessions, loaded: loaded)
+            drawer.update(rows: holder.sessions, loaded: loaded, failed: holder.sessionsFailed)
+        }
+        .onChange(of: holder.sessionsFailed) { _, failed in
+            drawer.update(rows: holder.sessions, loaded: holder.sessionsLoaded, failed: failed)
         }
     }
 
@@ -349,8 +356,9 @@ struct RootView: View {
 
     /// The model sheet's list is the gateway's (`/api/settings` → `model_presets`), read when
     /// the sheet opens rather than at connect.
-    private func loadPresets() async -> [ChatModelPreset] {
-        await holder.refreshSettings()
+    private func loadPresets() async -> [ChatModelPreset]? {
+        // Nil is "the read did not answer", which the sheet draws differently from an empty list.
+        guard await holder.refreshSettings() else { return nil }
         return holder.presets
     }
 

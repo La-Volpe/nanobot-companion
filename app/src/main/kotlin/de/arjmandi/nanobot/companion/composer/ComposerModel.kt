@@ -76,6 +76,9 @@ data class PaletteSheet(
         }
 }
 
+/** Whether the model sheet's list has arrived, failed, or is still coming. */
+enum class PresetState { Loading, Loaded, Failed }
+
 /** The composer's sheets, one value so a screen is a `when` and nothing else. */
 enum class ComposerSheet { Model, Access, Usage, Palette, Attach, MessageList, SessionDetails }
 

@@ -49,6 +49,10 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
+    /// Whether Overview's read has answered. Before it did, the section drew rows whose every
+    /// value was blank, which reads like the gateway answering "nothing" to each one.
+    enum OverviewState: Equatable { case loading, loaded, failed }
+
     enum ReadingSize: String, CaseIterable, Equatable {
         case small
         case medium
@@ -64,6 +68,8 @@ final class SettingsViewModel: ObservableObject {
     }
 
     @Published private(set) var snapshot = Snapshot()
+    /// Whether Overview's read has answered: a skeleton, the rows, or the failure sentence.
+    @Published private(set) var overview: OverviewState = .loading
     @Published private(set) var notice: String?
     @Published private(set) var theme: Theme
     @Published private(set) var readingSize: ReadingSize
@@ -117,6 +123,18 @@ final class SettingsViewModel: ObservableObject {
 
     func update(snapshot: Snapshot) {
         self.snapshot = snapshot
+    }
+
+    /// The Overview read. Nil is "did not answer", which the section draws as a sentence rather
+    /// than as rows with blanks where the gateway's answers belong.
+    func refresh(from load: () async -> Snapshot?) async {
+        overview = .loading
+        guard let loaded = await load() else {
+            overview = .failed
+            return
+        }
+        snapshot = loaded
+        overview = .loaded
     }
 
     var overviewRows: [Row] {

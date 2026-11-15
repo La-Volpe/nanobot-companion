@@ -16,6 +16,13 @@ data class AutomationRow(
     val isSystem: Boolean,
 )
 
+/**
+ * What the page draws. "The read has not answered" and "the gateway has nothing scheduled" are two
+ * different screens, and the owner reported exactly that: an unread page used to be blank, which
+ * reads as an empty one.
+ */
+enum class AutomationsPage { Loading, Empty, Rows, Failed }
+
 /** The four things a row can do. Creating one is the agent's job, not a form's. */
 enum class AutomationAct { Run, Pause, Resume, Delete }
 
@@ -44,7 +51,19 @@ class AutomationsViewModel(private val driver: AutomationsDriving) {
     var message by mutableStateOf<String?>(null)
         private set
 
-    val isEmpty: Boolean get() = loaded && rows.isEmpty()
+    /** One truth for "the page really is empty": a failed read is not the same sentence. */
+    val isEmpty: Boolean get() = page == AutomationsPage.Empty
+
+    /** What the list area draws: a skeleton, the jobs, the "none" sentence, or the failure sentence. */
+    val page: AutomationsPage
+        get() = when {
+            // Rows already on screen outrank any failure: a stale page beats a blank one.
+            rows.isNotEmpty() -> AutomationsPage.Rows
+            isLoading -> AutomationsPage.Loading
+            message != null -> AutomationsPage.Failed
+            loaded -> AutomationsPage.Empty
+            else -> AutomationsPage.Loading
+        }
 
     suspend fun load() {
         isLoading = true

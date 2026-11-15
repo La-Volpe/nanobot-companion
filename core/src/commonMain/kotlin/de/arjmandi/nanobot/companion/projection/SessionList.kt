@@ -9,6 +9,12 @@ import de.arjmandi.nanobot.companion.wire.SessionRow
 public data class SessionListState(
     public val rows: List<SessionRow> = emptyList(),
     public val loaded: Boolean = false,
+    /**
+     * The last read did not answer. Kept apart from [loaded] because the drawer says two different
+     * sentences: "no sessions yet" is a fact about the gateway, and a refused read is not.
+     */
+    public val failed: Boolean = false,
 ) {
-    public val isEmpty: Boolean get() = loaded && rows.isEmpty()
+    /** The gateway really has no sessions: a read answered, and it answered with nothing. */
+    public val isEmpty: Boolean get() = loaded && !failed && rows.isEmpty()
 }

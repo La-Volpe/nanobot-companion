@@ -69,6 +69,22 @@ class SettingsViewModelTest {
         presets = listOf("default", "primary"),
     )
 
+    @Test
+    fun overviewSaysWhetherItIsStillReadingAndEndsInASentenceWhenItCannot() = runTest {
+        val model = model()
+        assertEquals(OverviewState.Loading, model.overview, "the section opens before the read answers")
+
+        model.refresh { snapshot() }
+        assertEquals(OverviewState.Loaded, model.overview)
+        assertEquals("0.4.1", model.overviewRows.first().value)
+
+        // A refused read is the app's problem, and Overview must not draw blanks as if they were
+        // the gateway's answers.
+        val refused = model()
+        refused.refresh { null }
+        assertEquals(OverviewState.Failed, refused.overview)
+    }
+
     /** The design's one hard rule about Overview: no uptime field, because the payload has none. */
     @Test
     fun overviewHasAVersionAndACommitAndNoUptime() {

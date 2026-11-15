@@ -58,6 +58,23 @@ public sealed interface ConnectResult {
     ) : ConnectResult
 }
 
+/**
+ * Whether a chat's stored turns have been read (D46). The socket's `attach` carries no history, so
+ * a thread with no rows is two different things: a conversation nobody has sent to, and one whose
+ * page has not arrived. A screen that draws the first while the second is true says "nothing here"
+ * about a conversation it has not looked at yet — which is what this state exists to prevent.
+ */
+public enum class HistoryStatus {
+    /** The page read is not finished: the thread knows only what the socket showed it. */
+    Loading,
+
+    /** The page arrived. An empty thread is now a fact about the gateway. */
+    Loaded,
+
+    /** The read was refused or never left. The thread is not the whole conversation and says so. */
+    Failed,
+}
+
 /** What the composer hands the facade (plan.md C6.1). Media travels as references (C6.6). */
 public data class OutboundDraft(
     public val text: String,

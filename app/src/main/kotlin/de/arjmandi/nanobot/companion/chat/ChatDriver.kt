@@ -35,6 +35,16 @@ data class ChatTurnView(
         }
 }
 
+/**
+ * Whether the stored page has been read (D46). The socket's `attach` carries no history, so a
+ * thread with no rows is either a conversation nobody has used or one whose page has not
+ * arrived — and the screen must draw those two differently.
+ */
+enum class ThreadHistory { Loading, Loaded, Failed }
+
+/** What an empty thread draws: the read in flight, the read that failed, or a genuinely empty chat. */
+enum class ThreadPlaceholder { None, Skeleton, Failed, Empty }
+
 /** What the thread draws (A3; A4 adds the activity rows on top, A8 the notices and the dock). */
 data class ChatThreadView(
     val turns: List<ChatTurnView> = emptyList(),
@@ -42,6 +52,11 @@ data class ChatThreadView(
     val notices: List<de.arjmandi.nanobot.companion.states.ThreadNotice> = emptyList(),
     /** The subtasks this chat's agent owns (A8's dock). */
     val subagents: List<de.arjmandi.nanobot.companion.states.SubagentRow> = emptyList(),
+    /**
+     * The page read's state. A driver with no socket behind it starts `Loaded`: it has nothing to
+     * load, so its empty thread really is empty.
+     */
+    val history: ThreadHistory = ThreadHistory.Loaded,
 )
 
 /**

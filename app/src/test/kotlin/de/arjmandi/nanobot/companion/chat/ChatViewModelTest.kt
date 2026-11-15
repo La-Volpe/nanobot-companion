@@ -67,6 +67,32 @@ class ChatViewModelTest {
     )
 
     @Test
+    fun anEmptyThreadDrawsTheReadNotAVerdict() = runTest {
+        val chat = ScriptedChat()
+        val model = ChatViewModel(chat)
+
+        // Opening a chat starts the page read: no rows yet, but nothing has been answered either.
+        chat.push(ChatThreadView(history = ThreadHistory.Loading))
+        assertEquals(
+            ThreadPlaceholder.Skeleton,
+            model.placeholder,
+            "'Nothing here yet' over a page that is still arriving is the lie the owner reported",
+        )
+
+        // The page answered with no stored turns: now the empty copy is a fact.
+        chat.push(ChatThreadView(history = ThreadHistory.Loaded))
+        assertEquals(ThreadPlaceholder.Empty, model.placeholder)
+
+        // A refused read is the app's problem, and it ends in a sentence, not a skeleton forever.
+        chat.push(ChatThreadView(history = ThreadHistory.Failed))
+        assertEquals(ThreadPlaceholder.Failed, model.placeholder)
+
+        // A row outranks all three: a stored turn and a live one look the same on screen.
+        chat.push(ChatThreadView(listOf(turn(answer = "hi", running = false)), history = ThreadHistory.Failed))
+        assertEquals(ThreadPlaceholder.None, model.placeholder, "rows win: the read's state cannot hide what arrived")
+    }
+
+    @Test
     fun streamingStateEmitsBatched() = runTest {
         val chat = ScriptedChat()
         val model = ChatViewModel(chat)

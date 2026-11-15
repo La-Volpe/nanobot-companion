@@ -74,6 +74,22 @@ struct SettingsViewModelTests {
         )
     }
 
+    @Test func overviewSaysWhetherItIsStillReadingAndEndsInASentenceWhenItCannot() async {
+        let reading = model()
+        #expect(reading.overview == .loading, "the section opens before the read answers")
+
+        let loaded = snapshot()
+        await reading.refresh { loaded }
+        #expect(reading.overview == .loaded)
+        #expect(reading.overviewRows.first?.value == "0.4.1")
+
+        // A refused read is the app's problem, and Overview must not draw blanks as if they were
+        // the gateway's answers.
+        let refused = model()
+        await refused.refresh { nil }
+        #expect(refused.overview == .failed)
+    }
+
     /// The design's one hard rule about Overview: no uptime field, because the payload has none.
     @Test func overviewHasAVersionAndACommitAndNoUptime() {
         let model = model()

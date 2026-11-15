@@ -35,6 +35,9 @@ enum WorkspaceAccess: Equatable {
     case full
 }
 
+/// Whether the model sheet's list has arrived, failed, or is still coming.
+enum PresetState: Equatable { case loading, loaded, failed }
+
 /// One `/model` preset, as the sheet lists it (C6.2). The gateway marks which one is active,
 /// so the checkmark is the gateway's answer rather than a comparison made here.
 struct ChatModelPreset: Identifiable, Equatable {

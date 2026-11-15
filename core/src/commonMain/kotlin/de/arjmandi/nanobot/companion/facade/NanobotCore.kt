@@ -245,8 +245,14 @@ public class NanobotCore internal constructor(
         }
         val outcome = SessionListClient(client, profile.url).fetch(token)
         val rows = (outcome as? SessionListOutcome.Loaded)?.rows ?: _sessions.value.rows
-        // A refresh that fails keeps the rows it had: an empty drawer is worse than a stale one.
-        _sessions.value = SessionListState(rows = rows, loaded = true)
+        // A refresh that fails keeps the rows it had: an empty drawer is worse than a stale one. It
+        // also says so, because a drawer that reports "no sessions yet" after a 500 is lying about
+        // the gateway rather than about itself.
+        _sessions.value = SessionListState(
+            rows = rows,
+            loaded = true,
+            failed = outcome is SessionListOutcome.Failed,
+        )
         // The rows carry each chat's own `model_preset`, which outranks the gateway's current one.
         republishComposerModels()
         // The mention sheet names chats by the same rows, so it is refreshed with them (C6.4).
@@ -519,7 +525,11 @@ public class NanobotCore internal constructor(
         // already replayed, and a second read would double nothing but the round trip.
         val fresh = hydrated.add(chatId)
         coroutineScope {
-            if (fresh) launch { replayHistory(chatId) }
+            if (fresh) {
+                // The read is starting: from here until it answers, an empty thread is "not yet".
+                registry.value[chatId]?.history?.value = HistoryStatus.Loading
+                launch { replayHistory(chatId) }
+            }
             // A chat that has run no turn on this device knows no model: the greeting carries
             // none (`runtime.py` `_connection_loop`) and a compacted page stores no
             // `turn_model_updated`. The settings read that names the chip goes out beside the
@@ -536,17 +546,31 @@ public class NanobotCore internal constructor(
 
     /**
      * The stored turns of one chat, under whatever the socket already showed. A read that fails
-     * leaves the thread as it is: an empty thread is honest, invented rows are not.
+     * leaves the thread as it is: an empty thread is honest, invented rows are not. It does not
+     * leave the thread *looking* empty, though — the status says the page never came (D46).
      */
     private suspend fun replayHistory(chatId: String) {
-        val token = payload?.apiToken ?: return
-        val client = http ?: return
+        val session = registry.value[chatId]
+        val token = payload?.apiToken
+        val client = http
+        if (token == null || client == null) {
+            // Nothing can be read yet: the socket is not open far enough to have a token. The
+            // thread stays as the socket left it, and the status says the page was not read.
+            session?.history?.value = HistoryStatus.Failed
+            return
+        }
+        session?.history?.value = HistoryStatus.Loading
         val outcome = ThreadPageClient(client, profile.url).fetch(token, SESSION_KEY_PREFIX + chatId)
-        val page = (outcome as? ThreadPageOutcome.Loaded)?.page ?: return
+        if (outcome is ThreadPageOutcome.Failed) {
+            session?.history?.value = HistoryStatus.Failed
+            return
+        }
+        val page = (outcome as ThreadPageOutcome.Loaded).page
         val stored = HistoryReplay.fromEvents(page, chatId, deps.clock.nowMs())
         val merged = HistoryReplay.merge(stored = stored, live = chatSet.thread(chatId))
         chatSet = chatSet.copy(threads = chatSet.threads + (chatId to merged))
         publish(chatId, merged)
+        session?.history?.value = HistoryStatus.Loaded
     }
 
     /**

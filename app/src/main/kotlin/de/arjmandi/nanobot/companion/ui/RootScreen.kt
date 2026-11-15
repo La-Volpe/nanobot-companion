@@ -73,7 +73,7 @@ fun RootScreen(
     val sessions by holder.sessions.collectAsStateWithLifecycle()
 
     LaunchedEffect(sessions) {
-        main.updateSessions(sessions.rows, sessions.loaded)
+        main.updateSessions(sessions.rows, sessions.loaded, sessions.failed)
     }
     // The greeting minted a chat before this screen existed, so the shell opens one on its first
     // appearance rather than waiting for a row to be picked; picking a row opens that chat instead,

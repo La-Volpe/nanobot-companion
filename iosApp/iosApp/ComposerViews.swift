@@ -302,7 +302,7 @@ struct UsageRing: View {
 struct ComposerSheets: View {
     @ObservedObject var model: ComposerViewModel
     @ObservedObject var attachments: AttachmentViewModel
-    let loadPresets: () async -> [ChatModelPreset]
+    let loadPresets: () async -> [ChatModelPreset]?
     let onPickPhotos: () -> Void
     let onTakePhoto: () -> Void
     let onPickFiles: () -> Void
@@ -311,14 +311,31 @@ struct ComposerSheets: View {
         switch model.sheet {
         case .model:
             sheet(title: "Choose model") {
-                ForEach(model.presets) { preset in
+                switch model.presetState {
+                case .loading:
+                    // The gateway's list is a read of its own: the sheet draws its rows' shape
+                    // rather than a list that is empty because nothing has answered yet.
+                    SkeletonRows(count: 3, rowHeight: Design.minimumTarget, spacing: 2, label: "Loading model presets")
+                        .padding(.vertical, 4)
+                case .failed:
                     SheetRow(
-                        title: preset.name,
-                        subtitle: preset.subtitle,
-                        checked: preset.active,
-                        identifier: "composer.model.\(preset.name)"
+                        title: "Could not read the model presets",
+                        subtitle: "Tap to try the gateway again",
+                        checked: false,
+                        identifier: "composer.model.retry"
                     ) {
-                        Task { await model.pick(preset: preset) }
+                        Task { await model.loadPresets(from: loadPresets) }
+                    }
+                case .loaded:
+                    ForEach(model.presets) { preset in
+                        SheetRow(
+                            title: preset.name,
+                            subtitle: preset.subtitle,
+                            checked: preset.active,
+                            identifier: "composer.model.\(preset.name)"
+                        ) {
+                            Task { await model.pick(preset: preset) }
+                        }
                     }
                 }
                 SheetRow(

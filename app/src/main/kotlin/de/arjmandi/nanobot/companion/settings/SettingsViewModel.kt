@@ -19,6 +19,10 @@ class SettingsViewModel(
     var snapshot: SettingsSnapshot by mutableStateOf(SettingsSnapshot())
         private set
 
+    /** Whether Overview's read has answered: a skeleton, the rows, or the failure sentence. */
+    var overview: OverviewState by mutableStateOf(OverviewState.Loading)
+        private set
+
     /** The one sentence an action produced; the screen turns it into its string. */
     var notice: SettingsNotice? by mutableStateOf(null)
         private set
@@ -67,6 +71,21 @@ class SettingsViewModel(
 
     fun update(snapshot: SettingsSnapshot) {
         this.snapshot = snapshot
+    }
+
+    /**
+     * The Overview read. Null is "did not answer", which the section draws as a sentence rather
+     * than as rows with blanks where the gateway's answers belong.
+     */
+    suspend fun refresh(load: suspend () -> SettingsSnapshot?) {
+        overview = OverviewState.Loading
+        val loaded = load()
+        if (loaded == null) {
+            overview = OverviewState.Failed
+            return
+        }
+        snapshot = loaded
+        overview = OverviewState.Loaded
     }
 
     val overviewRows: List<SettingsRow>

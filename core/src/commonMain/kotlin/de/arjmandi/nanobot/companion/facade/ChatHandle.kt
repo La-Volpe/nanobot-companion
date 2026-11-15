@@ -34,6 +34,12 @@ public class ChatHandle internal constructor(
 
     public val thread: StateFlow<ThreadState> get() = session.thread
 
+    /**
+     * Whether the stored page has been read (D46). A thread with no turns is either an untouched
+     * conversation or one whose history has not arrived, and the screen needs to tell them apart.
+     */
+    public val history: StateFlow<HistoryStatus> get() = session.history
+
     public val composer: StateFlow<ComposerState> get() = session.composer
 
     /**
@@ -205,6 +211,12 @@ internal class ChatSession(id: MutableStateFlow<String?>) {
     val id: MutableStateFlow<String?> = id
 
     val thread: MutableStateFlow<ThreadState> = MutableStateFlow(ThreadState(chatId = id.value.orEmpty()))
+
+    /**
+     * The page read behind [thread]. It starts `Loading` because a chat the client has just learned
+     * about has not been asked for yet — `open()` is the only thing that changes it.
+     */
+    val history: MutableStateFlow<HistoryStatus> = MutableStateFlow(HistoryStatus.Loading)
 
     val composer: MutableStateFlow<ComposerState> = MutableStateFlow(ComposerState())
 

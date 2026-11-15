@@ -23,6 +23,13 @@ struct AutomationsView: View {
                         .padding(.top, 4)
                         .padding(.bottom, 8)
 
+                    // The read has not answered: the shape of the cards it will draw, not a blank
+                    // page that reads as "nothing scheduled" (the WebUI's startup skeleton does the same).
+                    if model.page == .loading {
+                        SkeletonRows(count: 3, rowHeight: 72, spacing: 8, label: "Loading automations")
+                            .padding(.vertical, 4)
+                    }
+
                     if model.isEmpty {
                         Text("No automations yet. Ask nanobot in a chat and it schedules one.")
                             .font(.system(size: Design.Interface.captionSize))

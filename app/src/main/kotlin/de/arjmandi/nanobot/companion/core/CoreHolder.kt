@@ -62,6 +62,8 @@ data class SessionSummary(
 data class SessionListView(
     val rows: List<SessionSummary> = emptyList(),
     val loaded: Boolean = false,
+    /** The last `GET /api/sessions` did not answer; the drawer says so instead of "none". */
+    val failed: Boolean = false,
 )
 
 /**
@@ -134,10 +136,14 @@ class CoreHolder(
         return core.runAutomation(id, action, null)
     }
 
-    /** Settings → Overview, from the same read the model sheet uses (C7.1). No uptime: there is none. */
-    suspend fun settingsSnapshot(): de.arjmandi.nanobot.companion.settings.SettingsSnapshot {
-        val core = stack?.core ?: return de.arjmandi.nanobot.companion.settings.SettingsSnapshot()
-        runCatching { core.refreshSettings() }
+    /**
+     * Settings → Overview, from the same read the model sheet uses (C7.1). No uptime: there is none.
+     * Null when the read did not answer, so the section says so instead of drawing blank values.
+     */
+    suspend fun settingsSnapshot(): de.arjmandi.nanobot.companion.settings.SettingsSnapshot? {
+        val core = stack?.core ?: return null
+        val refusal = runCatching { core.refreshSettings() }.getOrElse { return null }
+        if (refusal != null) return null
         val state = core.settings.value
         return de.arjmandi.nanobot.companion.settings.SettingsSnapshot(
             version = state.version?.current,
@@ -154,10 +160,15 @@ class CoreHolder(
         )
     }
 
-    /** The model sheet's list, from the settings read the gateway already answers (C6.2). */
-    suspend fun presets(): List<ChatModelPreset> {
-        val core = stack?.core ?: return emptyList()
-        runCatching { core.refreshSettings() }
+    /**
+     * The model sheet's list, from the settings read the gateway already answers (C6.2). Null when
+     * the read did not answer: the sheet says so instead of showing a list that is empty because
+     * nobody looked.
+     */
+    suspend fun presets(): List<ChatModelPreset>? {
+        val core = stack?.core ?: return null
+        val refusal = runCatching { core.refreshSettings() }.getOrElse { return null }
+        if (refusal != null) return null
         return core.settings.value.modelPresets.map(ModelPreset::toPreset)
     }
 
@@ -254,6 +265,7 @@ class CoreHolder(
                         )
                     },
                     loaded = state.loaded,
+                    failed = state.failed,
                 )
             }
         }

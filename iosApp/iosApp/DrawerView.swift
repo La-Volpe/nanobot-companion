@@ -73,6 +73,25 @@ struct DrawerView: View {
 
     @ViewBuilder
     private var content: some View {
+        // A read in flight draws the shape of the rows it will have. Before this the drawer was
+        // simply blank until `GET /api/sessions` answered, which reads exactly like "no sessions".
+        if model.state == .loading {
+            SkeletonRows(count: 5, rowHeight: 44, label: "Loading conversations")
+                .padding(.horizontal, 8)
+                .padding(.top, 4)
+        }
+
+        if let message = model.failureMessage {
+            Text(message)
+                .font(ReadingType.font(size: 15))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 28)
+                .accessibilityIdentifier("drawer.failureState")
+        }
+
         if let message = model.emptyMessage {
             VStack(spacing: 6) {
                 Text(message)

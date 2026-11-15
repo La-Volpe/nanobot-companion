@@ -38,6 +38,10 @@ class ComposerViewModel(
     var presets: List<ChatModelPreset> by mutableStateOf(emptyList())
         private set
 
+    /** Whether the sheet's list has arrived: an empty sheet and a read in flight are two screens. */
+    var presetState: PresetState by mutableStateOf(PresetState.Loading)
+        private set
+
     var sheet: ComposerSheet? by mutableStateOf(null)
         private set
 
@@ -233,10 +237,21 @@ class ComposerViewModel(
         sheet = null
     }
 
-    /** The sheet's list comes from the settings read the gateway already answers (C6.2). */
-    suspend fun loadPresets(load: suspend () -> List<ChatModelPreset>) {
+    /**
+     * The sheet's list comes from the settings read the gateway already answers (C6.2). A read that
+     * refuses answers null, which is a different screen from a gateway with no presets: the sheet
+     * says it could not read them and offers the read again rather than showing an empty list.
+     */
+    suspend fun loadPresets(load: suspend () -> List<ChatModelPreset>?) {
+        // A list already read stays on screen: reopening the sheet must not flash a skeleton.
+        if (presets.isEmpty()) presetState = PresetState.Loading
         val loaded = load()
-        if (loaded.isNotEmpty()) presets = loaded
+        if (loaded == null) {
+            presetState = PresetState.Failed
+            return
+        }
+        presets = loaded
+        presetState = PresetState.Loaded
     }
 
     suspend fun pick(preset: ChatModelPreset) {

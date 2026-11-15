@@ -20,6 +20,9 @@ class DrawerViewModel(rows: List<SessionSummary> = emptyList(), loaded: Boolean 
         /** Loaded with no rows at all: the drawer has never had a chat. */
         data object Empty : ListState
 
+        /** The read did not answer and there is nothing to fall back on: the app's problem, not the gateway's. */
+        data object Failed : ListState
+
         /** Loaded, rows exist, the query matched none of them. */
         data class NoMatches(val query: String) : ListState
 
@@ -32,14 +35,19 @@ class DrawerViewModel(rows: List<SessionSummary> = emptyList(), loaded: Boolean 
     var loaded by mutableStateOf(loaded)
         private set
 
+    /** The last read did not answer: kept apart from [loaded] so the drawer cannot call it "none". */
+    var failed by mutableStateOf(false)
+        private set
+
     var searchText by mutableStateOf("")
 
     var showsArchived by mutableStateOf(false)
         private set
 
-    fun update(rows: List<SessionSummary>, loaded: Boolean) {
+    fun update(rows: List<SessionSummary>, loaded: Boolean, failed: Boolean = false) {
         this.rows = rows
         this.loaded = loaded
+        this.failed = failed
     }
 
     fun toggleArchived() {
@@ -69,6 +77,9 @@ class DrawerViewModel(rows: List<SessionSummary> = emptyList(), loaded: Boolean 
     val state: ListState
         get() = when {
             !loaded -> ListState.Loading
+            // Rows from an earlier read still beat nothing: a stale drawer is only a failure when
+            // there is nothing left to show (the core keeps them for exactly this reason).
+            failed && rows.isEmpty() -> ListState.Failed
             rows.isEmpty() -> ListState.Empty
             isSearching && matches.isEmpty() -> ListState.NoMatches(searchText)
             else -> ListState.Rows(matches)
@@ -77,8 +88,12 @@ class DrawerViewModel(rows: List<SessionSummary> = emptyList(), loaded: Boolean 
     /** What the empty and no-match lines say. The archived row and Settings stay visible in every state: they are not sessions. */
     val emptyMessage: String?
         get() = when (val current = state) {
-            ListState.Loading, is ListState.Rows -> null
+            ListState.Loading, ListState.Failed, is ListState.Rows -> null
             ListState.Empty -> "No sessions yet. Start one from the chat."
             is ListState.NoMatches -> "No sessions match “${current.query}”."
         }
+
+    /** What a failed read says instead of a verdict about the gateway. Null in every other state. */
+    val failureMessage: String?
+        get() = if (state is ListState.Failed) "Could not read your sessions from the gateway." else null
 }

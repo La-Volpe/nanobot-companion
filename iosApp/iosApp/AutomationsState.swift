@@ -13,6 +13,11 @@ struct AutomationRow: Identifiable, Equatable {
     var pending: Bool = false
 }
 
+/// What the page draws. "The read has not answered" and "the gateway has nothing scheduled" are
+/// two different screens, and the owner reported exactly that: an unread page used to be blank,
+/// which reads as an empty one.
+enum AutomationsPage: Equatable { case loading, empty, rows, failed }
+
 /// The four things a row can do. Creating one is not among them — the gateway has no create
 /// endpoint, so the page ends with a button that asks the agent instead.
 enum AutomationAct: Equatable {
@@ -46,7 +51,18 @@ final class AutomationsViewModel: ObservableObject {
         self.driver = driver
     }
 
-    var isEmpty: Bool { loaded && rows.isEmpty }
+    /// One truth for "the page really is empty": a failed read is not the same sentence.
+    var isEmpty: Bool { page == .empty }
+
+    /// What the list area draws: a skeleton, the jobs, the "none" sentence, or the failure sentence.
+    var page: AutomationsPage {
+        // Rows already on screen outrank any failure: a stale page beats a blank one.
+        if !rows.isEmpty { return .rows }
+        if isLoading { return .loading }
+        if message != nil { return .failed }
+        if loaded { return .empty }
+        return .loading
+    }
 
     func load() async {
         isLoading = true

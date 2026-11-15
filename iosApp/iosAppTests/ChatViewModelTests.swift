@@ -33,6 +33,29 @@ struct ChatViewModelTests {
         ChatTurnState(id: id, prompt: prompt, promptPending: pending, answer: answer, answerStreaming: streaming, running: running)
     }
 
+    @Test func anEmptyThreadDrawsTheReadNotAVerdict() {
+        let model = ChatViewModel(chat: FakeChat())
+
+        // Opening a chat starts the page read: no rows yet, but nothing has been answered either.
+        model.update(thread: ChatThreadState(history: .loading))
+        #expect(
+            model.placeholder == .skeleton,
+            "'Nothing here yet' over a page that is still arriving is the lie the owner reported"
+        )
+
+        // The page answered with no stored turns: now the empty copy is a fact.
+        model.update(thread: ChatThreadState(history: .loaded))
+        #expect(model.placeholder == .empty)
+
+        // A refused read is the app's problem, and it ends in a sentence, not a spinner forever.
+        model.update(thread: ChatThreadState(history: .failed))
+        #expect(model.placeholder == .failed)
+
+        // Rows outrank all three: what arrived is drawn whatever the read said.
+        model.update(thread: ChatThreadState(turns: [turn(answer: "hi")], history: .failed))
+        #expect(model.placeholder == .none)
+    }
+
     /// The plan's red line: the bubble is real before the gateway speaks, and stops being
     /// marked pending when `message_accepted` arrives.
     @Test func optimisticBubbleReconcilesOnAccept() {
