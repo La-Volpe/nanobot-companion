@@ -51,26 +51,45 @@ internal object MarkdownParser {
             return blocks
         }
 
-        private fun isFence(line: String): Boolean =
-            line.trimStart().startsWith("```") || line.trimStart().startsWith("~~~")
+        private fun isFence(line: String): Boolean = fenceRun(line) >= 3
+
+        /** The run a fence opens or closes with: at least three of one character, and nothing before it. */
+        private fun fenceRun(line: String): Int {
+            val trimmed = line.trimStart()
+            val char = trimmed.firstOrNull() ?: return 0
+            if (char != '`' && char != '~') return 0
+            val run = trimmed.takeWhile { it == char }.length
+            return if (run >= 3) run else 0
+        }
 
         private fun fence(): MarkdownBlock.CodeFence {
             val opener = input.next().trimStart()
-            val marker = opener.take(3)
+            val char = opener.first()
+            val marker = opener.takeWhile { it == char }.length
             // An info string's first word is the language; the rest is attributes
             // (`kotlin title="Thing.kt"`), which this client has nowhere to put.
-            val language = opener.removePrefix(marker).trim().substringBefore(' ').ifEmpty { null }
+            val language = opener.drop(marker).trim().substringBefore(' ').ifEmpty { null }
             val body = mutableListOf<String>()
             var closed = false
             while (!input.done()) {
                 val line = input.next()
-                if (line.trim().startsWith(marker)) {
+                // CommonMark: a closing fence is the same character, at least as long as its
+                // opener, and nothing else on the line. Anything shorter is content, which is
+                // what keeps ```` ```` ```` around a ```` ``` ```` one block (T21).
+                if (closesFence(line, char, marker)) {
                     closed = true
                     break
                 }
                 body += line
             }
             return MarkdownBlock.CodeFence(language = language, code = body.joinToString("\n"), closed = closed)
+        }
+
+        private fun closesFence(line: String, char: Char, opener: Int): Boolean {
+            val trimmed = line.trim()
+            if (trimmed.isEmpty() || trimmed.first() != char) return false
+            val run = trimmed.takeWhile { it == char }.length
+            return run >= opener && run == trimmed.length
         }
 
         private fun isHeading(line: String): Boolean =

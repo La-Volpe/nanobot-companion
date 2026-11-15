@@ -113,6 +113,29 @@ class MarkdownMatrixTest {
             "code(mermaid:graph TD\n  A-->B)",
         )
         row("a tilde fence can hold backticks", "~~~\n```\n~~~", "code(-:```)")
+        // CommonMark: a closing fence is a run of the same character, at least as long as its
+        // opener. Anything shorter, or the other character, is content — which is what makes
+        // markdown-inside-markdown one block instead of three (T21).
+        row(
+            "a shorter run inside a longer fence is content",
+            "````\n```\ninner\n```\n````",
+            "code(-:```\ninner\n```)",
+        )
+        row(
+            "a nested fence with a language is content too",
+            "````\n```kotlin\nval x = 1\n```\n````",
+            "code(-:```kotlin\nval x = 1\n```)",
+        )
+        row(
+            "a fence closes only on its own character",
+            "```\n~~~\n```",
+            "code(-:~~~)",
+        )
+        row(
+            "a closing run longer than its opener still closes",
+            "```\ncode\n````",
+            "code(-:code)",
+        )
         row("an unclosed fence is still code, and says it is open", "```kotlin\nval x = 1", "code(kotlin,open:val x = 1)")
     }
 
