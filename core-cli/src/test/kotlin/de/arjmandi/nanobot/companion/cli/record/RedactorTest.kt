@@ -115,6 +115,30 @@ class RedactorTest {
         assertEquals("<home>/Dev/nanobot/nanobot/templates/agent/identity.md", node["path"]!!.jsonPrimitive.content)
     }
 
+    /**
+     * The recording machine's locale (T26). `/api/settings` carries the agent's timezone both as
+     * `agent.timezone` and as the flattened `agents.defaults.timezone` in `runtime_config`, and
+     * `Europe/Berlin` in a published fixture names the machine that recorded it.
+     */
+    @Test
+    fun rewritesEveryTimezoneToUtc() {
+        val out = redact(
+            """{"agent":{"timezone":"Europe/Berlin"},
+                "runtime_config":{"agents.defaults.timezone":"Asia/Tokyo"},
+                "schedule":{"kind":"cron","expr":"0 9 * * 1","tz":"Europe/Berlin"},
+                "runtime":{"timezone_mode":"auto"}}""",
+        ).single()
+
+        assertEquals("UTC", out.at("agent", "timezone").content)
+        assertEquals("UTC", out.at("runtime_config", "agents.defaults.timezone").content)
+        assertEquals("UTC", out.at("schedule", "tz").content, "an automation's schedule carries the same place")
+        assertEquals("auto", out.at("runtime", "timezone_mode").content, "the mode is a word, not a place")
+        assertTrue(
+            Regex("""Europe|Asia|America|Africa|Australia|Pacific|/[A-Z][a-z]+""").find(out.toString()) == null,
+            "no real zone survives anywhere in the document: $out",
+        )
+    }
+
     @Test
     fun replacesPathsInsideASentence() {
         // A tool result is prose: "Successfully wrote 7 characters to /Users/…/tool-probe.txt".

@@ -42,6 +42,22 @@ class SettingsFixtureTest {
         )
     }
 
+    /**
+     * A fixture is committed, so the recording machine's locale must not be in it (T26): the
+     * settings payload carries the agent's timezone twice, once flattened into `runtime_config`.
+     */
+    @Test
+    fun noFixtureCarriesARealTimezone() {
+        val zones = Regex("""Europe|Asia|America|Africa|Australia|Pacific|Atlantic|Indian/""")
+        val leaking = Fixtures.files(Fixtures.latest).filter { zones.containsMatchIn(it.readText()) }
+
+        assertTrue(leaking.isEmpty(), "a real zone names the machine that recorded it: $leaking")
+        assertTrue(
+            Fixtures.readJson(File(Fixtures.latest, "settings.json")).toString().contains("\"timezone\":\"UTC\""),
+            "the field is still there, normalised",
+        )
+    }
+
     @Test
     fun usageSourcesAreTheGatewaysOwnNames() {
         val usage = SettingsPayloads.usage(read("settings-usage.json"))
