@@ -18,6 +18,12 @@ internal class FakeSocket : Socket {
 
     val sent: MutableList<String> = mutableListOf()
 
+    /**
+     * What the gateway does with a write. A test that needs an answer (the heartbeat needs one)
+     * sets this instead of racing the engine with a `push` from outside.
+     */
+    var answer: (suspend (String) -> Unit)? = null
+
     var opened: Int = 0
         private set
 
@@ -35,6 +41,7 @@ internal class FakeSocket : Socket {
 
     override suspend fun send(text: String) {
         sent += text
+        answer?.invoke(text)
     }
 
     /** A frame from the gateway, decoded exactly as the real pump decodes one. */

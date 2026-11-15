@@ -193,6 +193,10 @@ public class NanobotCore internal constructor(
     /** Whether the app is in front of the user; the shell reports it (`scenePhase`, `onStart`). */
     public fun setForeground(foreground: Boolean) {
         _foreground = foreground
+        // The engine asks the socket whether it is still there while the user is; a return asks
+        // at once, so a connection that died in a pocket shows the banner the moment the app is
+        // looked at instead of a green dot over a socket that cannot carry anything.
+        engine.setWatched(foreground)
     }
 
     /** The chat whose thread the shell is showing, or null when no chat is on screen. */
