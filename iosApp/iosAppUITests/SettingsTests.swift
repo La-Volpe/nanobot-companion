@@ -17,6 +17,12 @@ final class SettingsTests: XCTestCase {
         return app
     }
 
+    /// The thumb of a `Toggle`: the row's own centre is its label, and a list row's label does not
+    /// flip the switch. The trailing edge is where the control is drawn (design: 51 pt).
+    private func switchControl(_ row: XCUIElement) -> XCUICoordinate {
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5))
+    }
+
     private func openSettings() -> XCUIApplication {
         let app = connectedApp()
         app.buttons["chat.openDrawer"].tap()
@@ -83,6 +89,37 @@ final class SettingsTests: XCTestCase {
         }
         app.buttons["settings.testNotification"].tap()
         app.tap()
+    }
+
+    /// T34: the notification sound is a switch of the reader's own, next to the permission state,
+    /// and the choice outlives the app (the banners read the same preference).
+    func testTheNotificationSoundCanBeTurnedOffAndStaysOff() {
+        let app = openSettings()
+        app.buttons["settings.notifications"].tap()
+
+        let sound = app.switches["settings.notificationSound"]
+        XCTAssertTrue(
+            sound.waitForExistence(timeout: 5),
+            "the sound sits beside the permission. Tree:\n\(app.debugDescription)"
+        )
+        XCTAssertEqual(sound.value as? String, "1", "on until the reader says otherwise")
+
+        // The identifier sits on the row, and a row's label does not flip a `.insetGrouped`
+        // switch: the thumb is at the trailing edge.
+        switchControl(sound).tap()
+        expectation(for: NSPredicate(format: "value == '0'"), evaluatedWith: sound)
+        waitForExpectations(timeout: 5)
+
+        // A preference the banners read has to survive the app that drew it.
+        app.terminate()
+        let again = openSettings()
+        again.buttons["settings.notifications"].tap()
+        let afterRelaunch = again.switches["settings.notificationSound"]
+        XCTAssertTrue(afterRelaunch.waitForExistence(timeout: 5))
+        XCTAssertEqual(afterRelaunch.value as? String, "0", "the phone remembered the choice")
+        switchControl(afterRelaunch).tap()
+        expectation(for: NSPredicate(format: "value == '1'"), evaluatedWith: afterRelaunch)
+        waitForExpectations(timeout: 5)
     }
 
     func testAppearanceSetsTheThemeAndTheReadingSize() {

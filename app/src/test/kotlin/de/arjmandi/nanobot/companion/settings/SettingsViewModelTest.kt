@@ -60,9 +60,15 @@ class SettingsViewModelTest {
 
     private class FakePreferences : SettingsStoring {
         val values = mutableMapOf<String, String>()
+        val flags = mutableMapOf<String, Boolean>()
         override fun string(key: String): String? = values[key]
         override fun set(key: String, value: String) {
             values[key] = value
+        }
+
+        override fun flag(key: String): Boolean? = flags[key]
+        override fun set(key: String, value: Boolean) {
+            flags[key] = value
         }
     }
 

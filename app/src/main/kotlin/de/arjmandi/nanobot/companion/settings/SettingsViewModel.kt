@@ -39,6 +39,12 @@ class SettingsViewModel(
     )
         private set
 
+    /** Whether a banner may make a sound (T34): the reader's choice, read at post time. */
+    var notificationSound: Boolean by mutableStateOf(
+        preferences.flag(KEY_NOTIFICATION_SOUND) ?: true,
+    )
+        private set
+
     /** What the phone says about this app's notifications, read when the screen opens. */
     var permission: de.arjmandi.nanobot.companion.projection.NotificationPermission by
         mutableStateOf(de.arjmandi.nanobot.companion.projection.NotificationPermission.NotAsked)
@@ -164,6 +170,11 @@ class SettingsViewModel(
         preferences.set(KEY_THEME, chosen.name.lowercase())
     }
 
+    fun chooseNotificationSound(on: Boolean) {
+        notificationSound = on
+        preferences.set(KEY_NOTIFICATION_SOUND, on)
+    }
+
     fun chooseReadingSize(chosen: ReadingSize) {
         readingSize = chosen
         preferences.set(KEY_READING_SIZE, chosen.name.lowercase())
@@ -180,8 +191,11 @@ class SettingsViewModel(
         notice = null
     }
 
-    private companion object {
+    companion object {
         const val KEY_THEME = "settings.theme"
         const val KEY_READING_SIZE = "settings.readingSize"
+
+        /** The same key the notifier reads: one preference, not two that could disagree. */
+        const val KEY_NOTIFICATION_SOUND = "settings.notificationSound"
     }
 }

@@ -79,6 +79,10 @@ final class SettingsViewModel: ObservableObject {
         Toggle(title: "Needs attention", isOn: false),
     ]
 
+    /// Whether a banner may make a sound (T34). The reader's choice, read at post time by the
+    /// same object that draws Settings, so a change applies to the next banner and not the next launch.
+    @Published private(set) var notificationSound: Bool
+
     private let credentials: CredentialsStoring
     private let notifier: Notifying
     private let defaults: SettingsStoring
@@ -97,6 +101,7 @@ final class SettingsViewModel: ObservableObject {
         self.disconnectGateway = disconnect
         self.theme = Theme(rawValue: defaults.string("settings.theme") ?? "") ?? .system
         self.readingSize = ReadingSize(rawValue: defaults.string("settings.readingSize") ?? "") ?? .medium
+        self.notificationSound = defaults.flag(SettingsViewModel.notificationSoundKey) ?? true
     }
 
     // MARK: - the list
@@ -204,6 +209,12 @@ final class SettingsViewModel: ObservableObject {
 
     // MARK: - notifications
 
+    /// The sound is a preference, not a per-banner decision: it lives where a relaunch finds it.
+    func setNotificationSound(_ on: Bool) {
+        notificationSound = on
+        defaults.set(on, for: SettingsViewModel.notificationSoundKey)
+    }
+
     func setToggle(_ id: String, on: Bool) {
         guard let index = notificationToggles.firstIndex(where: { $0.id == id }) else { return }
         notificationToggles[index].isOn = on
@@ -238,6 +249,9 @@ final class SettingsViewModel: ObservableObject {
         disconnectGateway()
         notice = "Disconnected. Sign in to reconnect."
     }
+
+    /// The banners and the row above read the same key, so neither can drift from the other.
+    static let notificationSoundKey = "settings.notificationSound"
 }
 
 /// The reading scale: prose, code and the composer, never navigation (design README).
@@ -255,11 +269,17 @@ enum ReadingScale {
 protocol SettingsStoring: AnyObject {
     func string(_ key: String) -> String?
     func set(_ value: String, for key: String)
+
+    /// An on/off preference; nil when nobody has chosen yet, which is not the same as "off".
+    func flag(_ key: String) -> Bool?
+    func set(_ value: Bool, for key: String)
 }
 
 extension UserDefaults: SettingsStoring {
     func string(_ key: String) -> String? { string(forKey: key) }
     func set(_ value: String, for key: String) { set(value, forKey: key) }
+    func flag(_ key: String) -> Bool? { object(forKey: key) as? Bool }
+    func set(_ value: Bool, for key: String) { set(value, forKey: key) }
 }
 
 /// The notifier, as a seam: `SystemNotificationCentre` in the app (it is the same object the

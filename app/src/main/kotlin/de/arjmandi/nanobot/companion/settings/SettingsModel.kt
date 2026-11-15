@@ -62,6 +62,10 @@ interface SettingsCredentials {
 interface SettingsStoring {
     fun string(key: String): String?
     fun set(key: String, value: String)
+
+    /** An on/off preference; null when nobody has chosen yet, which is not the same as "off". */
+    fun flag(key: String): Boolean?
+    fun set(key: String, value: Boolean)
 }
 
 /** The notifier, as a seam: `NotificationManager` in the app, a recorder in a test (D8). */
