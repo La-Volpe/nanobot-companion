@@ -13,6 +13,12 @@ struct SettingsViewModelTests {
         var authorisations = 0
         var sent: [String] = []
         var granted = true
+        var state: AlertsPermission = .granted
+        var settingsOpened = 0
+
+        func permission() async -> AlertsPermission { state }
+
+        func openSystemSettings() { settingsOpened += 1 }
 
         func requestAuthorisation() async -> Bool {
             authorisations += 1
@@ -117,7 +123,7 @@ struct SettingsViewModelTests {
             notifier.sent == ["Task completed · This is a test notification. Tap it to open the chat."],
             "a real local notification, which is the only kind the gateway can deliver"
         )
-        #expect(model.notificationsCopy.contains("while the app is open"), "the copy is honest, not aspirational")
+        #expect(model.notificationsCopy.contains("while you are away"), "the copy is honest, not aspirational")
         #expect(model.notificationsCopy.contains("no push service"), "and says why: the gateway has none")
     }
 

@@ -39,6 +39,11 @@ class SettingsViewModel(
     )
         private set
 
+    /** What the phone says about this app's notifications, read when the screen opens. */
+    var permission: de.arjmandi.nanobot.companion.projection.NotificationPermission by
+        mutableStateOf(de.arjmandi.nanobot.companion.projection.NotificationPermission.NotAsked)
+        private set
+
     var notificationToggles: List<SettingsToggle> by mutableStateOf(
         listOf(
             SettingsToggle("Task finished", isOn = true),
@@ -65,9 +70,25 @@ class SettingsViewModel(
      * has no push transport, so the copy says so instead of hinting at a later version.
      */
     val notificationsCopy: String =
-        "Alerts arrive while the app is open, plus a local notification if a task ends while it is " +
-            "foregrounded. The gateway has no push service and none is planned, so a closed app " +
+        "Alerts arrive while you are away: a local notification when a turn finishes, fails or " +
+            "stops, and when nanobot needs an answer. The chat you are looking at is never " +
+            "announced. The gateway has no push service and none is planned, so a closed app " +
             "stays quiet instead of promising an alert it cannot deliver."
+
+    /** The state the screen names, and the one action it offers for it. */
+    fun refreshPermission() {
+        permission = notifier.permission()
+    }
+
+    fun openNotificationSettings() {
+        notifier.openSystemSettings()
+    }
+
+    /** The system dialog's answer: the state the row names follows it, whichever way it went. */
+    fun answeredPermission(granted: Boolean) {
+        notifier.recordAsked(granted)
+        refreshPermission()
+    }
 
     fun update(snapshot: SettingsSnapshot) {
         this.snapshot = snapshot

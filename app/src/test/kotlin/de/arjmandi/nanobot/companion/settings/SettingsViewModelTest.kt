@@ -1,5 +1,7 @@
 package de.arjmandi.nanobot.companion.settings
 
+import de.arjmandi.nanobot.companion.projection.NotificationPermission
+
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -26,8 +28,13 @@ class SettingsViewModelTest {
         }
     }
 
-    private class FakeNotifier(var granted: Boolean = true) : Notifying {
+    private class FakeNotifier(
+        var granted: Boolean = true,
+        var state: NotificationPermission = NotificationPermission.Granted,
+    ) : Notifying {
         var authorisations = 0
+        var asked = 0
+        var systemSettings = 0
         val sent = mutableListOf<String>()
 
         override suspend fun requestAuthorisation(): Boolean {
@@ -37,6 +44,17 @@ class SettingsViewModelTest {
 
         override suspend fun send(title: String, body: String) {
             sent += "$title · $body"
+        }
+
+        override fun permission(): NotificationPermission = state
+
+        override fun openSystemSettings() {
+            systemSettings += 1
+        }
+
+        override fun recordAsked(granted: Boolean) {
+            asked += 1
+            state = if (granted) NotificationPermission.Granted else NotificationPermission.Denied
         }
     }
 
@@ -115,8 +133,26 @@ class SettingsViewModelTest {
             notifier.sent,
             "a real local notification, which is the only kind the gateway can deliver",
         )
-        assertTrue(model.notificationsCopy.contains("while the app is open"), "the copy is honest, not aspirational")
+        assertTrue(model.notificationsCopy.contains("while you are away"), "the copy is honest, not aspirational")
         assertTrue(model.notificationsCopy.contains("no push service"), "and says why: the gateway has none")
+    }
+
+    /** The row names the system's answer, and offers the one thing that can change it. */
+    @Test
+    fun theRowsStateFollowsTheSystemPermission() = runTest {
+        val notifier = FakeNotifier(state = NotificationPermission.NotAsked)
+        val model = model(notifier = notifier)
+
+        model.refreshPermission()
+        assertEquals(NotificationPermission.NotAsked, model.permission)
+
+        model.answeredPermission(granted = false)
+
+        assertEquals(NotificationPermission.Denied, model.permission, "the answer stands")
+        assertEquals(1, notifier.asked, "a shown dialog is never shown again")
+
+        model.openNotificationSettings()
+        assertEquals(1, notifier.systemSettings, "a refusal's only honest offer is the system screen")
     }
 
     @Test

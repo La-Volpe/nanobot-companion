@@ -36,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.arjmandi.nanobot.companion.R
+import de.arjmandi.nanobot.companion.projection.NotificationPermission
 import de.arjmandi.nanobot.companion.ui.Design
 import de.arjmandi.nanobot.companion.ui.SkeletonRows
 import kotlinx.coroutines.launch
@@ -55,18 +56,21 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     var confirmDisconnect by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { model.refresh(loadSnapshot) }
+    LaunchedEffect(Unit) {
+        model.refresh(loadSnapshot)
+        model.refreshPermission()
+    }
 
     // On API 33 an app has to be granted the notification permission before it may post; the
-    // screen asks on the tap, and the notifier answers honestly afterwards (D8). A permission the
-    // user already gave is not asked for again.
+    // dialog is asked on the tap that needs it, and the notifier answers honestly afterwards
+    // (D8). A permission the user already refused is not asked for again: the row offers the
+    // system's own screen instead, because Android would not draw the dialog twice.
     val context = androidx.compose.ui.platform.LocalContext.current
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        scope.launch { model.sendTestNotification() }
+        // The answer, not the tap, is what the row shows and what the notifier remembers.
+        model.answeredPermission(granted)
     }
-    val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-        androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-        android.content.pm.PackageManager.PERMISSION_GRANTED
+    val canAsk = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
     Scaffold(
         topBar = {
@@ -166,14 +170,51 @@ fun SettingsScreen(
                     )
                 }
             }
+            // The state, then the one thing that can change it: the dialog while it can still be
+            // drawn, the system screen once the answer is "no".
+            Text(
+                text = stringResource(
+                    when (model.permission) {
+                        NotificationPermission.Granted -> R.string.settings_notifications_allowed
+                        NotificationPermission.Denied -> R.string.settings_notifications_denied
+                        NotificationPermission.NotAsked -> R.string.settings_notifications_unasked
+                    },
+                ),
+                fontSize = Design.Interface.bodySize,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Design.minimumTarget)
+                    .testTag("settings.permission"),
+            )
+            if (model.permission != NotificationPermission.Granted) {
+                TextButton(
+                    onClick = {
+                        when {
+                            model.permission == NotificationPermission.Denied || !canAsk ->
+                                model.openNotificationSettings()
+
+                            else -> permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Design.minimumTarget)
+                        .testTag("settings.permissionAction"),
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (model.permission == NotificationPermission.Denied) {
+                                R.string.settings_notifications_system
+                            } else {
+                                R.string.settings_notifications_allow
+                            },
+                        ),
+                        fontSize = Design.Interface.bodySize,
+                    )
+                }
+            }
             TextButton(
-                onClick = {
-                    if (needsPermission) {
-                        permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    } else {
-                        scope.launch { model.sendTestNotification() }
-                    }
-                },
+                onClick = { scope.launch { model.sendTestNotification() } },
                 modifier = Modifier.fillMaxWidth().heightIn(min = Design.minimumTarget).testTag("settings.testNotification"),
             ) {
                 Text(stringResource(R.string.settings_test_notification), fontSize = Design.Interface.bodySize)

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 import core
 
 /// The adapter layer (plan.md §7): the only files in the app allowed to import the framework.
@@ -61,6 +62,20 @@ final class CoreHolder: ObservableObject {
     #endif
     private var subscriptions: [Cancellable] = []
 
+    /// The platform half of a task notice (the rule is the core's). Nil in a scripted launch:
+    /// there is no gateway, so no frame, so nothing to announce.
+    var notices: TaskNoticeCenter?
+
+    /// Whether the app is in front of the user, which is half of the notice rule.
+    private(set) var foreground = false
+
+    /// The background execution assertion that lets a banner outlive the screen (see `announce`).
+    private var backgroundWindow: UIBackgroundTaskIdentifier = .invalid
+
+    /// A notification's tap, waiting for the shell to open the chat it names. Published so the
+    /// shell can react to a tap that arrives while it is already on screen.
+    @Published private(set) var requestedChatId: String?
+
     var isReachable: Bool { companion != nil }
 
     /// Where the gateway lives. Media is signature-authenticated, not bearer-gated
@@ -88,6 +103,11 @@ final class CoreHolder: ObservableObject {
         observe(ObservableState<ConnectionState>(flow: companion.core.connection), into: \.connection)
         observe(ObservableState<SettingsState>(flow: companion.core.settings), into: \.settings)
         observe(ObservableState<PaletteCatalog>(flow: companion.core.palette), into: \.paletteCatalog)
+        subscriptions.append(
+            ObservableStateKt.observeTaskNotices(flow: companion.core.taskNotice) { [weak self] notice in
+                MainActor.assumeIsolated { self?.announce(notice) }
+            }
+        )
         let list = ObservableState<SessionListState>(flow: companion.core.sessions)
         subscriptions.append(
             list.subscribe { [weak self] state in
@@ -118,6 +138,72 @@ final class CoreHolder: ObservableObject {
         return result is ConnectResultConnected
     }
 
+    /// The core allowed a banner: post it, or remember that the phone would not (which is when
+    /// the permission becomes worth asking for).
+    private func announce(_ notice: core.TaskNotice?) {
+        guard let notice, let notices else { return }
+        Task {
+            await notices.deliver(notice)
+            // The banner the window was opened for is on the phone; nothing left to hold the app.
+            endBackgroundWindow()
+        }
+    }
+
+    /// iOS suspends an app the moment it leaves the screen, and a suspended app cannot post the
+    /// banner its turn just finished: it does not even see the frame. A short background window
+    /// keeps the pump alive long enough to post it. The system's own limit applies (~30 s); a
+    /// turn longer than that needs push, which is a gateway and signing decision, not this one.
+    private func beginBackgroundWindow() {
+        guard backgroundWindow == .invalid else { return }
+        backgroundWindow = UIApplication.shared.beginBackgroundTask(withName: "task-notice") { [weak self] in
+            self?.endBackgroundWindow()
+        }
+    }
+
+    private func endBackgroundWindow() {
+        guard backgroundWindow != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundWindow)
+        backgroundWindow = .invalid
+    }
+
+    /// Back to the front of the phone, or away from it: the notice rule needs the difference.
+    func setForeground(_ foreground: Bool) {
+        self.foreground = foreground
+        companion?.core.setForeground(foreground: foreground)
+        guard let notices else { return }
+        guard foreground else {
+            // Away: hold the pump open long enough for a settle frame to become a banner.
+            beginBackgroundWindow()
+            return
+        }
+        endBackgroundWindow()
+        // A banner that went missing while the app was away is the one moment the dialog is
+        // justified: the user has just come back to what the app could not tell them (D8).
+        Task { await notices.askIfJustified() }
+    }
+
+    /// The chat the shell is showing: the one chat a banner must not announce. `nil` is a chat
+    /// whose id the gateway has not minted yet, which the core resolves itself.
+    func markOnScreen(chatId: String?) {
+        guard let core = companion?.core else { return }
+        core.markOnScreen(handle: core.chat(chatId: chatId))
+    }
+
+    /// The chat a banner's tap named, consumed once by the shell.
+    func requestChatFromNotification(_ chatId: String) {
+        requestedChatId = chatId
+    }
+
+    func clearRequestedChat() {
+        requestedChatId = nil
+    }
+
+    /// The permission as iOS reports it, for the Settings row.
+    func notificationPermission() async -> AlertsPermission {
+        guard let notices else { return .notAsked }
+        return await notices.permission()
+    }
+
     func close() {
         subscriptions.forEach { $0.cancel() }
         subscriptions.removeAll()
@@ -131,6 +217,7 @@ final class CoreHolder: ObservableObject {
         sessionsFailed = false
         settings = CoreHolder.emptySettings
         paletteCatalog = CoreHolder.emptyPalette
+        requestedChatId = nil
     }
 
     #if DEBUG
