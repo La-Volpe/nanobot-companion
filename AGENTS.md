@@ -240,6 +240,15 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
     no icon and SpringBoard draws a grey grid; `BrandTests` fails on exactly
     that, which is how the setting was proved necessary.
 
+28. **The simulator can stop raising a software keyboard.** With no Simulator GUI,
+   iOS reports a hardware keyboard attached (`HardwareKeyboardLastSeen=1`) and draws
+   no software keyboard: the composer never moves and the keyboard element sits
+   off-screen with a plausible frame. A dismissal test that fails there is
+   describing the host, not the app. `KeyboardTests`
+   measures both — did the composer move up, is the keyboard's frame inside the
+   window — and skips with the numbers when the answer is no, so a real inset
+   regression still fails and an absent keyboard says what it is.
+
 ## Conventions
 
 - **TDD, and a red that means something.** Write the assertion, watch it fail
