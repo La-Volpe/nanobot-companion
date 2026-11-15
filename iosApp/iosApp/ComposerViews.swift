@@ -11,6 +11,9 @@ struct ComposerBar: View {
     @ObservedObject var model: ComposerViewModel
     @ObservedObject var attachments: AttachmentViewModel
     @ObservedObject var voice: VoiceViewModel
+    /// Owned by the screen, not here: the transcript is the other thing that dismisses the
+    /// keyboard, and two owners of one focus state is how the keyboard came back on its own.
+    var focus: FocusState<Bool>.Binding
     let onAttach: () -> Void
 
     /// The press in progress, as one number so the gesture and the button agree on it.
@@ -146,6 +149,7 @@ struct ComposerBar: View {
                 axis: .vertical
             )
             .lineLimit(1...5)
+            .focused(focus)
             .font(ReadingType.font(size: readingSize))
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
