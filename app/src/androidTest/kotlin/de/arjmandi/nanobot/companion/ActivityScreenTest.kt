@@ -1,7 +1,9 @@
 package de.arjmandi.nanobot.companion
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -50,9 +52,15 @@ class ActivityScreenTest {
         steps = items.size,
     )
 
-    private fun screen(cluster: ActivityCluster, onToggle: () -> Unit = {}) {
+    private fun screen(
+        cluster: ActivityCluster,
+        onToggle: () -> Unit = {},
+        onToggleDetails: (String) -> Unit = {},
+    ) {
         compose.setContent {
-            NanobotTheme { ActivityClusterRow(cluster = cluster, onToggle = onToggle) }
+            NanobotTheme {
+                ActivityClusterRow(cluster = cluster, onToggle = onToggle, onToggleDetails = onToggleDetails)
+            }
         }
     }
 
@@ -61,7 +69,58 @@ class ActivityScreenTest {
         screen(cluster())
 
         compose.onNodeWithText("Thought for 8s · 3 steps · 1 file changed").assertIsDisplayed()
-        compose.onNodeWithText("done").assertIsDisplayed()
+        // The head says the cluster is done and the row says its tool is done — two words, and
+        // neither of them is the tool's own output, which now waits behind the row (T9).
+        compose.onAllNodesWithText("done").assertCountEquals(2)
+        compose.onNodeWithText("exit 0").assertDoesNotExist()
+    }
+
+    /// A row is one line; a tap is what shows the arguments and the output it was hiding.
+    @Test
+    fun aRowKeepsItsOutputBehindTheDisclosure() {
+        var toggled: List<String> = emptyList()
+        screen(cluster(), onToggleDetails = { toggled = toggled + it })
+
+        compose.onNodeWithText("exit 0").assertDoesNotExist()
+        compose.onNodeWithTag("activity.tool").performClick()
+        assertEquals(listOf("tool:1"), toggled, "the row is the tap, and it asks the model to toggle that row")
+    }
+
+    @Test
+    fun anOpenedRowShowsItsArgumentsAndOutput() {
+        screen(
+            cluster(
+                items = listOf(
+                    ActivityItemView(
+                        id = "tool:1",
+                        kind = ActivityKind.Tool("run_command", "pytest -q", ToolRunStatus.Done, "12 passed"),
+                        detailsOpen = true,
+                    ),
+                ),
+            ),
+        )
+
+        compose.onNodeWithText("Arguments").assertIsDisplayed()
+        // Twice on purpose: the row's own one-line summary, and the unreduced call behind it.
+        compose.onAllNodesWithText("pytest -q").assertCountEquals(2)
+        compose.onNodeWithText("Output").assertIsDisplayed()
+        compose.onNodeWithText("12 passed").assertIsDisplayed()
+    }
+
+    /// Reasoning is one line of prose until the reader opens it: the web compacts it the same way.
+    @Test
+    fun reasoningIsOneLineUntilItIsOpened() {
+        val text = "## Check the **write path**\n\nfirst, see the flush call"
+        screen(
+            cluster(
+                items = listOf(
+                    ActivityItemView("r1", ActivityKind.Reasoning(text = text, done = true)),
+                ),
+            ),
+        )
+
+        compose.onNodeWithText("Check the write path first, see the flush call").assertIsDisplayed()
+        compose.onNodeWithText(text).assertDoesNotExist()
     }
 
     @Test

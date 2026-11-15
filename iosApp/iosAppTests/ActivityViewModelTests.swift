@@ -171,4 +171,59 @@ struct ActivityViewModelTests {
         model.update(thread: ChatThreadState(turns: [turn(running: false, activity: [tool(status: .done)])]))
         #expect(model.cluster(for: "t1")?.isOpen == false)
     }
+
+    /// T9's first complaint: a row printed its arguments and its output. The web draws one line —
+    /// glyph, name, one-line summary — and keeps the rest behind the row's disclosure, closed by
+    /// default (`ActivityStep.tsx:77`; the details were a hover tooltip there, a tap here).
+    @Test func rowDetailsStartClosed() {
+        let model = ActivityViewModel(now: { 0 })
+        model.update(thread: ChatThreadState(turns: [
+            turn(activity: [
+                reasoning(),
+                tool(summary: "pytest -q", detail: "collected 12 items"),
+                edit(),
+            ]),
+        ]))
+
+        let items = model.cluster(for: "t1")?.items ?? []
+        #expect(items.count == 3)
+        #expect(items.allSatisfy { $0.detailsOpen == false }, "every row arrives folded: the row is one line")
+    }
+
+    @Test func tappingARowOpensItsDetails() {
+        let model = ActivityViewModel(now: { 0 })
+        model.update(thread: ChatThreadState(turns: [turn(activity: [tool()])]))
+
+        model.toggleDetails(itemId: "tool:call_1")
+        #expect(model.cluster(for: "t1")?.items.first?.detailsOpen == true, "a tap opens what the row hid")
+
+        model.toggleDetails(itemId: "tool:call_1")
+        #expect(model.cluster(for: "t1")?.items.first?.detailsOpen == false)
+    }
+
+    /// `compactReasoningPreview` (webui `reasoning-preview.ts:1`): the row is one line of prose.
+    @Test func aReasoningRowIsOneLine() {
+        let model = ActivityViewModel(now: { 0 })
+        let item = ChatActivityItem(
+            id: "r1",
+            kind: .reasoning(text: "## Check the **write path**\n\n   first, see [flush](x.md)", done: false)
+        )
+        model.update(thread: ChatThreadState(turns: [turn(activity: [item])]))
+
+        #expect(model.cluster(for: "t1")?.items.first?.preview == "Check the write path first, see flush",
+                "markdown is compacted away and the line is a line, not a document")
+        #expect(model.cluster(for: "t1")?.items.first?.detailsOpen == false, "and it is folded like every other row")
+    }
+
+    @Test func aRowsDetailsAreForgottenWithItsTurn() {
+        let model = ActivityViewModel(now: { 0 })
+        model.update(thread: ChatThreadState(turns: [turn(activity: [tool()])]))
+        model.toggleDetails(itemId: "tool:call_1")
+
+        model.update(thread: ChatThreadState(turns: []))
+        model.update(thread: ChatThreadState(turns: [turn(activity: [tool()])]))
+
+        #expect(model.cluster(for: "t1")?.items.first?.detailsOpen == false,
+                "a row out of the thread has nothing left to remember")
+    }
 }

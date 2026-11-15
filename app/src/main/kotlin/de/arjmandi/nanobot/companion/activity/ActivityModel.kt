@@ -2,7 +2,29 @@ package de.arjmandi.nanobot.companion.activity
 
 /** One row inside a turn's activity cluster (A4), as Kotlin's own values: the core reduced the
  * frames into `ActivityItem`; the bridge maps each case here and nothing else branches on it. */
-data class ActivityItemView(val id: String, val kind: ActivityKind)
+data class ActivityItemView(
+    val id: String,
+    val kind: ActivityKind,
+    /** True once the reader opened the row's disclosure. Arguments and output stay behind it. */
+    val detailsOpen: Boolean = false,
+) {
+    /**
+     * The line a reasoning row shows: the web compacts the block to one line of prose
+     * (`reasoning-preview.ts:1`) and keeps the rest for the reader who asks for it.
+     */
+    val preview: String?
+        get() = (kind as? ActivityKind.Reasoning)?.text?.let(::compactReasoningPreview)
+}
+
+private val MARKDOWN_LINK = Regex("\\[([^\\]]+)]\\([^)]+\\)")
+
+/** `compactReasoningPreview` (webui `activity/reasoning-preview.ts`): links to their text, markdown
+ * away, every run of whitespace to one space. Empty stays empty; the row supplies its own word. */
+internal fun compactReasoningPreview(value: String): String = value
+    .replace(MARKDOWN_LINK, "$1")
+    .replace(Regex("[*_#`~]+"), "")
+    .replace(Regex("\\s+"), " ")
+    .trim()
 
 /** What nanobot did on the way to the answer, one case per thing the design draws. */
 sealed interface ActivityKind {

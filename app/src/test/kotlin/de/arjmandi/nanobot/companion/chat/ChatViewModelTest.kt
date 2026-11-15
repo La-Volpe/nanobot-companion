@@ -167,4 +167,38 @@ class ChatViewModelTest {
         assertFalse(model.isStreaming, "a replayed history is not a running turn")
         assertNull(model.lastRefusalRes)
     }
+
+    /**
+     * The auto-scroll rule T9 asked for (webui `ThreadViewport.tsx:1002`, `thread-motion.ts:353`):
+     * the thread follows the stream only while the reader is at the end. A reader who scrolled up
+     * keeps their place, and coming back to the end resumes following.
+     */
+    @Test
+    fun theTailFollowsOnlyWhileTheReaderIsAtIt() = runTest {
+        val chat = ScriptedChat()
+        val model = ChatViewModel(chat)
+        chat.push(ChatThreadView(listOf(turn(answer = "1"))))
+
+        assertTrue(model.viewport.following, "a fresh thread follows its own tail")
+
+        model.scrolled(distanceFromBottomPx = 600)
+        assertFalse(model.viewport.following, "a reader who scrolled up is not dragged back")
+        assertFalse(model.viewport.followsNewContent(), "so the next delta does not scroll the thread")
+
+        model.scrolled(distanceFromBottomPx = 0)
+        assertTrue(model.viewport.followsNewContent(), "back at the end, the stream follows again")
+    }
+
+    /** Sending is the reader asking for the latest, whatever they were reading before. */
+    @Test
+    fun sendingPinsTheReaderToTheTail() = runTest {
+        val chat = ScriptedChat()
+        val model = ChatViewModel(chat)
+        model.scrolled(distanceFromBottomPx = 600)
+
+        model.draft = "go on"
+        model.primaryAction()
+
+        assertTrue(model.viewport.followsNewContent(), "a prompt is a request to see its answer arrive")
+    }
 }

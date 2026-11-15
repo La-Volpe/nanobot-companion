@@ -18,6 +18,23 @@ final class ChatViewModel: ObservableObject {
         self.thread = thread
     }
 
+    /// Whether the thread follows its own tail. The view measures and calls `scrolled`; the rule
+    /// is `ThreadViewport`'s (webui `ThreadViewport.tsx:1002`), so it is tested off a device.
+    @Published private(set) var viewport = ThreadViewport()
+
+    /// The reader's scroll settled this far from the end. Written only on a real change: a scroll
+    /// that publishes on every frame would redraw the whole thread while the answer streams.
+    func scrolled(distanceFromBottom: CGFloat) {
+        let next = viewport.scrolled(distanceFromBottom: distanceFromBottom)
+        if next != viewport { viewport = next }
+    }
+
+    /// The scroll-to-latest control: the reader asked for the tail, so the stream follows again.
+    func jumpToLatest() {
+        let next = viewport.pinned()
+        if next != viewport { viewport = next }
+    }
+
     var rows: [ChatRow] { thread.rows }
 
     var isStreaming: Bool { thread.turns.contains { $0.running } }
@@ -47,6 +64,8 @@ final class ChatViewModel: ObservableObject {
     func send() async {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isStreaming || canSend else { return }
+        // A prompt is a request to watch its answer arrive, whatever the reader was reading.
+        jumpToLatest()
         draft = ""
         lastRefusal = nil
         let turnId = await chat.send(text)

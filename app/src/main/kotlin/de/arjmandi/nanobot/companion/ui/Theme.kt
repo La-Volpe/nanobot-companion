@@ -75,14 +75,6 @@ object Design {
 
         /** A tool row is a row a thumb can land on, like every other row here. */
         val rowHeight = minimumTarget
-
-        /** The design picks the glyph by the tool's name, not by its arguments. */
-        fun glyph(toolName: String): String = when (toolName) {
-            "run_command", "exec", "shell" -> ">_"
-            "web_search", "search" -> "\u2315"
-            "edit_file", "write_file", "apply_patch" -> "\u2261"
-            else -> "\u00b7"
-        }
     }
 }
 

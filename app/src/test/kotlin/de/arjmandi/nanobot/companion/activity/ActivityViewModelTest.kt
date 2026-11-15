@@ -219,4 +219,74 @@ class ActivityViewModelTest {
 
         assertEquals(true, model.cluster("t1")?.isOpen, "a turn out of the thread has nothing left to remember")
     }
+
+    /**
+     * T9's first complaint: a row printed its arguments and its output. The web draws one line —
+     * glyph, name, one-line summary — and keeps the rest behind the row's disclosure, closed by
+     * default (`ActivityStep.tsx:77`, tooltip only on hover).
+     */
+    @Test
+    fun rowDetailsStartClosed() {
+        val model = ActivityViewModel(now = { 0 })
+        model.update(
+            listOf(
+                turn(
+                    activity = listOf(
+                        reasoning(),
+                        tool(summary = "pytest -q", detail = "collected 12 items"),
+                        edit(),
+                    ),
+                ),
+            ),
+        )
+
+        val items = model.cluster("t1")?.items.orEmpty()
+        assertEquals(3, items.size)
+        assertTrue(items.none { it.detailsOpen }, "every row arrives folded: the row is one line")
+    }
+
+    @Test
+    fun tappingARowOpensItsDetails() {
+        val model = ActivityViewModel(now = { 0 })
+        model.update(listOf(turn(activity = listOf(tool()))))
+
+        model.toggleDetails("tool:call_1")
+        assertTrue(model.cluster("t1")?.items?.single()?.detailsOpen == true, "a tap opens what the row hid")
+
+        model.toggleDetails("tool:call_1")
+        assertTrue(model.cluster("t1")?.items?.single()?.detailsOpen == false)
+    }
+
+    /** `compactReasoningPreview` (webui `reasoning-preview.ts:1`): the row is one line of prose. */
+    @Test
+    fun aReasoningRowIsOneLine() {
+        val model = ActivityViewModel(now = { 0 })
+        val item = ActivityItemView(
+            "r1",
+            ActivityKind.Reasoning(text = "## Check the **write path**\n\n   first, see [flush](x.md)", done = false),
+        )
+        model.update(listOf(turn(activity = listOf(item))))
+
+        assertEquals(
+            "Check the write path first, see flush",
+            model.cluster("t1")?.items?.single()?.preview,
+            "markdown is compacted away and the line is a line, not a document",
+        )
+        assertEquals(false, model.cluster("t1")?.items?.single()?.detailsOpen, "and it is folded like every other row")
+    }
+
+    @Test
+    fun aRowsDetailsAreForgottenWithItsTurn() {
+        val model = ActivityViewModel(now = { 0 })
+        model.update(listOf(turn(activity = listOf(tool()))))
+        model.toggleDetails("tool:call_1")
+
+        model.update(emptyList())
+        model.update(listOf(turn(activity = listOf(tool()))))
+
+        assertTrue(
+            model.cluster("t1")?.items?.single()?.detailsOpen == false,
+            "a row out of the thread has nothing left to remember",
+        )
+    }
 }

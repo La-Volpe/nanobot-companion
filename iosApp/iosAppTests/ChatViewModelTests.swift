@@ -124,4 +124,31 @@ struct ChatViewModelTests {
 
         #expect(chat.opens == 1)
     }
+
+    /// The auto-scroll rule T9 asked for (webui `ThreadViewport.tsx:1002`, `thread-motion.ts:353`):
+    /// the thread follows the stream only while the reader is at the end. A reader who scrolled up
+    /// keeps their place, and coming back to the end resumes following.
+    @Test func theTailFollowsOnlyWhileTheReaderIsAtIt() {
+        let model = ChatViewModel(chat: FakeChat())
+        model.update(thread: ChatThreadState(turns: [turn(prompt: "q", answer: "1", streaming: true, running: true)]))
+
+        #expect(model.viewport.following, "a fresh thread follows its own tail")
+
+        model.scrolled(distanceFromBottom: 600)
+        #expect(model.viewport.following == false, "a reader who scrolled up is not dragged back")
+        #expect(model.viewport.followsNewContent == false, "so the next delta does not scroll the thread")
+
+        model.scrolled(distanceFromBottom: 0)
+        #expect(model.viewport.followsNewContent, "back at the end, the stream follows again")
+    }
+
+    @Test func sendingPinsTheReaderToTheTail() async {
+        let model = ChatViewModel(chat: FakeChat())
+        model.scrolled(distanceFromBottom: 600)
+
+        model.draft = "go on"
+        await model.primaryAction()
+
+        #expect(model.viewport.followsNewContent, "a prompt is a request to see its answer arrive")
+    }
 }

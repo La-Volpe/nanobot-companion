@@ -16,6 +16,9 @@ final class ActivityViewModel: ObservableObject {
     private let now: () -> Int64
     /// Turns the reader deliberately opened or closed; theirs, until the turn ends.
     private var overrides: [String: Bool] = [:]
+    /// Rows whose details the reader opened, by row id. A row starts folded — one line, like the
+    /// web's `ActivityStep` — and a tap is what shows the arguments and the output.
+    private var openRows: Set<String> = []
 
     init(now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }) {
         self.now = now
@@ -38,12 +41,22 @@ final class ActivityViewModel: ObservableObject {
         // An override only lasts as long as the turn it was made on: once the turn is out of
         // the thread there is nothing left to remember.
         overrides = overrides.filter { next[$0.key] != nil }
+        openRows.formIntersection(next.values.flatMap { $0.items.map(\.id) })
     }
 
     func toggle(turnId: String) {
         guard let cluster = clusters[turnId] else { return }
         overrides[turnId] = !cluster.isOpen
         clusters[turnId] = cluster.opening(!cluster.isOpen)
+    }
+
+    func toggleDetails(itemId: String) {
+        let wasOpen = openRows.remove(itemId) != nil
+        if !wasOpen { openRows.insert(itemId) }
+        clusters = clusters.mapValues { cluster in
+            guard cluster.items.contains(where: { $0.id == itemId }) else { return cluster }
+            return cluster.decorating(itemId: itemId, open: openRows.contains(itemId))
+        }
     }
 
     private func cluster(for turn: ChatTurnState, nowMs: Int64) -> ActivityCluster {
@@ -83,7 +96,9 @@ final class ActivityViewModel: ObservableObject {
             turnId: turn.id,
             headline: headline,
             statusText: status,
-            items: turn.activity,
+            items: turn.activity.map { item in
+                openRows.contains(item.id) ? item.openingDetails() : item
+            },
             isOpen: isOpen,
             hasFailure: failed,
             steps: steps
@@ -118,6 +133,24 @@ struct ActivityCluster: Equatable {
             if case let .search(_, sources) = item.kind { return sources.map(SourceChip.init(url:)) }
             return []
         }
+    }
+
+    /// One row with its disclosure opened, which is the reader's own choice.
+    func decorating(itemId: String, open: Bool) -> ActivityCluster {
+        ActivityCluster(
+            turnId: turnId,
+            headline: headline,
+            statusText: statusText,
+            items: items.map { item in
+                guard item.id == itemId else { return item }
+                var copy = item
+                copy.detailsOpen = open
+                return copy
+            },
+            isOpen: isOpen,
+            hasFailure: hasFailure,
+            steps: steps
+        )
     }
 
     func opening(_ open: Bool) -> ActivityCluster {

@@ -53,12 +53,20 @@ struct DesignSystemTests {
         #expect(ReadingScale.size(for: .large) != ReadingType.size, "the preference is its own scale, not the base token")
     }
 
-    /// The activity cluster picks its glyph by the tool's name, which is the design's own rule.
-    @Test func theToolGlyphComesFromTheToolName() {
-        #expect(Design.Activity.icon(forTool: "run_command") == "terminal")
-        #expect(Design.Activity.icon(forTool: "web_search") == "globe")
-        #expect(Design.Activity.icon(forTool: "edit_file") == "doc.text")
-        #expect(Design.Activity.icon(forTool: "read_file") == "doc")
+    /// The activity cluster picks its glyph by the tool's name, which is the design's own rule,
+    /// and the glyph is one the WebUI draws (`tools/webui-icons.py`): an SF Symbol here is how the
+    /// phone stops matching the browser (AGENTS.md, "gotchas", 25).
+    @Test func theToolGlyphComesFromTheToolName() throws {
+        #expect(Design.Activity.icon(forTool: "run_command") == "Terminal")
+        #expect(Design.Activity.icon(forTool: "web_search") == "Globe")
+        #expect(Design.Activity.icon(forTool: "edit_file") == "Compact")
+        #expect(Design.Activity.icon(forTool: "read_file") == "Activity")
+
+        // A name with no imageset behind it draws nothing at all, so the catalog is checked too.
+        for tool in ["run_command", "web_search", "edit_file", "read_file"] {
+            let name = "Icon\(Design.Activity.icon(forTool: tool))"
+            #expect(try #require(UIImage(named: name), "\(name) is missing from the asset catalog") != nil)
+        }
     }
 
     @Test func everyControlMeetsTheTouchTarget() {

@@ -12,6 +12,35 @@ struct ChatActivityItem: Identifiable, Equatable {
 
     let id: String
     let kind: Kind
+    /// True once the reader opened the row's disclosure; arguments and output stay behind it.
+    var detailsOpen: Bool = false
+
+    /// The line a reasoning row shows: the web compacts the block to one line of prose
+    /// (`reasoning-preview.ts:1`) and keeps the rest for the reader who asks for it.
+    var preview: String? {
+        if case let .reasoning(text, _) = kind { return ChatActivityItem.compactReasoningPreview(text) }
+        return nil
+    }
+
+    func openingDetails() -> ChatActivityItem {
+        var copy = self
+        copy.detailsOpen = true
+        return copy
+    }
+
+    /// `compactReasoningPreview` (webui `activity/reasoning-preview.ts`): links to their text,
+    /// markdown away, every run of whitespace to one space. Empty stays empty; the row says its
+    /// own word for that. The Android twin is `compactReasoningPreview` in `ActivityModel.kt`.
+    static func compactReasoningPreview(_ value: String) -> String {
+        var text = value.replacingOccurrences(
+            of: "\\[([^\\]]+)]\\([^)]+\\)",
+            with: "$1",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(of: "[*_#`~]+", with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }
 
 enum ToolRunStatus: Equatable {

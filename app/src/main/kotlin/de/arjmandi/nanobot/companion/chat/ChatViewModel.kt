@@ -1,5 +1,8 @@
 package de.arjmandi.nanobot.companion.chat
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import de.arjmandi.nanobot.companion.activity.ActivityViewModel
 import de.arjmandi.nanobot.companion.composer.ComposerDriving
 import de.arjmandi.nanobot.companion.composer.ComposerSnapshot
@@ -47,6 +50,23 @@ class ChatViewModel(
     onRetryConnection: () -> Unit = {},
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + uiDispatcher()),
 ) {
+
+    /**
+     * Whether the thread follows its own tail. The screen measures and calls [scrolled]; the rule
+     * is [ThreadViewport]'s (webui `ThreadViewport.tsx:1002`), so it is tested off a device.
+     */
+    var viewport: ThreadViewport by mutableStateOf(ThreadViewport())
+        private set
+
+    /** The reader's scroll settled [distanceFromBottomPx] from the end of the list. */
+    fun scrolled(distanceFromBottomPx: Int) {
+        viewport = viewport.scrolled(distanceFromBottomPx)
+    }
+
+    /** The scroll-to-latest control: the reader asked for the tail, so the stream follows again. */
+    fun jumpToLatest() {
+        viewport = viewport.pinned()
+    }
 
     /** What nanobot did on the way to each answer (A4), folded per turn. */
     val activity: ActivityViewModel = ActivityViewModel()
@@ -117,6 +137,8 @@ class ChatViewModel(
      */
     suspend fun send() {
         if (isStreaming && !canSend) return
+        // A prompt is a request to watch its answer arrive, whatever the reader was reading.
+        viewport = viewport.pinned()
         val streamingBefore = isStreaming
         val sending = composer.draft.trim()
         composer.send()
