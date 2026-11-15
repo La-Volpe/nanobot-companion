@@ -139,6 +139,22 @@ class VoiceViewModelTest {
         assertEquals(1, recorder.cancels, "the gateway's ceiling is enforced on this side")
     }
 
+    /**
+     * The refusal is the reader's to put away (T31). The owner's gateway has no speech provider, so
+     * every recording comes back refused; a notice with no dismissal is a line that never leaves.
+     */
+    @Test
+    fun aNoticeCanBePutAway() = runTest {
+        val model = model()
+        model.beginHold(nowMs = 0)
+        model.endHold(nowMs = 100)
+        assertEquals(VoiceNotice.TooShort, model.notice, "the press was too short, so the composer says why")
+
+        model.dismissNotice()
+
+        assertNull(model.notice, "and the reader can put the sentence away")
+    }
+
     @Test
     fun theMeterCountsUpInMinutesAndSeconds() {
         val model = model()

@@ -64,6 +64,11 @@ class VoiceViewModel(
         if (recording != null) this.recording = recording
     }
 
+    /** A notice is the reader's to put away: it is a line on the composer, not an alert (T31). */
+    fun dismissNotice() {
+        notice = null
+    }
+
     // The hold gesture.
 
     fun beginHold(nowMs: Long) {

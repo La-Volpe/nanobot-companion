@@ -21,6 +21,10 @@ struct ComposerBar: View {
     /// Set while a hold owns the press; the Button's action is the release, which the gesture
     /// has already handled (the artifact's `suppressClick`).
     @State private var suppressClick = false
+    /// Which job the press in progress belongs to. The button becomes the microphone the moment
+    /// a send empties the field, and the gesture that belonged to the send must not follow it
+    /// there (T31: the owner's send started a recording).
+    @State private var press = PrimaryPress()
 
     var body: some View {
         VStack(spacing: 6) {
@@ -45,11 +49,23 @@ struct ComposerBar: View {
                     .accessibilityIdentifier("composer.refusal")
             }
             if let notice = voice.notice {
-                Text(notice)
-                    .font(.system(size: Design.Interface.microSize))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier("voice.notice")
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(notice)
+                        .font(.system(size: Design.Interface.microSize))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("voice.notice")
+                    // The WebUI's own close glyph, not a character (gotcha 25).
+                    Button(action: voice.dismissNotice) {
+                        WebUIIcon(name: "Close", size: 12)
+                            .frame(width: 32, height: 32)
+                            .contentShape(Rectangle())
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Dismiss")
+                    .accessibilityIdentifier("voice.notice.dismiss")
+                }
             }
         }
         .padding(.horizontal, 12)
@@ -174,6 +190,7 @@ struct ComposerBar: View {
                 suppressClick = false
                 return
             }
+            press.acted()
             Task { await primaryAction() }
         } label: {
             WebUIIcon(name: primaryGlyph(primary), size: 19)
@@ -188,14 +205,19 @@ struct ComposerBar: View {
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in
-                    guard primary == .voice, holdStartedAt == nil else { return }
+                    // The state is read *through* the press, not from the button as it is now.
+                    guard press.down(primary), holdStartedAt == nil else { return }
                     suppressClick = true
                     let now = Self.nowMs()
                     holdStartedAt = now
                     voice.beginHold(nowMs: now)
                 }
                 .onEnded { _ in
-                    guard let started = holdStartedAt else { return }
+                    guard let started = holdStartedAt else {
+                        press.lifted()
+                        return
+                    }
+                    press.lifted()
                     holdStartedAt = nil
                     let now = Self.nowMs()
                     Task {

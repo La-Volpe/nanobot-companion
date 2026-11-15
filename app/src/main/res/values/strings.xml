@@ -165,6 +165,8 @@
     <string name="voice_nothing_recorded">That recording did not reach the microphone.</string>
     <string name="voice_transcription_failed">The gateway could not transcribe that recording.</string>
     <string name="voice_start">Voice input</string>
+    <string name="voice_notice_dismiss">Dismiss</string>
+    <string name="settings_notification_sound">Sound</string>
 
     <!-- Settings (A7): the four sections, the one honest notification promise, and the way out. -->
     <string name="settings_title">Settings</string>

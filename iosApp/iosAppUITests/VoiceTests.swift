@@ -51,6 +51,21 @@ final class VoiceTests: XCTestCase {
         XCTAssertTrue(app.buttons["chat.voice"].exists, "and the button is a microphone again")
     }
 
+    /// The refusal is the reader's to put away (T31). A gateway with no speech provider answers
+    /// every recording with one, so a notice nobody can dismiss is a sentence that stays on the
+    /// composer for the life of the app.
+    func testARefusalNoticeCanBeDismissed() {
+        let app = chatApp()
+
+        app.buttons["chat.voice"].press(forDuration: 0.45)
+        let notice = app.staticTexts["Hold a little longer to record voice."]
+        XCTAssertTrue(notice.waitForExistence(timeout: 5), "under the floor nothing is sent. Tree:\n\(app.debugDescription)")
+
+        app.buttons["voice.notice.dismiss"].tap()
+
+        XCTAssertFalse(notice.exists, "a dismissed notice is gone. Tree:\n\(app.debugDescription)")
+    }
+
     func testTappingTheMicrophoneDictatesAndFillsTheField() {
         let app = chatApp()
 

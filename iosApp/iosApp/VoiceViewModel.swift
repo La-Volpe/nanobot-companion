@@ -96,6 +96,13 @@ final class VoiceViewModel: ObservableObject {
         tapMode = true
     }
 
+    /// A notice is the reader's to put away. It is a line on the composer, not an alert, so the
+    /// control that clears it is the reader's only way out (T31: the owner's was undismissable,
+    /// and a gateway with no speech provider produces one for everyone).
+    func dismissNotice() {
+        notice = nil
+    }
+
     /// Called by the meter's timer; the model owns no clock of its own, so the view passes time.
     func tick(nowMs: Int) {
         guard phase == .recording else { return }

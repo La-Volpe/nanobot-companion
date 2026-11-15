@@ -46,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -300,7 +301,7 @@ private fun ComposerZone(
             AttachmentStrip(model = attachments)
         }
         VoiceMeter(model = voice)
-        VoiceNoticeRow(notice = voice.notice)
+        VoiceNoticeRow(notice = voice.notice, onDismiss = { voice.dismissNotice() })
         composer.snapshot.queued?.takeIf { it.isNotEmpty() }?.let { queued ->
             QueueChip(
                 text = queued,
@@ -355,13 +356,24 @@ private fun ComposerZone(
                     microphone.launch(Manifest.permission.RECORD_AUDIO)
                 }
             }
+            // One button, two readers of the same press, so one of them has to own it. The job
+            // is the state the press *began* in: a send empties the field and turns the button
+            // into the microphone while the finger is still down, and that press must not start
+            // a recording (T31). The press the recorder owns is consumed, so the button below it
+            // does not answer the same finger a second time.
+            val pressState = rememberUpdatedState(primary)
             androidx.compose.foundation.layout.Box(
-                modifier = Modifier.pointerInput(primary) {
-                    if (primary != de.arjmandi.nanobot.companion.composer.PrimaryState.Voice) return@pointerInput
-                    // A hold records; a press shorter than the design's 300 ms arms tap-to-dictate
-                    // and keeps recording, which is the artifact's own rule.
+                modifier = Modifier.pointerInput(Unit) {
                     awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false)
+                        val press = awaitFirstDown(requireUnconsumed = false)
+                        if (pressState.value != de.arjmandi.nanobot.companion.composer.PrimaryState.Voice) {
+                            // Send, stop or queue: the button's own onClick is the whole press.
+                            waitForUpOrCancellation()
+                            return@awaitEachGesture
+                        }
+                        press.consume()
+                        // A hold records; a press shorter than the design's 300 ms arms
+                        // tap-to-dictate and keeps recording, which is the artifact's own rule.
                         val started = now()
                         beginRecording()
                         waitForUpOrCancellation()
