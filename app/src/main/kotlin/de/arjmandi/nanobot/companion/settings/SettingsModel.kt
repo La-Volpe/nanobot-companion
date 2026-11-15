@@ -68,4 +68,13 @@ interface SettingsStoring {
 interface Notifying {
     suspend fun requestAuthorisation(): Boolean
     suspend fun send(title: String, body: String)
+
+    /** The system permission as the screen shows it; *when* to ask is the core's `NotificationPrompt`. */
+    fun permission(): de.arjmandi.nanobot.companion.projection.NotificationPermission
+
+    /** Where a user turns alerts back on after "no": the platform's own screen, not a second dialog. */
+    fun openSystemSettings()
+
+    /** The dialog was shown: the answer stands, and asking again is not an option Android offers. */
+    fun recordAsked(granted: Boolean)
 }

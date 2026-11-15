@@ -215,4 +215,39 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertTrue(app.textFields["chat.composer"].waitForExistence(timeout: 10), "and the shell is still the shell")
         print("live: retry reconnected")
     }
+
+    /// The owner's defect: a turn that settles while the app is away has to arrive as a local
+    /// notification. Opt-in like its siblings (`NANOBOT_LIVE_URL`, `NANOBOT_LIVE_SECRET`), and it
+    /// needs the notification permission already granted on the simulator: the first banner a
+    /// refused app would have drawn is spent on the dialog instead.
+    func testATurnSettlesIntoABannerWhileTheAppIsAway() throws {
+        let app = try liveApp()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let composer = app.textFields["chat.composer"]
+        XCTAssertTrue(
+            composer.waitForExistence(timeout: 30),
+            "the launch's own gateway did not open the chat. Tree:\n\(app.debugDescription)"
+        )
+
+        composer.tap()
+        composer.typeText("Reply with exactly the word: pong")
+        let send = app.buttons["chat.send"]
+        XCTAssertTrue(send.waitForExistence(timeout: 10), "typing turns the microphone into Send")
+        send.tap()
+        // Away immediately: a turn that settles while the chat is on screen is deliberately not
+        // announced, so the app has to leave the screen before the answer lands.
+        XCUIDevice.shared.press(.home)
+
+        let banner = springboard.descendants(matching: .any)["Task completed"]
+        let appeared = banner.waitForExistence(timeout: 90)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = "banner-while-away"
+        shot.lifetime = .keepAlways
+        add(shot)
+        XCTAssertTrue(
+            appeared,
+            "a turn settled with the app in the background and nothing on the phone said so. Tree:\n\(springboard.debugDescription)"
+        )
+        print("live: banner posted while the app was away")
+    }
 }

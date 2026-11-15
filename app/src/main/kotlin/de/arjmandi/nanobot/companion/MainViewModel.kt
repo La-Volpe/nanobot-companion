@@ -184,7 +184,22 @@ class MainViewModel(
         chat = model
         // The chat's states start from the connection the shell already knows (P9's lesson).
         model.states.update(connectionView)
+        // The chat on screen is the one a banner must not announce (the rule is the core's):
+        // `null` is a chat whose id the gateway has not minted yet, which the core resolves.
+        holder.markOnScreen(chatId)
         model.open(chatId)
+    }
+
+    /**
+     * A notification's tap: the chat it came from, on the shell that is already running. An id the
+     * drawer does not have is still opened — the notification named it, so the gateway knows it.
+     */
+    suspend fun openNotifiedChat(chatId: String) {
+        drawer.rows.firstOrNull { it.chatId == chatId }?.let { selected = it }
+        drawerOpen = false
+        settingsOpen = false
+        automationsOpen = false
+        openChat(chatId)
     }
 
     /**

@@ -176,6 +176,17 @@
     <string name="settings_notifications_off">Notifications are turned off for this app in Settings.</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_reading_size">Reading size</string>
+    <string name="notice_completed">Task completed</string>
+    <string name="notice_failed">Task failed</string>
+    <string name="notice_interrupted">Task stopped</string>
+    <string name="notice_needs_attention">nanobot needs you</string>
+    <!-- No conversation text, no chat title, no model error: a lock screen shows words to anyone. -->
+    <string name="notice_body">Tap to open the chat.</string>
+    <string name="settings_notifications_allowed">Alerts allowed</string>
+    <string name="settings_notifications_denied">Alerts turned off</string>
+    <string name="settings_notifications_unasked">Alerts not asked yet</string>
+    <string name="settings_notifications_allow">Allow alerts</string>
+    <string name="settings_notifications_system">Open system settings</string>
     <string name="settings_notifications_copy">Alerts arrive while the app is open, plus a local notification if a task ends while it is foregrounded. The gateway has no push service and none is planned, so a closed app stays quiet instead of promising an alert it cannot deliver.</string>
 
     <!-- States (A8): the banner's lines, the notice rows, the goal strip, the dock and the one

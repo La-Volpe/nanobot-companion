@@ -8,6 +8,7 @@ import de.arjmandi.nanobot.companion.facade.ChatHandle
 import de.arjmandi.nanobot.companion.facade.ConnectResult
 import de.arjmandi.nanobot.companion.facade.ConnectionFailure
 import de.arjmandi.nanobot.companion.facade.ConnectionState
+import de.arjmandi.nanobot.companion.projection.TaskNotice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -85,11 +86,34 @@ class CoreHolder(
     private val _sessions = MutableStateFlow(SessionListView())
     val sessions: StateFlow<SessionListView> = _sessions.asStateFlow()
 
+    private val _taskNotices = MutableStateFlow<TaskNotice?>(null)
+
     private var stack: Companion? = null
     private val observing = mutableListOf<Job>()
 
     /** A chat handle for the thread (A3). Null before a gateway is open. */
     fun chat(id: String?): ChatHandle? = stack?.core?.chat(chatId = id)
+
+    /**
+     * The last banner the core's rule allowed (the rule is `:core`, not this app): the activity
+     * collects this and posts what it can, and this state is the only "there is something to
+     * post". One notice per event: a replayed frame does not move it (`TaskNoticeRule`).
+     */
+    val taskNotices: StateFlow<TaskNotice?> = _taskNotices.asStateFlow()
+
+    /** Whether the shell is in front of the user, which is half of the notice rule. */
+    fun setForeground(foreground: Boolean) {
+        stack?.core?.setForeground(foreground)
+    }
+
+    /**
+     * The chat the shell is showing, as a handle so the core can resolve a chat the greeting has
+     * not finished minting: `chat(null)` is the new chat the app is already on.
+     */
+    fun markOnScreen(chatId: String?) {
+        val core = stack?.core ?: return
+        core.markOnScreen(core.chat(chatId = chatId))
+    }
 
 
     /**
@@ -209,6 +233,7 @@ class CoreHolder(
         close()
         _connection.value = ConnectionView()
         _sessions.value = SessionListView()
+        _taskNotices.value = null
     }
 
     /** The drawer read, and the one a `session_updated` frame triggers inside the core. */
@@ -228,6 +253,7 @@ class CoreHolder(
         observing.clear()
         stack?.close()
         stack = null
+        _taskNotices.value = null
     }
 
     /**
@@ -251,6 +277,9 @@ class CoreHolder(
                     else -> ConnectionView()
                 }
             }
+        }
+        observing += scope.launch {
+            opened.core.taskNotice.collect { _taskNotices.value = it }
         }
         observing += scope.launch {
             opened.core.sessions.collect { state ->

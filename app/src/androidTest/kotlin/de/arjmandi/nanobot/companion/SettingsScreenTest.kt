@@ -1,5 +1,7 @@
 package de.arjmandi.nanobot.companion
 
+import de.arjmandi.nanobot.companion.projection.NotificationPermission
+
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -65,9 +67,22 @@ class SettingsScreenTest {
 
     private class Notifier : Notifying {
         val sent = mutableListOf<String>()
+        var state = NotificationPermission.Granted
+        var systemSettings = 0
+
         override suspend fun requestAuthorisation(): Boolean = true
         override suspend fun send(title: String, body: String) {
             sent += title
+        }
+
+        override fun permission(): NotificationPermission = state
+
+        override fun openSystemSettings() {
+            systemSettings += 1
+        }
+
+        override fun recordAsked(granted: Boolean) {
+            state = if (granted) NotificationPermission.Granted else NotificationPermission.Denied
         }
     }
 

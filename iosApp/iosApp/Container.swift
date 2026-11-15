@@ -9,6 +9,13 @@ final class Container {
     let gateway: GatewayConnecting
     let credentials: CredentialsStoring
 
+    /// The phone half of a task notice (the rule is the core's), owned here so the delegate
+    /// exists before the first frame and a tap works on a cold launch too.
+    let notices: TaskNoticeCenter
+
+    /// The one implementation of the system's notification calls: banners and Settings both use it.
+    let notifications: SystemNotificationCentre
+
     /// A scripted chat for a flow test (DEBUG only): the real one needs a gateway.
     var scriptedChat: ChatDriving?
     /// The gateway key a live-session launch prefills (DEBUG only): typed keys land in test logs.
@@ -40,6 +47,12 @@ final class Container {
         self.startsConnected = startsConnected
         let holder = holder ?? CoreHolder()
         self.holder = holder
+        let centre = SystemNotificationCentre()
+        self.notifications = centre
+        self.notices = TaskNoticeCenter(posting: centre)
+        holder.notices = self.notices
+        // A tap is the shell's business: it is who can put a chat on screen.
+        centre.onOpenChat = { [weak holder] chatId in holder?.requestChatFromNotification(chatId) }
         self.gateway = gateway ?? CoreGateway(holder: holder)
         self.credentials = credentials ?? StoredCredentials(secrets: KeychainSecrets())
     }

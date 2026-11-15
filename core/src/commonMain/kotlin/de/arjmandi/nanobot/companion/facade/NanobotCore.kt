@@ -9,6 +9,10 @@ import de.arjmandi.nanobot.companion.projection.ChatSet
 import de.arjmandi.nanobot.companion.projection.Effect
 import de.arjmandi.nanobot.companion.projection.PaletteCatalog
 import de.arjmandi.nanobot.companion.projection.SessionListState
+import de.arjmandi.nanobot.companion.projection.NoticeDecision
+import de.arjmandi.nanobot.companion.projection.ScreenPresence
+import de.arjmandi.nanobot.companion.projection.TaskNotice
+import de.arjmandi.nanobot.companion.projection.TaskNoticeRule
 import de.arjmandi.nanobot.companion.projection.ThreadCache
 import de.arjmandi.nanobot.companion.projection.ThreadReducer
 import de.arjmandi.nanobot.companion.projection.TurnControl
@@ -41,6 +45,7 @@ import de.arjmandi.nanobot.companion.wire.Frame
 import de.arjmandi.nanobot.companion.wire.Outbound
 import de.arjmandi.nanobot.companion.wire.QuotedContext
 import de.arjmandi.nanobot.companion.wire.ReadyFrame
+import de.arjmandi.nanobot.companion.wire.RecoveryStateFrame
 import de.arjmandi.nanobot.companion.wire.TranscriptionErrorFrame
 import de.arjmandi.nanobot.companion.wire.TranscriptionResultFrame
 import de.arjmandi.nanobot.companion.wire.SessionUpdatedFrame
@@ -67,6 +72,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /** Where the app keeps the gateway secret in the platform secure store (plan.md D5). */
 public const val GATEWAY_SECRET_KEY: String = "gateway.secret"
+
+/** How many announced notice keys the core remembers: enough for a replayed batch, not a log. */
+private const val ANNOUNCED_MEMORY: Int = 32
 
 /**
  * The whole public surface (plan.md C8.1). Everything below it returns effects as data; this
@@ -119,6 +127,15 @@ public class NanobotCore internal constructor(
     /** The automations page (C7.2); the list is a read, each action is a socket mutation. */
     private val _automations = MutableStateFlow(AutomationsState())
 
+    private val _taskNotice = MutableStateFlow<TaskNotice?>(null)
+
+    /** Where the user is, as the notice rule needs it: in front of the app, and on which chat. */
+    private var _foreground: Boolean = false
+    private var visibleSession: ChatSession? = null
+
+    /** The last announced keys, so a replayed settle frame is not a second banner. */
+    private val announced = ArrayDeque<String>()
+
     /** Sessions the client knows about, keyed by chat id; the map is swapped, never mutated. */
     private val registry = MutableStateFlow<Map<String, ChatSession>>(emptyMap())
 
@@ -166,6 +183,22 @@ public class NanobotCore internal constructor(
     public val palette: StateFlow<PaletteCatalog> = _palette.asStateFlow()
     public val settings: StateFlow<SettingsState> = _settings.asStateFlow()
     public val automations: StateFlow<AutomationsState> = _automations.asStateFlow()
+
+    /**
+     * The last banner the notice rule allowed, or null when it allowed none. A platform posts
+     * on a [TaskNotice.key] it has not posted and cancels by chat when the user opens the chat.
+     */
+    public val taskNotice: StateFlow<TaskNotice?> = _taskNotice.asStateFlow()
+
+    /** Whether the app is in front of the user; the shell reports it (`scenePhase`, `onStart`). */
+    public fun setForeground(foreground: Boolean) {
+        _foreground = foreground
+    }
+
+    /** The chat whose thread the shell is showing, or null when no chat is on screen. */
+    public fun markOnScreen(handle: ChatHandle?) {
+        visibleSession = handle?.session
+    }
 
     /** Jobs the core started and has not joined: a leak check reads this (plan.md §3.7). */
     public fun activeChildJobs(): Int = engine.activeChildJobs()
@@ -415,6 +448,11 @@ public class NanobotCore internal constructor(
         // thread it belongs to has taken its answer.
         if (frame is TurnEndFrame) releaseQueued(frame.chatId, frame.turnId)
 
+        // The frame that ends a turn or stops a recovery is the only thing the gateway sends
+        // that a user away from the app is waiting on, so it is also the only thing that may
+        // become a banner (the WebUI's `lib/browser-notifications.ts` reads the same two).
+        raiseTaskNotice(frame)
+
         // A refused scope switch is the only way the gateway answers `set_workspace_scope`
         // (inbound_commands.py:283), so the chip goes back rather than staying wrong (C6.3).
         if (frame is ErrorFrame && frame.detail == SCOPE_REJECTED) {
@@ -428,6 +466,41 @@ public class NanobotCore internal constructor(
             }
         }
         return routed.effects
+    }
+
+    /**
+     * One decision per settled frame, taken by the pure rule in `projection`. A chat the shell is
+     * showing while the app is in front of the user is silent; anything else that a user is
+     * waiting on becomes [taskNotice] once.
+     */
+    private fun raiseTaskNotice(frame: Frame) {
+        val event = when (frame) {
+            is TurnEndFrame -> TaskNoticeRule.turnEnd(
+                chatId = frame.chatId,
+                turnId = frame.turnId,
+                outcome = frame.outcome,
+                failureKind = frame.failureKind,
+            )
+
+            is RecoveryStateFrame -> TaskNoticeRule.recoveryState(
+                chatId = frame.chatId,
+                recoveryId = frame.recoveryId,
+                status = frame.status,
+            )
+
+            else -> null
+        } ?: return
+        val presence = ScreenPresence(
+            isForeground = _foreground,
+            // Resolved here rather than by the shell: a chat the greeting minted has no id
+            // until it is bound, and the shell only knows the id it asked for.
+            visibleChatId = visibleSession?.id?.value,
+        )
+        val decision = TaskNoticeRule.decide(event, presence, announced.toList())
+        if (decision !is NoticeDecision.Deliver) return
+        announced.addLast(decision.notice.key)
+        while (announced.size > ANNOUNCED_MEMORY) announced.removeFirst()
+        _taskNotice.value = decision.notice
     }
 
     private suspend fun onClosed(error: CoreError?) {

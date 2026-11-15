@@ -7,8 +7,14 @@ import Testing
 /// never compiles, which is the worst way to find out a test does not exist.
 struct LayeringTests {
 
-    /// The adapter layer from C8.2: `CoreHolder` is the only file allowed to import the module.
-    private static let bridgeFile = "CoreHolder.swift"
+    /// The adapter layer from C8.2: `Adapter/` is the one folder allowed to import the module.
+    /// It was written as a single file when `CoreHolder` was the only adapter; the notification
+    /// plumbing needs the same access, and a directory is what the rule always meant.
+    private static let bridgeFolder = "Adapter"
+
+    private static func isAdapter(_ name: String) -> Bool {
+        name.hasPrefix("\(bridgeFolder)/")
+    }
 
     /// `.../iosApp/iosApp.xcodeproj`'s parent, found from this file rather than from the cwd.
     private static var projectDirectory: URL {
@@ -39,16 +45,16 @@ struct LayeringTests {
     @Test func onlyTheBridgeImportsTheKotlinFramework() throws {
         let appFiles = try Self.swiftFiles(in: "iosApp")
         #expect(!appFiles.isEmpty, "the scan found no app sources; the guard would pass vacuously")
-        #expect(appFiles.contains("Adapter/\(Self.bridgeFile)"), "the scan reaches the adapter folder")
+        #expect(appFiles.contains("Adapter/CoreHolder.swift"), "the scan reaches the adapter folder")
 
         var offenders: [String] = []
-        for name in appFiles where name != "Adapter/\(Self.bridgeFile)" {
+        for name in appFiles where !Self.isAdapter(name) {
             if try Self.contents("iosApp", name).contains("import core") { offenders.append(name) }
         }
 
         #expect(
             offenders.isEmpty,
-            "`import core` belongs in \(Self.bridgeFile) only; a screen that imports the framework is a review defect (plan.md §7): \(offenders)"
+            "the Kotlin framework is the adapter's only; a screen that imports it is a review defect (plan.md §7): \(offenders)"
         )
     }
 

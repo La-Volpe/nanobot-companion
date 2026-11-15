@@ -116,9 +116,44 @@ final class SettingsViewModel: ObservableObject {
 
     /// The one promise the Notifications screen can keep, permanently (design README).
     var notificationsCopy: String {
-        "Alerts arrive while the app is open, plus a local notification if a task ends while it is "
-            + "foregrounded. The gateway has no push service and none is planned, so a closed app "
+        "Alerts arrive while you are away: a local notification when a turn finishes, fails or "
+            + "stops, and when nanobot needs an answer. The chat you are looking at is never "
+            + "announced. The gateway has no push service and none is planned, so a closed app "
             + "stays quiet instead of promising an alert it cannot deliver."
+    }
+
+    /// What the phone says about this app's notifications, and the one action that can change it.
+    @Published private(set) var permission: AlertsPermission = .notAsked
+
+    var permissionTitle: String {
+        switch permission {
+        case .granted: "Alerts allowed"
+        case .denied: "Alerts turned off"
+        case .notAsked: "Alerts not asked yet"
+        }
+    }
+
+    /// Nil when there is nothing to offer: an allowed permission is not a button.
+    var permissionAction: String? {
+        switch permission {
+        case .granted: nil
+        case .denied: "Open system settings"
+        case .notAsked: "Allow alerts"
+        }
+    }
+
+    func refreshPermission() async {
+        permission = await notifier.permission()
+    }
+
+    /// The row's tap: the system dialog while it can still be drawn, the system screen after "no".
+    func applyPermissionChoice() async {
+        if permission == .notAsked {
+            _ = await notifier.requestAuthorisation()
+        } else if permission == .denied {
+            notifier.openSystemSettings()
+        }
+        await refreshPermission()
     }
 
     func update(snapshot: Snapshot) {
@@ -227,29 +262,18 @@ extension UserDefaults: SettingsStoring {
     func set(_ value: String, for key: String) { set(value, forKey: key) }
 }
 
-/// The notifier, as a seam: `UNUserNotificationCenter` in the app, a recorder in a test.
+/// The notifier, as a seam: `SystemNotificationCentre` in the app (it is the same object the
+/// banners go through), a recorder in a test.
 @MainActor
 protocol Notifying: AnyObject {
     func requestAuthorisation() async -> Bool
     func send(title: String, body: String) async
-}
 
-/// A local notification, which is the only kind the gateway can produce (plan.md D8).
-@MainActor
-final class LocalNotifier: Notifying {
-    func requestAuthorisation() async -> Bool {
-        let centre = UNUserNotificationCenter.current()
-        return (try? await centre.requestAuthorization(options: [.alert, .sound])) ?? false
-    }
+    /// The system permission as the row names it; *when* to ask is the core's `NotificationPrompt`.
+    func permission() async -> AlertsPermission
 
-    func send(title: String, body: String) async {
-        let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = body
-        content.sound = .default
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-        try? await UNUserNotificationCenter.current().add(request)
-    }
+    /// Where a user turns alerts back on after "no": the phone's own screen, not a second dialog.
+    func openSystemSettings()
 }
 
 private extension String {

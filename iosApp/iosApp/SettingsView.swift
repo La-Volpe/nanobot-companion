@@ -164,7 +164,25 @@ struct SettingsView: View {
         } header: {
             Text("Notify me when")
         }
+        // The state the phone reports, and the one thing that can change it: the system dialog
+        // while it can still be drawn, the phone's own screen after a "no".
         Section {
+            SettingsRow(
+                title: "System permission",
+                detail: nil,
+                value: model.permissionTitle,
+                tint: nil
+            )
+            .frame(minHeight: Design.minimumTarget)
+            .accessibilityIdentifier("settings.permission")
+            if let action = model.permissionAction {
+                Button {
+                    Task { await model.applyPermissionChoice() }
+                } label: {
+                    SettingsRow(title: action, detail: nil, value: nil, tint: nil)
+                }
+                .accessibilityIdentifier("settings.permissionAction")
+            }
             Button {
                 Task { await model.sendTestNotification() }
             } label: {
@@ -172,6 +190,7 @@ struct SettingsView: View {
             }
             .accessibilityIdentifier("settings.testNotification")
         }
+        .task { await model.refreshPermission() }
         Section {
             Text(model.notificationsCopy)
                 .font(.system(size: Design.Interface.microSize))

@@ -1,5 +1,6 @@
 package de.arjmandi.nanobot.companion.bridge
 
+import de.arjmandi.nanobot.companion.projection.TaskNotice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -58,4 +59,25 @@ public class Cancellable internal constructor(private val job: Job) {
     public fun cancel() {
         job.cancel()
     }
+}
+
+/**
+ * The core's notices, as a closure (`ObservableState` is generic over a non-null value, and
+ * "nothing to announce yet" is a real state here). Delivered on the main queue, deduplicated
+ * against the last value: the platform posts what arrives and never re-posts a repeat.
+ */
+public fun observeTaskNotices(flow: kotlinx.coroutines.flow.StateFlow<TaskNotice?>, onChange: (TaskNotice?) -> Unit): Cancellable {
+    var last: TaskNotice? = null
+    var first = true
+    fun deliver(next: TaskNotice?) {
+        if (!first && next == last) return
+        first = false
+        last = next
+        onChange(next)
+    }
+    deliver(flow.value)
+    val job = CoroutineScope(Dispatchers.Main + SupervisorJob()).launch {
+        flow.collect { deliver(it) }
+    }
+    return Cancellable(job)
 }

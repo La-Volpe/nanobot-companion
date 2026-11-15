@@ -69,7 +69,7 @@ struct RootView: View {
         _settings = StateObject(
             wrappedValue: SettingsViewModel(
                 credentials: credentials,
-                notifier: LocalNotifier(),
+                notifier: container.notifications,
                 defaults: UserDefaults.standard,
                 disconnect: {}
             )
@@ -187,11 +187,18 @@ struct RootView: View {
                     // to the foreground is where a chat client earns its keep. What the failure
                     // meant is the taxonomy's answer and the banner says it; nothing here decides.
                     .onChange(of: scenePhase) { _, phase in
+                        // Half of the notice rule: away from the app, a settled turn is worth a
+                        // banner; in front of it, the chat on screen is worth nothing (D8).
+                        holder.setForeground(phase == .active)
                         guard phase == .active else { return }
                         Task {
                             await recovery.resumed(status: holder.connectionStatus, everConnected: holder.everConnected)
                         }
                     }
+                    .onChange(of: holder.requestedChatId) { _, chatId in
+                        Task { await openRequestedChat(chatId) }
+                    }
+                    .task { await openRequestedChat(holder.requestedChatId) }
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
                             ConnectionDotView(dot: states.dot)
@@ -305,6 +312,17 @@ struct RootView: View {
         }
     }
 
+    /// A banner's tap opens the chat it came from on the shell that is already running: the row
+    /// if the drawer has it, and the id the notification carried either way.
+    private func openRequestedChat(_ chatId: String?) async {
+        guard let chatId else { return }
+        holder.clearRequestedChat()
+        if let row = holder.sessions.first(where: { $0.chatId == chatId }) {
+            selected = row
+        }
+        await openChat()
+    }
+
     /// Opening a chat: one attach, then the stored history the core reads and reduces into the
     /// same thread the live socket fills (D9, D46).
     private func openChat() async {
@@ -342,6 +360,12 @@ struct RootView: View {
             return
         }
         #endif
+        // The chat on screen is the one a banner must not announce, and a banner it already
+        // had has nothing left to say now that the thread is open.
+        holder.markOnScreen(chatId: selected?.chatId)
+        if let chatId = selected?.chatId {
+            holder.notices?.cancel(chatId: chatId)
+        }
         guard let handle = holder.chat(id: selected?.chatId) else { return }
         let live = CoreChat(holder: holder, handle: handle, onChange: { state in
             chat.update(thread: state)
