@@ -232,7 +232,11 @@
     <!-- Media rows on a turn (A9): what a picture, a clip, a recording and a file card say. -->
     <string name="media_imageFailed">Could not load this image.</string>
     <string name="media_audioFailed">Could not play this recording.</string>
-    <string name="media_videoUnavailable">Video player not installed in this build.</string>
+    <string name="media_videoFailed">Could not play this video.</string>
+    <string name="media_videoTapToPlay">Tap to play</string>
+    <string name="media_videoClose">Close</string>
+    <string name="media_videoPlay">Play</string>
+    <string name="media_videoPause">Pause</string>
     <string name="media_retry">Retry</string>
     <string name="media_video">Video</string>
     <string name="media_audio">Audio</string>
