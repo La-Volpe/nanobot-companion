@@ -57,6 +57,11 @@ public class ChatHandle internal constructor(
     @Throws(Throwable::class)
     public suspend fun setModelPreset(preset: String) {
         val chatId = session.id.value ?: return
+        // The chip shows the pick before the gateway confirms it, which is the WebUI's own
+        // `localModelPreset`; without this a chat whose preset nobody announced keeps naming
+        // the old one until a turn happens to run.
+        session.thread.value = session.thread.value.copy(modelPreset = preset)
+        session.composer.value = session.composer.value.copy(modelPreset = preset)
         core.write(Outbound.Message(chatId = chatId, turnId = core.nextTurnId(), content = "/model $preset"))
     }
 
