@@ -82,7 +82,7 @@ the reconnect bug and the dropped-attachment bug that the unit tests missed.
 ## Run it
 
 - Gateway: `tools/nanobot-dev.sh start --lan` (throwaway, prints a LAN address),
-  or point at your own — `https://your-gateway.example` in this case.
+  or point at your own gateway.
 - Android: `./gradlew :app:installDebug`
 - iOS simulator: `xcodebuild -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 17' test`
 - iPhone: `tools/run-on-device.sh --local` (needs an Apple ID signed into Xcode first)
@@ -110,7 +110,7 @@ environment.
   transcript is not.
 - **Self-signed TLS is unmeasured**: the policy and the Darwin/Android
   translation are tested, the handshake itself is not. Real certificates work —
-  that path is exercised against `your-gateway.example`.
+  that path has been exercised against a real remote gateway over TLS.
 - **Search source chips carry no data yet**, and the drawer's Automations row is
   a placeholder until someone builds that surface.
 - The bundle id, iOS 17.0 and minSdk 26 are still placeholders.
