@@ -264,6 +264,8 @@ private struct ChatRowView: View, Equatable {
                     onToggleDetails: onToggleDetails
                 )
             }
+        case let .media(media):
+            MediaRowView(row: media)
         case let .answer(blocks, streaming):
             VStack(alignment: .leading, spacing: 6) {
                 ReadingBlocksView(

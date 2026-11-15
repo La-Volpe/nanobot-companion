@@ -54,13 +54,23 @@ internal object HarnessCommands {
                     named.open()
                 }
             }
-            when (val receipt = handle.send(OutboundDraft(text = prompt))) {
+            // `--media PATH` uploads a real file first and sends its reference, which is the
+            // composer's own path (C6.6) and the only way to get real bytes into a chat from
+            // this harness. The row the gateway signs back is what a media row draws.
+            val media = flags["media"]?.let { path -> upload(handle, File(path)) }
+            val draft = OutboundDraft(text = prompt, media = listOfNotNull(media))
+            when (val receipt = handle.send(draft)) {
                 is SendReceipt.Rejected -> throw HarnessError("send rejected: ${receipt.reason}")
                 is SendReceipt.Accepted -> println("sent: turn ${receipt.turnId}")
             }
             val settled = handle.settled(SETTLE_TIMEOUT_MS)
             print(Transcript.header(settled))
             print(Transcript.render(settled))
+            for (turn in settled.turns) {
+                for (row in turn.prompt?.media.orEmpty() + turn.answer.media) {
+                    println("media | ${row.kind} | ${row.name} | ${row.url}")
+                }
+            }
         }
     }
 
@@ -259,6 +269,47 @@ internal object HarnessCommands {
         flags["prompts"] != null -> flags.getValue("prompts").split("|").map { it.trim() }.filter { it.isNotEmpty() }
         flags["prompt"] != null -> listOf(flags.getValue("prompt"))
         else -> emptyList()
+    }
+
+    /** One file through the greeting's upload capability, as the composer's card does it. */
+    private suspend fun upload(
+        handle: de.arjmandi.nanobot.companion.facade.ChatHandle,
+        file: File,
+    ): de.arjmandi.nanobot.companion.facade.AttachmentRef {
+        if (!file.isFile) throw HarnessError("no such file: ${file.path}")
+        val picked = de.arjmandi.nanobot.companion.facade.PickedFile(
+            name = file.name,
+            mimeType = mimeOf(file.name),
+            bytes = file.readBytes(),
+        )
+        return when (val result = handle.upload(picked)) {
+            is de.arjmandi.nanobot.companion.facade.UploadResult.Uploaded -> {
+                println("uploaded: ${file.name} -> ${result.reference}")
+                de.arjmandi.nanobot.companion.facade.AttachmentRef(reference = result.reference, name = file.name)
+            }
+
+            is de.arjmandi.nanobot.companion.facade.UploadResult.Rejected ->
+                throw HarnessError("upload rejected: ${result.reason.copyKey}")
+
+            is de.arjmandi.nanobot.companion.facade.UploadResult.Failed ->
+                throw HarnessError("upload failed: ${result.error}")
+        }
+    }
+
+    /** Enough of a type map for the files an instrument attaches; the gateway decides the rest. */
+    private fun mimeOf(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
+        "png" -> "image/png"
+        "jpg", "jpeg" -> "image/jpeg"
+        "gif" -> "image/gif"
+        "webp" -> "image/webp"
+        "mp4" -> "video/mp4"
+        "mov" -> "video/quicktime"
+        "wav" -> "audio/wav"
+        "mp3" -> "audio/mpeg"
+        "m4a" -> "audio/mp4"
+        "pdf" -> "application/pdf"
+        "txt", "log", "md" -> "text/plain"
+        else -> "application/octet-stream"
     }
 
     // --- shared plumbing ------------------------------------------------------------------

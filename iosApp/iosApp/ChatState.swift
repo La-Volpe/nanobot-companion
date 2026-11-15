@@ -25,6 +25,10 @@ struct ChatThreadState: Equatable {
     var rows: [ChatRow] {
         turns.flatMap { turn in
             var rows: [ChatRow] = []
+            // The files a prompt was sent with sit above its text, as the WebUI draws them.
+            rows.append(contentsOf: turn.promptMedia.map {
+                ChatRow(id: "\(turn.id)-prompt-\($0.id)", kind: .media($0))
+            })
             if let prompt = turn.prompt, !prompt.isEmpty {
                 rows.append(ChatRow(id: "\(turn.id)-prompt", kind: .user(prompt, pending: turn.promptPending)))
             }
@@ -34,6 +38,8 @@ struct ChatThreadState: Equatable {
             if !turn.answer.isEmpty {
                 rows.append(ChatRow(id: "\(turn.id)-answer", kind: .answer(turn.readingBlocks, streaming: turn.answerStreaming)))
             }
+            // A picture, clip or recording the answer carries (`message.media_urls`), under it.
+            rows.append(contentsOf: turn.media.map { ChatRow(id: "\(turn.id)-\($0.id)", kind: .media($0)) })
             return rows
         }
     }
@@ -55,6 +61,10 @@ struct ChatTurnState: Equatable {
     var activity: [ChatActivityItem] = []
     /// The core's local compose time, which is the only start time a turn has.
     var startedAtMs: Int64? = nil
+    /// What the answer carries: pictures, clips and recordings (`message.media_urls`).
+    var media: [MediaRow] = []
+    /// What the prompt was sent with (`user_message.media_urls`).
+    var promptMedia: [MediaRow] = []
     /// The answer as the core parsed it (I5). Empty means the adapter has not parsed yet, and
     /// the row falls back to the plain text so a test can build a turn without a document.
     var blocks: [ReadingBlock] = []
@@ -72,6 +82,8 @@ struct ChatRow: Identifiable, Equatable {
         /// A turn's activity cluster; the row carries the turn id, not a copy of its items.
         case activity(String)
         case answer([ReadingBlock], streaming: Bool)
+        /// One picture, clip, recording or file card on a turn.
+        case media(MediaRow)
     }
 
     let id: String
@@ -82,6 +94,7 @@ struct ChatRow: Identifiable, Equatable {
         case let .user(text, _): text
         case .activity: ""
         case let .answer(blocks, _): blocks.map(\.plainText).joined(separator: "\n")
+        case let .media(row): row.name
         }
     }
 

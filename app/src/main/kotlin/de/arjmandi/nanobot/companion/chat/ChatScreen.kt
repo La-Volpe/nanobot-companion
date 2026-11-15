@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.arjmandi.nanobot.companion.R
+import de.arjmandi.nanobot.companion.media.MediaRowView
 import de.arjmandi.nanobot.companion.activity.ActivityClusterRow
 import de.arjmandi.nanobot.companion.attachment.AttachSheetContent
 import de.arjmandi.nanobot.companion.attachment.AttachmentStrip
@@ -407,6 +408,8 @@ private fun TurnRow(
     onCopy: (blockId: String, plain: String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // The files a prompt was sent with sit above its text, as the WebUI draws them.
+        turn.promptMedia.forEach { media -> MediaRowView(media) }
         turn.prompt?.let { prompt ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Column(horizontalAlignment = Alignment.End) {
@@ -452,6 +455,8 @@ private fun TurnRow(
                 )
             }
         }
+        // A picture, clip or recording the answer carries (`message.media_urls`), under it.
+        turn.media.forEach { media -> MediaRowView(media) }
     }
 }
 

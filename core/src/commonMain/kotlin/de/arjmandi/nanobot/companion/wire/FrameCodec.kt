@@ -155,6 +155,7 @@ internal object FrameCodec {
 
             "user_message" -> UserMessageFrame(
                 text = raw.text("text"),
+                mediaUrls = raw.items("media_urls"),
                 createdAtMs = raw.long("created_at_ms"),
                 startsTurn = raw.flag("starts_turn"),
                 inputId = raw.text("input_id"),

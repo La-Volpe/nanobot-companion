@@ -39,6 +39,8 @@ public data class Turn(
 public data class UserPrompt(
     public val text: String,
     public val quote: String? = null,
+    /** What was sent with it (`user_message.media_urls`), drawn above the text. */
+    public val media: List<MediaAttachment> = emptyList(),
     /** True until `message_accepted` proves the gateway took it (C4.5). */
     public val optimistic: Boolean = false,
     public val createdAtMs: Long? = null,
@@ -46,6 +48,8 @@ public data class UserPrompt(
 
 public data class AnswerState(
     public val segments: List<StreamSegment> = emptyList(),
+    /** The pictures, clips and recordings the answer carries (`message.media_urls`). */
+    public val media: List<MediaAttachment> = emptyList(),
     /** Reasoning is streamed in parallel with the answer and collapses when it ends (C4.3). */
     public val reasoning: List<StreamSegment> = emptyList(),
     public val reasoningDone: Boolean = false,

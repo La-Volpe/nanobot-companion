@@ -39,7 +39,7 @@ private fun usage(): String =
       connect     bootstrap a gateway, open a socket, print what answered
       sessions    list the gateway's sessions as plain lines
       send        send one message and print the settled transcript
-                    [--chat CHAT_ID] [--prompt TEXT]
+                    [--chat CHAT_ID] [--prompt TEXT] [--media PATH]
       watch       follow one chat and print a plain, diffable transcript
                     [--chat CHAT_ID] [--prompt TEXT | --prompts "a|b|c"] [--out FILE]
                     [--verify] [--history-out FILE]    compare with the WebUI's thread page

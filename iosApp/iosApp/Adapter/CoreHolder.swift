@@ -63,6 +63,10 @@ final class CoreHolder: ObservableObject {
 
     var isReachable: Bool { companion != nil }
 
+    /// Where the gateway lives. Media is signature-authenticated, not bearer-gated
+    /// (`nanobot/webui/media_api.py:207`), so the only thing a signed path lacks is an origin.
+    var mediaBase: String { companion?.core.profile.url ?? "" }
+
     /// The core's own empty values: a Kotlin data class with every field defaulted has no
     /// no-argument initializer in Swift, and this adapter is the only place that has to know.
     static let emptySettings = SettingsState(
@@ -289,7 +293,7 @@ final class CoreChat: ChatDriving {
         subscription = thread.subscribe { [weak self] state in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                var next = ChatThreadState(state: state)
+                var next = ChatThreadState(state: state, mediaBase: self.holder.mediaBase)
                 next.history = self.history
                 self.lastThread = next
                 self.onChange(next)
@@ -354,7 +358,7 @@ final class CoreChat: ChatDriving {
 extension ChatThreadState {
     /// `core.ThreadState` → the Swift value the chat screen draws. The core keeps the model,
     /// the streaming flags and the notices; this only renames what a view needs.
-    init(state: ThreadState) {
+    init(state: ThreadState, mediaBase: String = "") {
         self.init(
             turns: state.turns.map { turn in
                 let segments = turn.answer.segments
@@ -368,12 +372,40 @@ extension ChatThreadState {
                     running: turn.status == TurnStatus.running,
                     activity: turn.activity.compactMap(ChatActivityItem.init(item:)),
                     startedAtMs: turn.startedAtMs?.int64Value,
+                    media: turn.answer.media.map { MediaRow(attachment: $0, mediaBase: mediaBase) },
+                    promptMedia: turn.prompt?.media.map { MediaRow(attachment: $0, mediaBase: mediaBase) } ?? [],
                     blocks: Reading.blocks(turn.answer.text)
                 )
             },
             notices: state.notices.compactMap(ThreadNotice.init(notice:)),
             subagents: state.subagents.map(SubagentRow.init(subagent:))
         )
+    }
+}
+
+extension MediaRow {
+    /// `core.MediaAttachment` → the row a view draws. The core kept the path the gateway signed;
+    /// `mediaBase` is the origin that turns it into something `URLSession` can open.
+    init(attachment: MediaAttachment, mediaBase: String) {
+        self.init(
+            id: attachment.id,
+            name: attachment.name,
+            url: URL(string: attachment.absoluteUrl(baseUrl: mediaBase)),
+            kind: MediaRowKind(kind: attachment.kind)
+        )
+    }
+}
+
+extension MediaRowKind {
+    /// The Kotlin enum arrives as a class, not a Swift `case`, so it is read by its own name —
+    /// the same way `SandboxIssue` is. A kind this build has never heard of is a file card.
+    init(kind: MediaKind) {
+        switch kind.name {
+        case "Image": self = .image
+        case "Video": self = .video
+        case "Audio": self = .audio
+        default: self = .file
+        }
     }
 }
 
