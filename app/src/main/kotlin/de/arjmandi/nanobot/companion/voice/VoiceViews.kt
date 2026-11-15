@@ -7,7 +7,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -72,9 +76,17 @@ fun VoiceMeter(model: VoiceViewModel, modifier: Modifier = Modifier) {
     }
 }
 
-/** The one sentence a gesture produced, above the field. */
+/**
+ * The one sentence a gesture produced, above the field, with the one control that puts it away
+ * (T31: a gateway with no speech provider answers every recording with a refusal, so a notice
+ * nobody can dismiss is a sentence that stays on the composer for the life of the app).
+ */
 @Composable
-fun VoiceNoticeRow(notice: VoiceNotice?, modifier: Modifier = Modifier) {
+fun VoiceNoticeRow(
+    notice: VoiceNotice?,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val text = when (notice) {
         VoiceNotice.TooShort -> stringResource(R.string.voice_too_short)
         VoiceNotice.TooLong -> stringResource(R.string.voice_too_long)
@@ -83,10 +95,28 @@ fun VoiceNoticeRow(notice: VoiceNotice?, modifier: Modifier = Modifier) {
         VoiceNotice.TranscriptionFailed -> stringResource(R.string.voice_transcription_failed)
         null -> null
     } ?: return
-    Text(
-        text = text,
-        fontSize = Design.Interface.microSize,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.fillMaxWidth().testTag("voice.notice"),
-    )
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = text,
+            fontSize = Design.Interface.microSize,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f).testTag("voice.notice"),
+        )
+        // The WebUI's own close glyph, not a character (gotcha 25).
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier.size(Design.minimumTarget).testTag("voice.notice.dismiss"),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_webui_close),
+                contentDescription = stringResource(R.string.voice_notice_dismiss),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    }
 }

@@ -5,6 +5,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import de.arjmandi.nanobot.companion.chat.ChatDriver
 import de.arjmandi.nanobot.companion.chat.ChatScreen
@@ -110,6 +112,61 @@ class VoiceScreenTest {
         compose.setContent { NanobotTheme { VoiceMeter(model = model) } }
 
         compose.onNodeWithText("Tap to stop").assertIsDisplayed()
+    }
+
+    /**
+     * A notice is a line on the composer, so it needs a control that clears it (T31). The owner's
+     * gateway has no speech provider: every recording is refused, and the refusal is what a reader
+     * has to be able to put away.
+     */
+    @Test
+    fun theNoticeSaysWhyAndCanBePutAway() {
+        val model = ChatViewModel(
+            SilentChat(),
+            NoComposer,
+            MutableStateFlow(ComposerSnapshot()),
+            voiceDriver = FakeVoice("check the write path first"),
+            recorder = { FakeRecorder() },
+            scope = CoroutineScope(Dispatchers.Unconfined),
+        )
+        compose.setContent { NanobotTheme { ChatScreen(model = model) } }
+
+        // A press under the gateway's floor is refused, and the refusal is a sentence above the field.
+        compose.onNodeWithTag("chat.voice").performTouchInput { down(center) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("chat.stop").performTouchInput { up() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Hold a little longer to record voice.").assertIsDisplayed()
+
+        compose.onNodeWithTag("voice.notice.dismiss").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Hold a little longer to record voice.").assertDoesNotExist()
+    }
+
+    /**
+     * The send tap is a send (T31). The button becomes the microphone the moment the field empties,
+     * and the press that sent the message must not become a recording.
+     */
+    @Test
+    fun aSendPressDoesNotStartARecording() {
+        val model = ChatViewModel(
+            SilentChat(),
+            NoComposer,
+            MutableStateFlow(ComposerSnapshot()),
+            voiceDriver = FakeVoice("check the write path first"),
+            recorder = { FakeRecorder() },
+            scope = CoroutineScope(Dispatchers.Unconfined),
+        )
+        compose.setContent { NanobotTheme { ChatScreen(model = model) } }
+
+        compose.onNodeWithTag("chat.composer").performTextInput("a typed question")
+        compose.waitForIdle()
+        compose.onNodeWithTag("chat.send").performTouchInput { down(center) }
+        compose.onNodeWithTag("chat.send").performTouchInput { up() }
+        compose.waitForIdle()
+
+        assertEquals(VoiceViewModel.Phase.Idle, model.voice.phase, "a send is not a recording")
     }
 
     @Test

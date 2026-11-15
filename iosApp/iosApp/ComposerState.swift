@@ -130,3 +130,42 @@ final class NoopComposer: ComposerDriving {
     func setWorkspaceScope(_ access: WorkspaceAccess) async {}
     func loadPalette(text: String, cursor: Int) async -> PaletteSheet? { nil }
 }
+
+/// The primary button's job for the press in progress (T31). The button is one control with
+/// three jobs, and its job changes under the finger: a send empties the field, which turns Send
+/// into the microphone before the touch is over. This is the transcription of that rule, so the
+/// gesture asks it instead of re-reading a state that has already moved.
+struct PrimaryPress: Equatable {
+    private var open = false
+    private var beganAsVoice = false
+    private var actedThisPress = false
+
+    /// The finger is on the button and the button is `state`: may this press record? Only the
+    /// job the press *began* with counts, and a press the button acted on is a tap. A drag with
+    /// `minimumDistance: 0` reports the touch-down before the button's release action, so the
+    /// first event of a press always sees the state the reader pressed.
+    mutating func down(_ state: ComposerViewModel.PrimaryState) -> Bool {
+        if !open {
+            open = true
+            beganAsVoice = state == .voice
+            actedThisPress = false
+        }
+        return beganAsVoice && !actedThisPress
+    }
+
+    /// The button's own action ran during this press: it sent, queued or stopped, so whatever the
+    /// state became afterwards, this finger is not recording (T31). An action that lands after
+    /// the finger is up belongs to a press that is over and is ignored — the next press is a new
+    /// question.
+    mutating func acted() {
+        guard open else { return }
+        actedThisPress = true
+    }
+
+    /// The finger came up: the next press starts from whatever the button is then.
+    mutating func lifted() {
+        open = false
+        beganAsVoice = false
+        actedThisPress = false
+    }
+}
