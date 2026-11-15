@@ -15,14 +15,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -41,7 +44,12 @@ import de.arjmandi.nanobot.companion.ui.scaledReadingStyle
  * draws; every fold rule is [ActivityViewModel]'s.
  */
 @Composable
-fun ActivityClusterRow(cluster: ActivityCluster, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+fun ActivityClusterRow(
+    cluster: ActivityCluster,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    onToggleDetails: (String) -> Unit = {},
+) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -85,7 +93,7 @@ fun ActivityClusterRow(cluster: ActivityCluster, onToggle: () -> Unit, modifier:
                 modifier = Modifier.padding(horizontal = 11.dp).padding(bottom = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                cluster.items.forEach { ActivityItemRow(it) }
+                cluster.items.forEach { ActivityItemRow(it, onToggleDetails) }
                 if (cluster.sourceChips.isNotEmpty()) ActivitySourcesRow(cluster.sourceChips)
             }
         }
@@ -114,42 +122,44 @@ private fun statusText(status: ActivityStatus): String = stringResource(
     },
 )
 
-/** One row in the cluster's body: reasoning, a tool run, an edited file, or a search. */
+/**
+ * One row in the cluster's body: reasoning, a tool run, an edited file, or a search.
+ *
+ * Each row is one line — glyph, name, one-line summary, state — and everything the gateway sent
+ * beyond that (arguments, output, the whole reasoning block) is behind the row's own disclosure,
+ * closed until the reader opens it. That is the web's shape (`ActivityStep.tsx:77`), which the
+ * owner reported this screen was missing (T9).
+ */
 @Composable
-fun ActivityItemRow(item: ActivityItemView, modifier: Modifier = Modifier) {
+fun ActivityItemRow(
+    item: ActivityItemView,
+    onToggleDetails: (String) -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     when (val kind = item.kind) {
-        is ActivityKind.Reasoning -> Row(modifier = modifier.fillMaxWidth()) {
-            // The design's rule: reasoning is quoted by a hairline, not by a bubble.
-            Spacer(
-                modifier = Modifier
-                    .width(2.dp)
-                    .heightIn(min = 18.dp)
-                    .background(MaterialTheme.colorScheme.outline),
-            )
-            Text(
-                text = kind.text,
-                style = scaledReadingStyle().copy(fontSize = Design.Activity.reasoningSize, lineHeight = 20.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .padding(start = 10.dp)
-                    .testTag("activity.reasoning"),
-            )
-        }
+        is ActivityKind.Reasoning -> ReasoningLine(item, kind, onToggleDetails, modifier)
 
-        is ActivityKind.Tool -> GlyphRow(
-            glyph = Design.Activity.glyph(kind.name),
-            label = kind.name,
-            detail = kind.summary,
-            modifier = modifier.testTag("activity.tool"),
-            trailing = { ToolState(kind.status, kind.detail) },
-        )
+        is ActivityKind.Tool -> Column(modifier = modifier.testTag("activity.tool")) {
+            ActivityLine(
+                glyph = activityGlyph(kind.name),
+                label = kind.name,
+                detail = kind.summary,
+                error = kind.status == ToolRunStatus.Failed,
+                onClick = { onToggleDetails(item.id) },
+                trailing = { ToolState(kind.status, kind.detail) },
+            )
+            if (item.detailsOpen) {
+                ToolDetails(kind)
+            }
+        }
 
         is ActivityKind.FileEdit -> FileEditRow(kind, modifier = modifier)
 
-        is ActivityKind.Search -> GlyphRow(
-            glyph = "\u2315",
+        is ActivityKind.Search -> ActivityLine(
+            glyph = R.drawable.ic_webui_globe,
             label = stringResource(R.string.activity_web_search),
             detail = kind.query,
+            onClick = null,
             modifier = modifier.testTag("activity.search"),
             trailing = {
                 Text(
@@ -163,31 +173,144 @@ fun ActivityItemRow(item: ActivityItemView, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Reasoning is the model thinking out loud: one line of prose, compacted exactly as the web's
+ * `compactReasoningPreview` does, and the block itself only when the reader asks for it.
+ */
 @Composable
-private fun GlyphRow(
-    glyph: String,
+private fun ReasoningLine(
+    item: ActivityItemView,
+    kind: ActivityKind.Reasoning,
+    onToggleDetails: (String) -> Unit,
+    modifier: Modifier,
+) {
+    val line = item.preview.orEmpty().ifEmpty { stringResource(R.string.activity_thinking) }
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = Design.Activity.rowHeight)
+                .clickable { onToggleDetails(item.id) }
+                .testTag("activity.reasoning"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // The design's rule: reasoning is quoted by a hairline, not by a bubble.
+            Spacer(
+                modifier = Modifier
+                    .width(2.dp)
+                    .heightIn(min = 18.dp)
+                    .background(MaterialTheme.colorScheme.outline),
+            )
+            Text(
+                text = line,
+                style = scaledReadingStyle().copy(fontSize = Design.Activity.reasoningSize, lineHeight = 20.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (!kind.done) {
+                Text(
+                    text = stringResource(R.string.activity_thinking),
+                    fontSize = Design.Interface.microSize,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (item.detailsOpen && kind.text.isNotBlank()) {
+            Text(
+                text = kind.text,
+                style = scaledReadingStyle().copy(fontSize = Design.Activity.reasoningSize, lineHeight = 20.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .padding(start = 10.dp, top = 4.dp, bottom = 2.dp)
+                    .testTag("activity.reasoning.details"),
+            )
+        }
+    }
+}
+
+/** What the row kept back: the arguments it was called with and the output it returned. */
+@Composable
+private fun ToolDetails(kind: ActivityKind.Tool) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 30.dp, top = 2.dp, bottom = 4.dp)
+            .testTag("activity.tool.details"),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        DetailLine(stringResource(R.string.activity_arguments), kind.summary)
+        if (kind.status != ToolRunStatus.Running) {
+            DetailLine(stringResource(R.string.activity_output), kind.detail)
+        }
+    }
+}
+
+@Composable
+private fun DetailLine(label: String, value: String?) {
+    if (value.isNullOrBlank()) return
+    Column {
+        Text(
+            text = label,
+            fontSize = Design.Interface.microSize,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            fontSize = Design.Interface.microSize,
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // A tool's own output can be a whole file; the row shows the start of it, not all of it.
+            maxLines = 12,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
+ * A row is one line: the tool's glyph, its name, the one-line summary the core reduced from the
+ * arguments, and the state. Nothing here wraps, because a wrapped row is the verbosity T9 reported.
+ */
+@Composable
+private fun ActivityLine(
+    @DrawableRes glyph: Int,
     label: String,
     detail: String?,
     modifier: Modifier = Modifier,
+    error: Boolean = false,
+    onClick: (() -> Unit)? = null,
     trailing: @Composable () -> Unit,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().heightIn(min = Design.Activity.rowHeight),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = Design.Activity.rowHeight)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = glyph,
-            fontSize = 11.sp,
-            fontFamily = FontFamily.Monospace,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Icon(
+            painter = painterResource(glyph),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .size(22.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(4.dp),
         )
-        Text(text = label, fontSize = Design.Interface.captionSize, fontWeight = FontWeight.SemiBold)
+        Text(
+            text = label,
+            fontSize = Design.Interface.captionSize,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = if (detail.isNullOrEmpty()) Modifier.weight(1f) else Modifier.weight(1f, fill = false),
+            color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+        )
         if (!detail.isNullOrEmpty()) {
             Text(
                 text = detail,
@@ -196,10 +319,9 @@ private fun GlyphRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
+                modifier = Modifier.weight(2f),
             )
         }
-        Spacer(modifier = Modifier.weight(1f))
         trailing()
     }
 }
@@ -207,7 +329,7 @@ private fun GlyphRow(
 @Composable
 private fun ToolState(status: ToolRunStatus, detail: String?) {
     when (status) {
-        // A running tool is a dot that says it is working, because the row has no spinner of its own.
+        // A running tool says so in a word, because the row has no spinner of its own.
         ToolRunStatus.Running -> Text(
             text = stringResource(R.string.activity_status_running),
             fontSize = Design.Interface.microSize,
@@ -216,19 +338,31 @@ private fun ToolState(status: ToolRunStatus, detail: String?) {
         )
 
         ToolRunStatus.Done -> Text(
-            text = detail ?: stringResource(R.string.activity_tool_done),
+            text = stringResource(R.string.activity_tool_done),
             fontSize = Design.Interface.microSize,
             fontWeight = FontWeight.SemiBold,
             color = Color(0xFF3F8F4B),
         )
 
+        // The design's own failed row says the gateway's reason (`exit 4`), on one line.
         ToolRunStatus.Failed -> Text(
-            text = detail ?: stringResource(R.string.activity_tool_failed),
+            text = detail?.lineSequence()?.firstOrNull()?.take(32) ?: stringResource(R.string.activity_tool_failed),
             fontSize = Design.Interface.microSize,
             fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.error,
         )
     }
+}
+
+/** The tool's glyph, by name, from the WebUI's own drawings rather than a Unicode stand-in. */
+@DrawableRes
+private fun activityGlyph(toolName: String): Int = when (toolName) {
+    "run_command", "exec", "shell", "run_shell", "execute_command" -> R.drawable.ic_webui_terminal
+    "web_search", "search", "x_search" -> R.drawable.ic_webui_globe
+    "edit_file", "write_file", "apply_patch" -> R.drawable.ic_webui_compact
+    else -> R.drawable.ic_webui_activity
 }
 
 /** One edited file: path, `+n −n`, and the unified diff as rows. */

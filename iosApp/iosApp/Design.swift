@@ -62,13 +62,15 @@ enum Design {
         /// A tool row is a row a thumb can land on, like every other row here.
         static let rowHeight: CGFloat = 44
 
-        /// The design picks the glyph by the tool's name, not by its arguments.
+        /// The design picks the glyph by the tool's name, not by its arguments — and the glyph is
+        /// the WebUI's own drawing (`tools/webui-icons.py`), never an SF Symbol for a tool the web
+        /// draws (`ic_webui_terminal`, `ic_webui_globe`, `ic_webui_activity`).
         static func icon(forTool name: String) -> String {
             switch name {
-            case "run_command", "exec", "shell": "terminal"
-            case "web_search", "search": "globe"
-            case "edit_file", "write_file", "apply_patch": "doc.text"
-            default: "doc"
+            case "run_command", "exec", "shell", "run_shell", "execute_command": "Terminal"
+            case "web_search", "search", "x_search": "Globe"
+            case "edit_file", "write_file", "apply_patch": "Compact"
+            default: "Activity"
             }
         }
     }

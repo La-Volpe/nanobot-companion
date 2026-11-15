@@ -27,6 +27,12 @@ class ActivityViewModel(private val now: () -> Long = { System.currentTimeMillis
     /** Turns the reader deliberately opened or closed; theirs, until the turn leaves the thread. */
     private val overrides = mutableMapOf<String, Boolean>()
 
+    /**
+     * Rows whose details the reader opened, by row id. A row starts folded — one line, like the
+     * web's `ActivityStep` — and a tap is what shows the arguments and the output.
+     */
+    private val openRows = mutableSetOf<String>()
+
     fun cluster(turnId: String): ActivityCluster? = clusters[turnId]
 
     fun update(turns: List<ChatTurnView>) {
@@ -38,12 +44,24 @@ class ActivityViewModel(private val now: () -> Long = { System.currentTimeMillis
         // An override only lasts as long as the turn it was made on: once the turn is out of the
         // thread there is nothing left to remember.
         overrides.keys.retainAll(next.keys)
+        openRows.retainAll(next.values.flatMap { cluster -> cluster.items.map { it.id } }.toSet())
     }
 
     fun toggle(turnId: String) {
         val cluster = clusters[turnId] ?: return
         overrides[turnId] = !cluster.isOpen
         clusters = clusters + (turnId to cluster.opening(!cluster.isOpen))
+    }
+
+    fun toggleDetails(itemId: String) {
+        if (!openRows.remove(itemId)) openRows += itemId
+        clusters = clusters.mapValues { (_, cluster) ->
+            if (cluster.items.none { it.id == itemId }) {
+                cluster
+            } else {
+                cluster.copy(items = cluster.items.map { if (it.id == itemId) it.copy(detailsOpen = itemId in openRows) else it })
+            }
+        }
     }
 
     private fun cluster(turn: ChatTurnView, clock: Long): ActivityCluster {
@@ -78,7 +96,7 @@ class ActivityViewModel(private val now: () -> Long = { System.currentTimeMillis
             turnId = turn.id,
             status = status,
             headline = headline,
-            items = turn.activity,
+            items = turn.activity.map { it.copy(detailsOpen = it.id in openRows) },
             isOpen = overrides[turn.id] ?: (turn.running || failed),
             hasFailure = failed,
             steps = steps,

@@ -11,7 +11,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +44,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -75,6 +79,7 @@ import de.arjmandi.nanobot.companion.ui.scaledReadingStyle
 import de.arjmandi.nanobot.companion.voice.VoiceMeter
 import de.arjmandi.nanobot.companion.voice.VoiceNoticeRow
 import de.arjmandi.nanobot.companion.voice.VoiceViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
@@ -99,10 +104,41 @@ fun ChatScreen(
     val clipboard = LocalContext.current.getSystemService(android.content.ClipboardManager::class.java)
     var jumpToTurn by remember { mutableStateOf<String?>(null) }
 
-    // Streaming keeps the newest row in view; a reader who scrolled up is left where they are
-    // until the turn settles (the artifact's scroll-to-latest, not a jump per delta).
-    LaunchedEffect(thread.turns.size, thread.turns.lastOrNull()?.answer?.length) {
-        if (thread.turns.isNotEmpty()) listState.animateScrollToItem(thread.turns.lastIndex)
+    // The WebUI's rule (ThreadViewport.tsx:1002, thread-motion.ts:353), which the owner reported
+    // the phone did not follow: the tail stays in view only while the reader is at it. A reader who
+    // scrolled up is left alone, and coming back to the end resumes following.
+    val dragging by listState.interactionSource.collectIsDraggedAsState()
+    LaunchedEffect(listState) {
+        // A finger on the list is the reader's: where the finger leaves it decides whether the
+        // stream follows. This is the web's scroll listener, not a layout observer.
+        snapshotFlow { dragging to pixelsFromEnd(listState) }
+            .collect { (isDragging, distance) -> if (isDragging) model.scrolled(distance) }
+    }
+    LaunchedEffect(listState) {
+        // A fling or a jump settles too, and where it settled is what decides.
+        snapshotFlow { listState.isScrollInProgress }.distinctUntilChanged().collect { scrolling ->
+            if (!scrolling) model.scrolled(pixelsFromEnd(listState))
+        }
+    }
+    LaunchedEffect(listState) {
+        // New content leaves the end further down: catch up by exactly that gap, and only for a
+        // reader who is following. Measured after layout — measuring before it reads the previous
+        // frame's zero and never scrolls at all, which is the bug this replaced.
+        snapshotFlow {
+            Triple(pixelsFromEnd(listState), dragging, listState.isScrollInProgress)
+        }.collect { (distance, isDragging, scrolling) ->
+            if (!isDragging && !scrolling && model.viewport.followsNewContent() && distance in 1 until Int.MAX_VALUE) {
+                listState.scrollBy(distance.toFloat())
+            }
+        }
+    }
+    // A chat opens at its own end, which is where following starts (the web's pending-conversation
+    // scroll); keyed by the first turn, so it happens once per conversation, not per delta.
+    LaunchedEffect(thread.turns.firstOrNull()?.id) {
+        if (thread.turns.isNotEmpty()) {
+            model.jumpToLatest()
+            listState.scrollToItem(thread.turns.lastIndex)
+        }
     }
     // The clusters are a function of the thread, and the fold rules are the model's (A4): this
     // only hands it the value the screen already collects.
@@ -133,6 +169,7 @@ fun ChatScreen(
                         turn = turn,
                         cluster = model.activity.cluster(turn.id),
                         onToggleActivity = { model.activity.toggle(turn.id) },
+                        onToggleDetails = { model.activity.toggleDetails(it) },
                         isCopied = composer::isCopied,
                         onCopy = { blockId, plain ->
                             clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("answer", plain))
@@ -358,6 +395,7 @@ private fun TurnRow(
     turn: ChatTurnView,
     cluster: de.arjmandi.nanobot.companion.activity.ActivityCluster?,
     onToggleActivity: () -> Unit,
+    onToggleDetails: (String) -> Unit,
     isCopied: (String) -> Boolean,
     onCopy: (blockId: String, plain: String) -> Unit,
 ) {
@@ -388,7 +426,7 @@ private fun TurnRow(
             }
         }
         if (cluster != null) {
-            ActivityClusterRow(cluster = cluster, onToggle = onToggleActivity)
+            ActivityClusterRow(cluster = cluster, onToggle = onToggleActivity, onToggleDetails = onToggleDetails)
         }
         if (turn.answer.isNotEmpty()) {
             MarkdownBlocks(
@@ -437,4 +475,17 @@ private fun Context.picked(uri: Uri): PickedAttachment {
     val mime = contentResolver.getType(uri) ?: "application/octet-stream"
     val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
     return PickedAttachment(name = name, mimeType = mime, bytes = bytes)
+}
+
+/**
+ * How far the end of the list is below the viewport, in pixels. A list scrolled away from its tail
+ * reports [Int.MAX_VALUE] rather than a guess: the number is only ever compared with the web's
+ * threshold (48 px), so a coarse answer is the honest one once a whole row is out of view.
+ */
+private fun pixelsFromEnd(state: LazyListState): Int {
+    val info = state.layoutInfo
+    val last = info.visibleItemsInfo.lastOrNull() ?: return 0
+    if (last.index < info.totalItemsCount - 1) return Int.MAX_VALUE
+    val viewportEnd = info.viewportEndOffset - info.afterContentPadding
+    return (last.offset + last.size - viewportEnd).coerceAtLeast(0)
 }
