@@ -19,24 +19,41 @@ struct ChatView: View {
     @State private var viewportHeight: CGFloat = 0
     @State private var tailBottom: CGFloat = 0
 
+    /// The composer's field is the only focusable thing on this screen, so one flag is the whole
+    /// keyboard's state: the field drives it, and the transcript clears it (owner report: there
+    /// was no way to put the keyboard away).
+    @FocusState private var composerFocused: Bool
+
     var body: some View {
         VStack(spacing: 0) {
             if let banner = states.banner {
                 ConnectionBannerView(banner: banner) { states.retryConnection() }
             }
-            switch model.placeholder {
-            case .skeleton:
-                ThreadSkeletonView()
-            case .failed:
-                ThreadReadFailedView()
-            case .empty:
-                EmptyThreadView()
-            case .none:
-                threadScroll
-            }
+            conversation
+                // A tap on the conversation, and not on a control inside it: the gesture runs
+                // alongside the rows' own, so a tool row's disclosure, a reasoning fold and a
+                // copy button still do their job (`KeyboardTests`). It sits here rather than on
+                // the scroll view because a new chat has no scroll view, and an empty thread is
+                // exactly where the keyboard would otherwise be stranded.
+                .contentShape(Rectangle())
+                .simultaneousGesture(TapGesture().onEnded { composerFocused = false })
             composerZone
         }
         .background(Palette.canvas)
+    }
+
+    @ViewBuilder
+    private var conversation: some View {
+        switch model.placeholder {
+        case .skeleton:
+            ThreadSkeletonView()
+        case .failed:
+            ThreadReadFailedView()
+        case .empty:
+            EmptyThreadView()
+        case .none:
+            threadScroll
+        }
     }
 
     /// The conversation itself: history, the streaming answer, the delivery row.
@@ -78,6 +95,10 @@ struct ChatView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                 }
+                // The flick every iPhone user tries: the keyboard follows the transcript down and
+                // leaves with it. `.immediately` would take it away on the first pixel of a scroll,
+                // which turns reading up-thread into a keyboard dismissal.
+                .scrollDismissesKeyboard(.interactively)
                 .coordinateSpace(name: "thread")
                 .background(
                     GeometryReader { geometry in
@@ -128,7 +149,13 @@ struct ChatView: View {
             if let goal = states.goalStrip {
                 GoalStripView(text: goal)
             }
-            ComposerBar(model: composer, attachments: attachments, voice: voice, onAttach: onAttach)
+            ComposerBar(
+                model: composer,
+                attachments: attachments,
+                voice: voice,
+                focus: $composerFocused,
+                onAttach: onAttach
+            )
         }
     }
 }
