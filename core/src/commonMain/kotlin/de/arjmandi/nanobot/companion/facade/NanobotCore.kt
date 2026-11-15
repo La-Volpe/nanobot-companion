@@ -338,6 +338,12 @@ public class NanobotCore internal constructor(
 
     private suspend fun onOpening(payload: BootstrapPayload) {
         this.payload = payload
+        // A new socket was told nothing: the gateway subscribes per connection (`runtime.py`
+        // `_attach`, `_conn_chats`), so an `attached` from the socket before it says nothing about
+        // this one. Without this, `open()` after a reconnect asks for nothing and an answer that
+        // was streaming when the phone slept never arrives (C3.4, C5.4). The threads stay; only
+        // the facts that belong to one connection are dropped.
+        chatSet = chatSet.copy(attached = emptySet(), attaching = emptySet())
         // The limits the composer validates against are the gateway's, not ours (C6.1).
         registry.value.values.forEach { session -> session.composer.update { it.copy(limits = payload.limits) } }
     }

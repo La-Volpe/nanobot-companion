@@ -83,8 +83,43 @@ struct StatesViewModelTests {
 
         model.update(connection: .failed(.authFailed, detail: nil), notices: [], nowMs: 0)
         #expect(model.dot == .failed)
-        #expect(model.banner?.text == "Handshake failed or token expired.")
+        #expect(model.banner?.text == "That key was refused. Check the gateway's key and try again.")
         #expect(model.banner?.showsRetry == true)
+    }
+
+    /// One sentence per kind, from the taxonomy. A socket iOS suspended in the background fails
+    /// as `unreachable` or `timeout`, and telling its owner the token expired sends them hunting
+    /// for a key that is fine (C7.4).
+    @Test func theBannerIsTheFailuresOwnSentence() {
+        for kind in ConnectionFailureKind.allCases {
+            for detail in [nil, "503"] as [String?] {
+                let model = model()
+                model.update(connection: .failed(kind, detail: detail), notices: [], nowMs: 0)
+                #expect(
+                    model.banner?.text == ConnectionCopy.text(for: kind, detail: detail),
+                    "\(kind) with detail \(detail ?? "none") says its own sentence"
+                )
+            }
+        }
+
+        let model = model()
+        model.update(connection: .failed(.unreachable, detail: nil), notices: [], nowMs: 0)
+        #expect(model.banner?.text == "No gateway at that address. Check the address and that the gateway is running.")
+        #expect(model.banner?.text.contains("token") == false, "a socket that went away is not a token problem")
+    }
+
+    /// The debug menu must not dress the state up: what it injects is what the socket raises, so
+    /// a menu that patches the banner after the fact would hide exactly this defect.
+    @Test func theDebugMenuShowsTheSameBannerTheSocketRaises() {
+        for kind in ConnectionFailureKind.allCases {
+            let injected = model()
+            injected.debugFail(kind, detail: kind == .serverError ? "503" : nil)
+
+            let live = model()
+            live.update(connection: .failed(kind, detail: kind == .serverError ? "503" : nil), notices: [], nowMs: 0)
+
+            #expect(injected.banner == live.banner, "\(kind) is the same banner either way")
+        }
     }
 
     @Test func theRetryNoticeCountsDown() {

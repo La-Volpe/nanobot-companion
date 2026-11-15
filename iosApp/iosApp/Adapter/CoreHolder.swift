@@ -91,6 +91,17 @@ final class CoreHolder: ObservableObject {
         return try await companion.core.connect()
     }
 
+    /// A second handshake on the stack that is already open, which is what "Try again" and a
+    /// phone coming back to the foreground both need: the core bootstraps a fresh single-use
+    /// token on every `connect()`, so this is the reconnect path and not a resume (C3.4).
+    /// True when the gateway greeted the new socket.
+    func reconnect() async -> Bool {
+        guard companion != nil else { return false }
+        let result: ConnectResult?
+        do { result = try await connect() } catch { return false }
+        return result is ConnectResultConnected
+    }
+
     func close() {
         subscriptions.forEach { $0.cancel() }
         subscriptions.removeAll()

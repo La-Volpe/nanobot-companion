@@ -36,6 +36,10 @@ class MainActivity : ComponentActivity() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
+    /** The shell and the one owner of "ask for a new socket"; `onStart` needs both. */
+    private lateinit var main: MainViewModel
+    private lateinit var recovery: ConnectionRecovery
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -54,7 +58,7 @@ class MainActivity : ComponentActivity() {
             )
         }
         val connect = ConnectViewModel(holder, credentials, prefillKey = launch.secret)
-        val main = MainViewModel(holder) { chatId ->
+        main = MainViewModel(holder) { chatId ->
             // A chat the core cannot name yet (no gateway, no greeting) still gets a model: the
             // screen shows an empty thread and an idle composer rather than nothing.
             holder.chatSession(chatId) ?: ChatSession(
@@ -72,6 +76,17 @@ class MainActivity : ComponentActivity() {
             disconnectGateway = { main.disconnect() },
         )
         main.attachSettings(settings)
+
+        // The banner's "Try again" and the return to the foreground are the same reconnect, so
+        // they are the same object: one attempt at a time, and only on a socket that was up.
+        recovery = ConnectionRecovery(reconnect = { holder.reconnect() }, scope = scope)
+        main.attachRecovery(recovery)
+        recovery.reload = {
+            // The reads run on the api_token the new handshake minted, and the new socket has
+            // not been told about the chat on screen.
+            holder.refreshSessions()
+            main.reattachChatOnScreen()
+        }
 
         // One owner for the connection's view: the holder emits, the shell pushes it to the states.
         scope.launch {
@@ -131,6 +146,17 @@ class MainActivity : ComponentActivity() {
     private companion object {
         /** Appearance's two preferences: not secrets, and read before any key exists. */
         const val SETTINGS_PREFERENCES = "de.arjmandi.nanobot.companion.settings"
+    }
+
+    /**
+     * Back from the background: Android keeps the process and kills the socket, so this is where a
+     * chat client earns its keep. The banner's own states report the progress; nothing here
+     * decides what a failure meant.
+     */
+    override fun onStart() {
+        super.onStart()
+        if (!main.connected) return
+        recovery.resumed(main.connectionView.status, main.connectionView.everConnected)
     }
 
     override fun onDestroy() {

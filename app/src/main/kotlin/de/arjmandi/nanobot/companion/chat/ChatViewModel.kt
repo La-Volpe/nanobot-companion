@@ -40,6 +40,11 @@ class ChatViewModel(
     attachmentDriver: AttachmentDriving = EmptyAttachmentDriver(),
     voiceDriver: VoiceDriving = EmptyVoiceDriver(),
     recorder: () -> AudioRecording = { WavRecorder() },
+    /**
+     * The banner's "Try again" (A8). Injected rather than built here: the reconnect belongs to the
+     * shell, which is the only place that knows the stack and the chat on screen.
+     */
+    onRetryConnection: () -> Unit = {},
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + uiDispatcher()),
 ) {
 
@@ -61,6 +66,7 @@ class ChatViewModel(
             composer.draft = text
             scope.launch { send() }
         },
+        onRetryConnection = onRetryConnection,
     )
 
     private val observing: Job? = snapshots?.let { flow ->
