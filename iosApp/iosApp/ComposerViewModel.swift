@@ -12,6 +12,9 @@ final class ComposerViewModel: ObservableObject {
     @Published var draft: String = ""
     @Published private(set) var snapshot = ComposerSnapshot()
     @Published private(set) var presets: [ChatModelPreset] = []
+
+    /// Whether the sheet's list has arrived: an empty sheet and a read in flight are two screens.
+    @Published private(set) var presetState: PresetState = .loading
     @Published private(set) var sheet: ComposerSheet?
     @Published private(set) var palette: PaletteSheet?
     @Published private(set) var streaming = false
@@ -165,10 +168,18 @@ final class ComposerViewModel: ObservableObject {
     func closeSheet() { sheet = nil }
 
     /// The sheet's list comes from the settings read the gateway already answers (C6.2), not
-    /// from a list this app invents.
-    func loadPresets(from load: @escaping () async -> [ChatModelPreset]) async {
-        let loaded = await load()
-        if !loaded.isEmpty { presets = loaded }
+    /// from a list this app invents. A read that refuses answers nil, which is a different screen
+    /// from a gateway with no presets: the sheet says it could not read them and offers the read
+    /// again rather than showing an empty list.
+    func loadPresets(from load: @escaping () async -> [ChatModelPreset]?) async {
+        // A list already read stays on screen: reopening the sheet must not flash a skeleton.
+        if presets.isEmpty { presetState = .loading }
+        guard let loaded = await load() else {
+            presetState = .failed
+            return
+        }
+        presets = loaded
+        presetState = .loaded
     }
 
     func pick(preset: ChatModelPreset) async {

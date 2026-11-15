@@ -6,6 +6,7 @@ import de.arjmandi.nanobot.companion.activity.ToolRunStatus
 import de.arjmandi.nanobot.companion.chat.ChatDriver
 import de.arjmandi.nanobot.companion.chat.ChatThreadView
 import de.arjmandi.nanobot.companion.chat.ChatTurnView
+import de.arjmandi.nanobot.companion.chat.ThreadHistory
 import de.arjmandi.nanobot.companion.facade.ChatHandle
 import de.arjmandi.nanobot.companion.facade.markdownDocument
 import de.arjmandi.nanobot.companion.markdown.MdAlignment
@@ -33,8 +34,8 @@ import de.arjmandi.nanobot.companion.projection.Turn
 import de.arjmandi.nanobot.companion.projection.TurnStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 /**
@@ -47,9 +48,13 @@ class CoreChatDriver(
     scope: CoroutineScope,
 ) : ChatDriver {
 
-    override val thread: StateFlow<ChatThreadView> = handle.thread
-        .map { it.toView() }
-        .stateIn(scope, SharingStarted.Eagerly, handle.thread.value.toView())
+    override val thread: StateFlow<ChatThreadView> = combine(handle.thread, handle.history) { thread, history ->
+        thread.toView(history.toView())
+    }.stateIn(
+        scope,
+        SharingStarted.Eagerly,
+        handle.thread.value.toView(handle.history.value.toView()),
+    )
 
     override suspend fun open(chatId: String?) {
         handle.open()
@@ -74,10 +79,17 @@ class CoreChatDriver(
  * `ThreadState` → the value the thread draws. The core keeps the segments, the status and the
  * notices; this only names what a row needs, so a screen never sees a reducer type.
  */
-internal fun ThreadState.toView(): ChatThreadView = ChatThreadView(
+internal fun de.arjmandi.nanobot.companion.facade.HistoryStatus.toView(): ThreadHistory = when (this) {
+    de.arjmandi.nanobot.companion.facade.HistoryStatus.Loading -> ThreadHistory.Loading
+    de.arjmandi.nanobot.companion.facade.HistoryStatus.Loaded -> ThreadHistory.Loaded
+    de.arjmandi.nanobot.companion.facade.HistoryStatus.Failed -> ThreadHistory.Failed
+}
+
+internal fun ThreadState.toView(history: ThreadHistory = ThreadHistory.Loaded): ChatThreadView = ChatThreadView(
     turns = turns.map(Turn::toView),
     notices = notices.mapNotNull(Notice::toView),
     subagents = subagents.map(Subagent::toView),
+    history = history,
 )
 
 internal fun Turn.toView(): ChatTurnView {

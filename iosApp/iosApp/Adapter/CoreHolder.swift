@@ -35,6 +35,8 @@ final class CoreHolder: ObservableObject {
     /// The drawer's rows (I2). A plain Swift value, not a framework type: the screens read this.
     @Published private(set) var sessions: [SessionSummary] = []
     @Published private(set) var sessionsLoaded = false
+    /// The last `GET /api/sessions` did not answer; the drawer says so instead of "none".
+    @Published private(set) var sessionsFailed = false
 
     /// The `/model` presets the sheet lists (I5), from the settings read the gateway answers.
     @Published private(set) var presets: [ChatModelPreset] = []
@@ -48,6 +50,15 @@ final class CoreHolder: ObservableObject {
     }
 
     private var companion: Companion?
+
+    #if DEBUG
+    /// A scripted launch has no gateway to read, so the settings answer is seeded: a UI test walks
+    /// the screen a connected gateway would fill, not the one an unreachable one leaves behind.
+    private var scriptedSettingsSnapshot: SettingsViewModel.Snapshot?
+    func seedSettingsForUITest(_ snapshot: SettingsViewModel.Snapshot) {
+        scriptedSettingsSnapshot = snapshot
+    }
+    #endif
     private var subscriptions: [Cancellable] = []
 
     var isReachable: Bool { companion != nil }
@@ -79,6 +90,7 @@ final class CoreHolder: ObservableObject {
                 MainActor.assumeIsolated {
                     self?.sessions = state.rows.map(SessionSummary.init(row:))
                     self?.sessionsLoaded = state.loaded
+                    self?.sessionsFailed = state.failed
                 }
             }
         )
@@ -112,6 +124,7 @@ final class CoreHolder: ObservableObject {
         everConnected = false
         sessions = []
         sessionsLoaded = false
+        sessionsFailed = false
         settings = CoreHolder.emptySettings
         paletteCatalog = CoreHolder.emptyPalette
     }
@@ -122,6 +135,7 @@ final class CoreHolder: ObservableObject {
     func seedSessionsForUITest(_ rows: [SessionSummary]) {
         sessions = rows
         sessionsLoaded = true
+        sessionsFailed = false
     }
     #endif
 
@@ -155,7 +169,10 @@ final class CoreHolder: ObservableObject {
     /// The settings read as Settings → Overview draws it: the same payload the model sheet's
     /// presets come from, mapped once here.
     var settingsSnapshot: SettingsViewModel.Snapshot {
-        SettingsViewModel.Snapshot(
+        #if DEBUG
+        if let scriptedSettingsSnapshot { return scriptedSettingsSnapshot }
+        #endif
+        return SettingsViewModel.Snapshot(
             version: settings.version?.current,
             commit: settings.version?.commit,
             os: settings.environment?.os,
@@ -171,8 +188,18 @@ final class CoreHolder: ObservableObject {
     }
 
     /// The settings read the model sheet and Settings → Overview both draw from (C6.2, C7.1).
-    func refreshSettings() async {
-        _ = try? await companion?.core.refreshSettings()
+    /// False when it did not answer: both screens say so rather than drawing an empty one.
+    @discardableResult
+    func refreshSettings() async -> Bool {
+        #if DEBUG
+        if scriptedSettingsSnapshot != nil { return true }
+        #endif
+        guard let core = companion?.core else { return false }
+        do {
+            return try await core.refreshSettings() == nil
+        } catch {
+            return false
+        }
     }
 
     /// Commands and CLI apps for the palette sheets; the core reads them when a sheet opens
@@ -235,6 +262,10 @@ final class CoreChat: ChatDriving {
     private let onComposer: (ComposerSnapshot) -> Void
     private var subscription: Cancellable?
     private var composerSubscription: Cancellable?
+    private var historySubscription: Cancellable?
+    /// The page read's state, kept here so a thread the socket republishes does not lose it.
+    private var history: ThreadHistory = .loading
+    private var lastThread = ChatThreadState()
     private let holder: CoreHolder
 
     init(
@@ -250,9 +281,28 @@ final class CoreChat: ChatDriving {
     }
 
     func start() {
+        // Built before the thread's subscription: a thread that arrives first would otherwise
+        // draw one frame of skeleton for a page this chat has already read.
+        let status = ObservableState<HistoryStatus>(flow: handle.history)
+        history = status.value.threadHistory
         let thread = ObservableState<ThreadState>(flow: handle.thread)
         subscription = thread.subscribe { [weak self] state in
-            MainActor.assumeIsolated { self?.onChange(ChatThreadState(state: state)) }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                var next = ChatThreadState(state: state)
+                next.history = self.history
+                self.lastThread = next
+                self.onChange(next)
+            }
+        }
+        // The page read is its own flow: the reducer never touches it, so the two arrive apart.
+        historySubscription = status.subscribe { [weak self] value in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.history = value.threadHistory
+                self.lastThread.history = self.history
+                self.onChange(self.lastThread)
+            }
         }
         // The composer's model, ring and queue live on the handle, so they arrive the same way.
         let composer = ObservableState<ComposerState>(flow: handle.composer)
@@ -266,6 +316,8 @@ final class CoreChat: ChatDriving {
         subscription = nil
         composerSubscription?.cancel()
         composerSubscription = nil
+        historySubscription?.cancel()
+        historySubscription = nil
     }
 
     func open() async {
@@ -364,6 +416,17 @@ extension SubagentRow {
             iteration: Int(subagent.iteration),
             elapsedSeconds: subagent.elapsedSeconds
         )
+    }
+}
+
+extension HistoryStatus {
+    /// The page read as the thread draws it: a skeleton, an empty chat, or the failure sentence.
+    var threadHistory: ThreadHistory {
+        switch self {
+        case HistoryStatus.loaded: return .loaded
+        case HistoryStatus.failed: return .failed
+        default: return .loading
+        }
     }
 }
 

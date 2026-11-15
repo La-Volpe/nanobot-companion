@@ -20,6 +20,12 @@ data class SettingsSnapshot(
     val presets: List<String> = emptyList(),
 )
 
+/**
+ * Whether Overview's read has answered. Before it does the section used to draw five rows with no
+ * values, which reads like the gateway answering "nothing" to every question.
+ */
+enum class OverviewState { Loading, Loaded, Failed }
+
 /** One row of a sectioned list: the label, an optional second line, and the value on the right. */
 data class SettingsRow(val label: String, val detail: String?, val value: String?)
 

@@ -125,6 +125,20 @@ class ChatViewModel(
 
     val isEmpty: Boolean get() = turns.isEmpty()
 
+    /**
+     * What an empty thread should draw (the owner's rule: "not loaded yet" never looks like
+     * "nothing here"). A thread with rows always draws the rows; without them the page read
+     * decides — a skeleton while it is in flight, the app's failure sentence when it did not
+     * answer, and the empty copy only once the gateway has actually been read.
+     */
+    val placeholder: ThreadPlaceholder
+        get() = when {
+            turns.isNotEmpty() -> ThreadPlaceholder.None
+            thread.value.history == ThreadHistory.Loading -> ThreadPlaceholder.Skeleton
+            thread.value.history == ThreadHistory.Failed -> ThreadPlaceholder.Failed
+            else -> ThreadPlaceholder.Empty
+        }
+
     /** The drawer's row, or the greeting's chat when nothing is picked: the core replays the history (D46). */
     suspend fun open(chatId: String?) {
         clearRefusal()

@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.arjmandi.nanobot.companion.R
 import de.arjmandi.nanobot.companion.ui.Design
+import de.arjmandi.nanobot.companion.ui.SkeletonRows
 import kotlinx.coroutines.launch
 
 /**
@@ -102,6 +103,19 @@ fun AutomationsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
+            }
+            // The read has not answered: the shape of the cards it will draw, not a blank page
+            // that reads as "nothing scheduled" (the WebUI's startup skeleton does the same).
+            if (model.page == AutomationsPage.Loading) {
+                item {
+                    SkeletonRows(
+                        count = 3,
+                        rowHeight = 72.dp,
+                        spacing = 8.dp,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        label = stringResource(R.string.automations_loading),
+                    )
+                }
             }
             if (model.isEmpty) {
                 item {

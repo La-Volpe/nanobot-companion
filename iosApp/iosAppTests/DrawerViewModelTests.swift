@@ -34,6 +34,28 @@ struct DrawerViewModelTests {
         #expect(model.emptyMessage == "No sessions match “nothing like this”.")
     }
 
+    @Test func aFailedReadIsNotAnEmptyDrawer() {
+        // `GET /api/sessions` answered with a 500. The core used to turn that into `loaded` with no
+        // rows, and the drawer said "No sessions yet" about a gateway it never managed to read.
+        let model = DrawerViewModel()
+        model.update(rows: [], loaded: true, failed: true)
+
+        #expect(model.state == .failed)
+        #expect(model.emptyMessage == nil, "'no sessions yet' is a claim a failed read cannot make")
+        #expect(model.failureMessage == "Could not read your sessions from the gateway.")
+    }
+
+    @Test func aDrawerThatIsLoadingSaysNothingRatherThanReadingAsEmpty() {
+        let model = DrawerViewModel(rows: [row("One")], loaded: true)
+        #expect(model.state == .rows(model.rows))
+
+        model.update(rows: [], loaded: false)
+
+        #expect(model.state == .loading, "a re-read is a skeleton, not a verdict")
+        #expect(model.emptyMessage == nil)
+        #expect(model.failureMessage == nil)
+    }
+
     @Test func anUnloadedDrawerIsLoadingAndNeverSaysNoMatches() {
         let model = DrawerViewModel(rows: [], loaded: false)
 

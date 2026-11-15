@@ -65,6 +65,29 @@ class DrawerViewModelTest {
     }
 
     @Test
+    fun aFailedReadIsNotAnEmptyDrawer() {
+        // `GET /api/sessions` answered with a 500. Before this, the core turned that into
+        // `loaded = true` with no rows, and the drawer said "No sessions yet" about a gateway it
+        // had never managed to read.
+        val model = DrawerViewModel()
+        model.update(rows = emptyList(), loaded = true, failed = true)
+
+        assertEquals(DrawerViewModel.ListState.Failed, model.state)
+        assertNull(model.emptyMessage, "'no sessions yet' is a claim a failed read cannot make")
+        assertEquals("Could not read your sessions from the gateway.", model.failureMessage)
+    }
+
+    @Test
+    fun aDrawerThatIsLoadingSaysNothingRatherThanReadingAsEmpty() {
+        val model = loaded(row("One", "first"))
+        model.update(rows = emptyList(), loaded = false)
+
+        assertEquals(DrawerViewModel.ListState.Loading, model.state, "a re-read is a skeleton, not a verdict")
+        assertNull(model.emptyMessage)
+        assertNull(model.failureMessage)
+    }
+
+    @Test
     fun clearingTheSearchBringsEveryRowBack() {
         val model = loaded(row("One", "first"), row("Two", "second"))
         model.searchText = "two"

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import de.arjmandi.nanobot.companion.R
 import de.arjmandi.nanobot.companion.chat.ChatTurnView
 import de.arjmandi.nanobot.companion.ui.Design
+import de.arjmandi.nanobot.companion.ui.SkeletonRows
 import kotlinx.coroutines.launch
 
 /**
@@ -36,7 +37,7 @@ fun ComposerSheetHost(
     turns: List<ChatTurnView>,
     sessionTitle: String,
     sessionChatId: String?,
-    loadPresets: suspend () -> List<ChatModelPreset>,
+    loadPresets: suspend () -> List<ChatModelPreset>?,
     onJumpToTurn: (String) -> Unit,
     onAttachContent: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -67,14 +68,32 @@ fun ComposerSheetHost(
             when (sheet) {
                 ComposerSheet.Model -> {
                     SheetTitle(stringResource(R.string.composer_choose_model))
-                    composer.presets.forEach { preset ->
-                        SheetRow(
-                            title = preset.name,
-                            subtitle = preset.subtitle,
-                            checked = preset.active,
-                            identifier = "composer.model.${preset.name}",
+                    when (composer.presetState) {
+                        // The gateway's list is a read of its own: the sheet draws its rows' shape
+                        // rather than a list that is empty because nothing has answered yet.
+                        PresetState.Loading -> SkeletonRows(
+                            count = 3,
+                            rowHeight = Design.minimumTarget,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            label = stringResource(R.string.composer_loading_presets),
+                        )
+                        PresetState.Failed -> SheetRow(
+                            title = stringResource(R.string.composer_presets_failed),
+                            subtitle = stringResource(R.string.composer_presets_failed_body),
+                            checked = false,
+                            identifier = "composer.model.retry",
                         ) {
-                            scope.launch { composer.pick(preset) }
+                            scope.launch { composer.loadPresets(loadPresets) }
+                        }
+                        PresetState.Loaded -> composer.presets.forEach { preset ->
+                            SheetRow(
+                                title = preset.name,
+                                subtitle = preset.subtitle,
+                                checked = preset.active,
+                                identifier = "composer.model.${preset.name}",
+                            ) {
+                                scope.launch { composer.pick(preset) }
+                            }
                         }
                     }
                     SheetRow(

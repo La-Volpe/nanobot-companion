@@ -237,6 +237,28 @@ class ComposerViewModelTest {
     }
 
     @Test
+    fun theModelSheetSaysWhetherItsListIsStillComing() = runTest {
+        val model = model()
+        model.openModelSheet()
+        assertEquals(PresetState.Loading, model.presetState, "the sheet opens before the read answers")
+
+        model.loadPresets { listOf(preset("default")) }
+        assertEquals(PresetState.Loaded, model.presetState)
+        assertEquals(listOf("default"), model.presets.map { it.name })
+    }
+
+    @Test
+    fun aRefusedPresetReadSaysSoInsteadOfAnEmptySheet() = runTest {
+        val model = model()
+        model.openModelSheet()
+
+        model.loadPresets { null }
+
+        assertEquals(PresetState.Failed, model.presetState, "an empty sheet and a failed read are not the same screen")
+        assertTrue(model.presets.isEmpty())
+    }
+
+    @Test
     fun pickingAPresetSendsTheModelCommand() = runTest {
         val driver = FakeDriver()
         val model = model(driver)

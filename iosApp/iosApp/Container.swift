@@ -75,6 +75,8 @@ final class Container {
             if environment["NANOBOT_SESSIONS"] != nil {
                 container.holder.seedSessionsForUITest(SessionSummary.samples)
             }
+            // A scripted gateway answers the settings read too, so a tap can walk Overview.
+            container.holder.seedSettingsForUITest(.scriptedGateway)
             if environment["NANOBOT_THREAD"] != nil {
                 // The chat is created by the shell, which is where its callback lands.
                 container.scripted = true

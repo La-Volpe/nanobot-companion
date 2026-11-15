@@ -156,8 +156,8 @@ class MainViewModel(
      * The rows arrive from the holder's flow; the drawer decides what they look like. A row whose
      * chat was deleted on the gateway is dropped from the title rather than kept as a ghost.
      */
-    fun updateSessions(rows: List<SessionSummary>, loaded: Boolean) {
-        drawer.update(rows, loaded)
+    fun updateSessions(rows: List<SessionSummary>, loaded: Boolean, failed: Boolean = false) {
+        drawer.update(rows, loaded, failed)
         val current = selected
         if (current != null && loaded && rows.none { it.key == current.key }) selected = null
     }
@@ -218,7 +218,7 @@ class MainViewModel(
     }
 
     /** The model sheet's list: the gateway's presets, read when the sheet opens. */
-    suspend fun presets(): List<de.arjmandi.nanobot.companion.composer.ChatModelPreset> = holder.presets()
+    suspend fun presets(): List<de.arjmandi.nanobot.companion.composer.ChatModelPreset>? = holder.presets()
 
     fun disconnect() {
         connected = false

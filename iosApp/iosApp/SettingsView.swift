@@ -121,8 +121,24 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var overviewScreen: some View {
-        ForEach(model.overviewRows) { row in
-            SettingsRow(title: row.label, detail: row.detail, value: row.value, tint: nil)
+        switch model.overview {
+        case .loading:
+            // The read has not answered: the shape of the rows it will draw, rather than rows
+            // whose every value is blank.
+            Section {
+                SkeletonRows(count: 4, rowHeight: Design.minimumTarget, spacing: 2, label: "Loading gateway settings")
+            }
+        case .failed:
+            Section {
+                Text("Could not read the gateway settings.")
+                    .font(.system(size: Design.Interface.captionSize))
+                    .foregroundStyle(Palette.destructive)
+                    .accessibilityIdentifier("settings.overview.failed")
+            }
+        case .loaded:
+            ForEach(model.overviewRows) { row in
+                SettingsRow(title: row.label, detail: row.detail, value: row.value, tint: nil)
+            }
         }
         Section {
             Text("Uptime is not part of the gateway settings payload, so it is not shown.")
@@ -198,9 +214,30 @@ struct SettingsView: View {
     }
 
     private func refresh() async {
-        await holder.refreshSettings()
-        model.update(snapshot: holder.settingsSnapshot)
+        // Nil is "the read did not answer": Overview says so instead of drawing blank values.
+        await model.refresh {
+            guard await holder.refreshSettings() else { return nil }
+            return holder.settingsSnapshot
+        }
     }
+}
+
+extension SettingsViewModel.Snapshot {
+    /// What a scripted launch answers with: the dev gateway's own facts, so Overview's rows are
+    /// the rows a connected app draws.
+    static let scriptedGateway = SettingsViewModel.Snapshot(
+        version: "0.4.1",
+        commit: "28d73b69",
+        os: "Darwin",
+        pythonVersion: "3.12.9",
+        modelName: "deepseek-v4.1-flash:cloud",
+        modelPreset: "primary",
+        provider: "ollama",
+        contextWindowTokens: 32_768,
+        transcriptionProvider: "groq",
+        transcriptionModel: "whisper-large-v3",
+        presets: ["default", "primary"]
+    )
 }
 
 /// One settings row: a title, a second line and a trailing value, at the 44 pt target.

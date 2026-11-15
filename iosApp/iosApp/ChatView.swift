@@ -24,6 +24,23 @@ struct ChatView: View {
             if let banner = states.banner {
                 ConnectionBannerView(banner: banner) { states.retryConnection() }
             }
+            switch model.placeholder {
+            case .skeleton:
+                ThreadSkeletonView()
+            case .failed:
+                ThreadReadFailedView()
+            case .empty:
+                EmptyThreadView()
+            case .none:
+                threadScroll
+            }
+            composerZone
+        }
+        .background(Palette.canvas)
+    }
+
+    /// The conversation itself: history, the streaming answer, the delivery row.
+    private var threadScroll: some View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 14) {
@@ -87,9 +104,6 @@ struct ChatView: View {
                     proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
-            composerZone
-        }
-        .background(Palette.canvas)
     }
 
     private func cluster(for row: ChatRow) -> ActivityCluster? {
@@ -116,6 +130,64 @@ struct ChatView: View {
             }
             ComposerBar(model: composer, attachments: attachments, voice: voice, onAttach: onAttach)
         }
+    }
+}
+
+/// The conversation that has not arrived: a bubble and two answers' worth of lines, at their sizes
+/// (the WebUI's `ThreadLoadingSkeleton`).
+struct ThreadSkeletonView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Spacer(minLength: 100)
+                SkeletonLine(width: nil, height: 40, corner: Design.Radius.bubble)
+                    .frame(maxWidth: .infinity)
+            }
+            SkeletonLine(width: nil, height: 12).padding(.trailing, 60)
+            SkeletonLine(width: nil, height: 12)
+            SkeletonLine(width: nil, height: 12).padding(.trailing, 130)
+            SkeletonLine(width: nil, height: 12).padding(.trailing, 90)
+            SkeletonLine(width: nil, height: 12).padding(.trailing, 180)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("chat.skeleton")
+        .accessibilityLabel("Loading conversation")
+    }
+}
+
+/// A page read that did not answer: the app's problem, ended in a sentence, not a spinner.
+struct ThreadReadFailedView: View {
+    var body: some View {
+        Text("Could not read this conversation from the gateway.")
+            .font(ReadingType.font(size: 15))
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityIdentifier("chat.readFailed")
+    }
+}
+
+/// A conversation the gateway really has no turns for. iOS had no empty copy at all before this:
+/// a new chat was simply blank, which is the same screen as a slow one.
+struct EmptyThreadView: View {
+    var body: some View {
+        VStack(spacing: 6) {
+            Text("Nothing here yet")
+                .font(ReadingType.font(size: 17))
+                .foregroundStyle(.primary)
+            Text("Send the first message to start this conversation.")
+                .font(ReadingType.font(size: 15))
+                .foregroundStyle(.secondary)
+        }
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("chat.empty")
     }
 }
 

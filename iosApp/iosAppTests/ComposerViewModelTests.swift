@@ -169,6 +169,28 @@ struct ComposerViewModelTests {
         #expect(model.presets.first(where: { $0.active })?.name == "primary")
     }
 
+    @Test func theModelSheetSaysWhetherItsListIsStillComing() async {
+        let model = model()
+        model.openModelSheet()
+        #expect(model.presetState == .loading, "the sheet opens before the read answers")
+
+        let first = preset("default")
+        await model.loadPresets { [first] }
+
+        #expect(model.presetState == .loaded)
+        #expect(model.presets.map(\.name) == ["default"])
+    }
+
+    @Test func aRefusedPresetReadSaysSoInsteadOfAnEmptySheet() async {
+        let model = model()
+        model.openModelSheet()
+
+        await model.loadPresets { nil }
+
+        #expect(model.presetState == .failed, "an empty sheet and a failed read are not the same screen")
+        #expect(model.presets.isEmpty)
+    }
+
     @Test func theModelChipNamesThePresetAndOnlyThenTheBareWord() {
         let model = model()
         #expect(model.modelLabel == "Model", "nothing read yet, so the chip says the bare word")

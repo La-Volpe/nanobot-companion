@@ -63,7 +63,30 @@ struct AutomationsViewModelTests {
         await model.load()
 
         #expect(model.isEmpty, "the page must say 'no automations yet', not show an error")
+        #expect(model.page == .empty)
         #expect(model.message == nil)
+    }
+
+    @Test func aPageThatHasNotBeenReadSaysNothingAboutHavingNone() {
+        let model = AutomationsViewModel(driver: FakeDriver(jobs: [row("a")]))
+
+        #expect(model.page == .loading, "before the read answers, the page is loading")
+        #expect(model.isEmpty == false, "so the empty copy must not be drawn")
+    }
+
+    @Test func aFailedRefreshDoesNotSayTheGatewayHasNoAutomations() async {
+        // The page loaded and the gateway said there is nothing scheduled. Then a refresh failed:
+        // "No automations yet" is a claim a failed read cannot make.
+        let driver = FakeDriver(jobs: [])
+        let model = AutomationsViewModel(driver: driver)
+        await model.load()
+        #expect(model.page == .empty)
+
+        driver.loadFails = true
+        await model.load()
+
+        #expect(model.page == .failed)
+        #expect(model.message != nil, "and the sentence the page already has is what says so")
     }
 
     @Test func aFailedReadKeepsTheRowsItHad() async {

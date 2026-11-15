@@ -75,6 +75,7 @@ import de.arjmandi.nanobot.companion.states.SubagentDockRow
 import de.arjmandi.nanobot.companion.states.snackbarActionLabel
 import de.arjmandi.nanobot.companion.states.snackbarText
 import de.arjmandi.nanobot.companion.ui.Design
+import de.arjmandi.nanobot.companion.ui.SkeletonLine
 import de.arjmandi.nanobot.companion.ui.scaledReadingStyle
 import de.arjmandi.nanobot.companion.voice.VoiceMeter
 import de.arjmandi.nanobot.companion.voice.VoiceNoticeRow
@@ -93,7 +94,7 @@ fun ChatScreen(
     model: ChatViewModel,
     sessionTitle: String = "nanobot",
     sessionChatId: String? = null,
-    loadPresets: suspend () -> List<ChatModelPreset> = { emptyList() },
+    loadPresets: suspend () -> List<ChatModelPreset>? = { emptyList() },
     modifier: Modifier = Modifier,
 ) {
     val thread by model.thread.collectAsStateWithLifecycle()
@@ -155,9 +156,15 @@ fun ChatScreen(
         model.states.banner?.let { banner ->
             ConnectionBannerRow(banner = banner, onRetry = { model.states.retryConnection() })
         }
-        if (thread.turns.isEmpty()) {
-            EmptyThread(modifier = Modifier.weight(1f))
-        } else {
+        when (model.placeholder) {
+            // The page read is in flight: the shape of a conversation, not "nothing here yet"
+            // (the WebUI's `ThreadLoadingSkeleton` draws the same).
+            ThreadPlaceholder.Skeleton -> ThreadSkeleton(modifier = Modifier.weight(1f))
+            ThreadPlaceholder.Failed -> ThreadReadFailed(modifier = Modifier.weight(1f))
+            ThreadPlaceholder.Empty -> EmptyThread(modifier = Modifier.weight(1f))
+            ThreadPlaceholder.None -> Unit
+        }
+        if (thread.turns.isNotEmpty()) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.weight(1f).fillMaxWidth().testTag("chat.thread"),
@@ -203,7 +210,7 @@ private fun ComposerZone(
     turns: List<ChatTurnView>,
     sessionTitle: String,
     sessionChatId: String?,
-    loadPresets: suspend () -> List<ChatModelPreset>,
+    loadPresets: suspend () -> List<ChatModelPreset>?,
     onJumpToTurn: (String) -> Unit,
 ) {
     val composer = model.composer
@@ -445,6 +452,43 @@ private fun TurnRow(
                 )
             }
         }
+    }
+}
+
+/** The conversation that has not arrived: a bubble and two answers' worth of lines, at their sizes. */
+@Composable
+private fun ThreadSkeleton(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .testTag("chat.skeleton"),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            SkeletonLine(widthFraction = 0.4f, height = 40.dp, shape = RoundedCornerShape(Design.Radius.bubble))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            SkeletonLine(widthFraction = 0.8f)
+            SkeletonLine(widthFraction = 1f)
+            SkeletonLine(widthFraction = 0.6f)
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            SkeletonLine(widthFraction = 0.75f)
+            SkeletonLine(widthFraction = 0.5f)
+        }
+    }
+}
+
+/** A page read that did not answer: the app's problem, said in the app's voice. */
+@Composable
+private fun ThreadReadFailed(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth().testTag("chat.readFailed"),
+        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(stringResource(R.string.chat_history_failed), fontSize = Design.Interface.bodySize)
     }
 }
 

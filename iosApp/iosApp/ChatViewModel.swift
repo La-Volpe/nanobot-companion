@@ -37,6 +37,19 @@ final class ChatViewModel: ObservableObject {
 
     var rows: [ChatRow] { thread.rows }
 
+    /// What an empty thread should draw (the owner's rule: "not loaded yet" never looks like
+    /// "nothing here"). A thread with rows always draws the rows; without them the page read
+    /// decides — a skeleton while it is in flight, the app's failure sentence when it did not
+    /// answer, and the empty copy only once the gateway has actually been read.
+    var placeholder: ThreadPlaceholder {
+        if !thread.turns.isEmpty { return .none }
+        switch thread.history {
+        case .loading: return .skeleton
+        case .failed: return .failed
+        case .loaded: return .empty
+        }
+    }
+
     var isStreaming: Bool { thread.turns.contains { $0.running } }
 
     /// The WebUI rule, transcribed (design README, "Controls worth trying").

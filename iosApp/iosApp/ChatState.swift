@@ -3,12 +3,23 @@ import Foundation
 /// The thread as a Swift view model can reason about it: plain values, no framework types.
 /// The adapter layer maps `core.ThreadState` onto this (plan.md D9: one reducer fills it,
 /// whether the frames came from the live socket or from a replayed history).
+/// Whether the stored page has been read (D46). The socket's `attach` carries no history, so a
+/// thread with no rows is either a conversation nobody has used or one whose page has not
+/// arrived, and the screen has to draw those two differently.
+enum ThreadHistory: Equatable { case loading, loaded, failed }
+
+/// What an empty thread draws: the read in flight, the read that failed, or a genuinely empty chat.
+enum ThreadPlaceholder: Equatable { case none, skeleton, failed, empty }
+
 struct ChatThreadState: Equatable {
     var turns: [ChatTurnState] = []
     /// The notices the core reduced (C7.3), owned by `StatesViewModel` on screen.
     var notices: [ThreadNotice] = []
     /// The subtasks this chat's agent owns (I8's dock).
     var subagents: [SubagentRow] = []
+    /// The page read's state. A driver with no socket behind it starts `loaded`: it has nothing
+    /// to load, so its empty thread really is empty.
+    var history: ThreadHistory = .loaded
 
     /// Rows in reading order: the prompt, what nanobot did to answer it, then the answer.
     var rows: [ChatRow] {
