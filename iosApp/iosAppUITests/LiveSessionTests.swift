@@ -175,4 +175,43 @@ final class LiveSessionTests: XCTestCase {
         )
         print("live: resumed chat with \(app.staticTexts.matching(identifier: "chat.answer").count) answer row(s)")
     }
+
+    /// The owner's bug, on a real socket: a banner appears, and "Try again" asks the core for a
+    /// new handshake — a fresh single-use token, a new socket, a real `ready`. The debug menu
+    /// raises the banner without touching the connection, so the banner can only clear if the
+    /// button actually reconnected: no other path sets the state back to open.
+    func testTheBannersTryAgainReconnectsOnTheLiveGateway() throws {
+        let app = try liveApp()
+
+        XCTAssertTrue(app.buttons["connect.submit"].waitForExistence(timeout: 15))
+        app.buttons["connect.submit"].tap()
+        XCTAssertTrue(app.textFields["chat.composer"].waitForExistence(timeout: 25), "connected. Tree:\n\(app.debugDescription)")
+
+        XCTAssertTrue(app.buttons["chat.debug"].waitForExistence(timeout: 10))
+        app.buttons["chat.debug"].tap()
+        XCTAssertTrue(app.buttons["debug.failure.unreachable"].waitForExistence(timeout: 10))
+        app.buttons["debug.failure.unreachable"].tap()
+
+        let banner = app.staticTexts["states.banner"]
+        XCTAssertTrue(banner.waitForExistence(timeout: 10), "the failure raises the banner")
+        XCTAssertEqual(banner.label, "No gateway at that address. Check the address and that the gateway is running.")
+
+        let retry = app.buttons["states.retry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 5), "a failed handshake offers the retry")
+        retry.tap()
+        print("live: tapped try again")
+
+        // Connecting… while the handshake runs, then nothing at all once the gateway greeted the
+        // new socket. A button wired to nothing leaves the failure on screen forever.
+        let cleared = Date().addingTimeInterval(30)
+        while app.staticTexts["states.banner"].exists && Date() < cleared {
+            usleep(250_000)
+        }
+        XCTAssertFalse(
+            app.staticTexts["states.banner"].exists,
+            "the retry reached the gateway and the socket is open again. Tree:\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(app.textFields["chat.composer"].waitForExistence(timeout: 10), "and the shell is still the shell")
+        print("live: retry reconnected")
+    }
 }

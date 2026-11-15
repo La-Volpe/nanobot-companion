@@ -246,13 +246,14 @@ final class StatesViewModel: ObservableObject {
         case .reconnecting:
             dot = .reconnecting
             banner = ConnectionBanner(text: "Reconnecting…", showsRetry: false)
-        case let .failed(kind, _):
+        case let .failed(kind, detail):
             dot = .failed
-            // The banner offers "Try again" for every failed handshake, which is what the design
-            // draws; whether the retry can succeed is the taxonomy's answer, and it is the
-            // onboarding screen that decides to offer the button on that basis.
-            _ = kind
-            banner = ConnectionBanner(text: "Handshake failed or token expired.", showsRetry: true)
+            // The sentence is the taxonomy's, one per kind: a socket the system suspended fails as
+            // `unreachable` or `timeout`, and one generic "token expired" would send the owner
+            // hunting for a key that is fine (C7.4). "Try again" stays on every failure because
+            // the design draws it under every failed handshake; whether the retry can succeed is
+            // the taxonomy's answer, and onboarding is the screen that reads it (`offersRetry`).
+            banner = ConnectionBanner(text: ConnectionCopy.text(for: kind, detail: detail), showsRetry: true)
         }
     }
 
@@ -435,8 +436,9 @@ extension StatesViewModel {
     /// Put the app into one of the eight failures, with the taxonomy's own sentence.
     func debugFail(_ kind: ConnectionFailureKind, detail: String?) {
         injectedFailure = kind
+        // Nothing patched after the fact: the menu's whole purpose is to show what the socket
+        // would, so a banner written here could hide a wrong one written above.
         update(connection: .failed(kind, detail: detail), notices: [], nowMs: 0)
-        banner = ConnectionBanner(text: ConnectionCopy.text(for: kind, detail: detail), showsRetry: true)
     }
 
     /// One of the chat states, injected into the same state objects the live socket fills.

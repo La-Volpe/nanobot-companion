@@ -26,6 +26,10 @@ struct RootView: View {
     @StateObject private var automations: AutomationsViewModel
     @State private var filesPresented = false
     @State private var chatDriver: CoreChat?
+    /// The one owner of "ask for a new socket": the banner's retry and the foreground both
+    /// come through it, so a tap cannot race a connect that is already running.
+    private let recovery: ConnectionRecovery
+    @Environment(\.scenePhase) private var scenePhase
 
     init(container: Container) {
         self.container = container
@@ -52,6 +56,7 @@ struct RootView: View {
         _voice = StateObject(wrappedValue: VoiceViewModel(recording: MicrophoneRecorder(), driver: NoopVoice()))
         let credentials = container.credentials
         _states = StateObject(wrappedValue: StatesViewModel())
+        self.recovery = ConnectionRecovery(reconnect: { await container.holder.reconnect() })
         _automations = StateObject(wrappedValue: AutomationsViewModel(driver: CoreAutomations(holder: container.holder)))
         _settings = StateObject(
             wrappedValue: SettingsViewModel(
@@ -129,6 +134,16 @@ struct RootView: View {
                     .task {
                         // Settings → Gateway is the way out: one closure, set once the shell exists.
                         settings.disconnectGateway = { disconnect() }
+                        // The banner's "Try again" had no owner until now, which is why it did
+                        // nothing: it is the same reconnect the foreground uses (C3.4).
+                        states.onRetryConnection = { Task { await retryConnection() } }
+                        // A successful retry mints a new api_token and a socket that has not heard
+                        // of the chat on screen, so the drawer is read again and the chat is
+                        // attached again — no second history replay (D46).
+                        recovery.reload = {
+                            try? await holder.refreshSessions()
+                            await reattachChat()
+                        }
                     }
                     .environment(\.readingSize, ReadingScale.size(for: settings.readingSize))
             .onChange(of: holder.connectionStatus) { _, status in
@@ -139,6 +154,15 @@ struct RootView: View {
                     // reconnect starts from what the holder already holds (P9).
                     .task {
                         states.update(connection: holder.connectionStatus, wasConnected: holder.everConnected)
+                    }
+                    // iOS suspends a backgrounded app and the socket dies with it, so the return
+                    // to the foreground is where a chat client earns its keep. What the failure
+                    // meant is the taxonomy's answer and the banner says it; nothing here decides.
+                    .onChange(of: scenePhase) { _, phase in
+                        guard phase == .active, connected else { return }
+                        Task {
+                            await recovery.resumed(status: holder.connectionStatus, everConnected: holder.everConnected)
+                        }
                     }
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
@@ -307,6 +331,20 @@ struct RootView: View {
         attachments.use(live, chatId: selected?.chatId)
         voice.use(live)
         await driver.open()
+    }
+
+    /// The banner's one button. The core's connect bootstraps a fresh single-use token, so this is
+    /// a real handshake; a failure leaves the banner up with the taxonomy's own sentence.
+    private func retryConnection() async {
+        await recovery.retry(status: holder.connectionStatus)
+    }
+
+    /// A new socket has been told about no chats at all. Only a chat the drawer named can be
+    /// re-attached from here: the greeting's chat is already the one the composer sends on, and a
+    /// new handle for it would swap the thread under the reader.
+    private func reattachChat() async {
+        guard selected != nil else { return }
+        await chatDriver?.open()
     }
 
     /// The model sheet's list is the gateway's (`/api/settings` → `model_presets`), read when

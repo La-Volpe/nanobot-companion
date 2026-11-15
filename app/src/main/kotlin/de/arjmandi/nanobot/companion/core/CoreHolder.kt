@@ -163,6 +163,21 @@ class CoreHolder(
 
     fun isOpen(): Boolean = stack != null
 
+    /**
+     * A second handshake on the stack that is already open, which is what "Try again" and a phone
+     * returning to the foreground both need: the core bootstraps a fresh single-use token on every
+     * `connect()`, so this is a reconnect and not a resume (C3.4). A failure leaves the stack open,
+     * so the banner keeps the taxonomy's sentence and a second tap can try again.
+     */
+    suspend fun reconnect(): Boolean {
+        val core = stack?.core ?: return false
+        return try {
+            core.connect() is ConnectResult.Connected
+        } catch (failure: Throwable) {
+            false
+        }
+    }
+
     override suspend fun connect(address: String, key: String, allowUnverified: Boolean): GatewayOutcome {
         close()
         val opened = openStack(address, key, allowUnverified)

@@ -60,6 +60,12 @@ class MainViewModel(
         private set
 
     /**
+     * The banner's "Try again" (A8), attached by the composition root for the same reason Settings
+     * is: one owner for the socket, and no chat model reaching for the stack.
+     */
+    private var recovery: ConnectionRecovery? = null
+
+    /**
      * The connection as the states surfaces draw it (A8). One value, pushed to the chat's own states
      * whenever the holder emits, so the bar's dot and the chat's banner cannot disagree.
      */
@@ -87,6 +93,10 @@ class MainViewModel(
 
     fun attachSettings(settings: SettingsViewModel) {
         this.settings = settings
+    }
+
+    fun attachRecovery(recovery: ConnectionRecovery) {
+        this.recovery = recovery
     }
 
     fun openAutomations() {
@@ -166,12 +176,25 @@ class MainViewModel(
                 snapshots = opened.snapshots,
                 attachmentDriver = opened.attachments,
                 voiceDriver = opened.voice,
+                // The banner's button asks for a new socket through the one owner of that
+                // decision, so a tap cannot race a connect that is already running.
+                onRetryConnection = { recovery?.retry(connectionView.status) },
             )
         }
         chat = model
         // The chat's states start from the connection the shell already knows (P9's lesson).
         model.states.update(connectionView)
         model.open(chatId)
+    }
+
+    /**
+     * After a reconnect: the new socket has been told about no chats at all, so the thread on
+     * screen attaches again and a turn that was running keeps arriving. Only a chat the drawer
+     * named can be re-attached — the greeting's chat is already the one the composer sends on.
+     */
+    suspend fun reattachChatOnScreen() {
+        val row = selected ?: return
+        chat?.open(row.chatId)
     }
 
     /** Picking a row: the drawer closes and the thread moves to that chat. */
