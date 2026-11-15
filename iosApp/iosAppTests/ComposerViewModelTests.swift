@@ -169,6 +169,17 @@ struct ComposerViewModelTests {
         #expect(model.presets.first(where: { $0.active })?.name == "primary")
     }
 
+    @Test func theModelChipNamesThePresetAndOnlyThenTheBareWord() {
+        let model = model()
+        #expect(model.modelLabel == "Model", "nothing read yet, so the chip says the bare word")
+
+        model.update(snapshot: ComposerSnapshot(modelName: "deepseek-v4.1-flash:cloud"))
+        #expect(model.modelLabel == "deepseek-v4.1-flash:cloud", "the gateway's model when no preset is known")
+
+        model.update(snapshot: ComposerSnapshot(modelName: "x", modelPreset: "primary"))
+        #expect(model.modelLabel == "primary", "the preset's name outranks the model it runs")
+    }
+
     @Test func pickingAPresetSendsTheModelCommand() async {
         let driver = FakeDriver()
         let model = model(driver: driver)

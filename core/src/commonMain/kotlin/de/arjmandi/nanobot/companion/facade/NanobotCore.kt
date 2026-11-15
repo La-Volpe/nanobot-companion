@@ -57,6 +57,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -100,6 +101,9 @@ public class NanobotCore internal constructor(
         override suspend fun closed(error: CoreError?) = onClosed(error)
         override suspend fun effect(effect: Effect) = onEffect(effect)
     }
+
+    /** What the chip names: a preset, and the model it runs when there is one (I5). */
+    private data class ModelOnChip(val preset: String?, val name: String?)
 
     private val engine: TurnEngine = TurnEngine(scope, attempt, host)
 
@@ -219,11 +223,15 @@ public class NanobotCore internal constructor(
                 registry.update { current -> current + (greeted to (current[greeted] ?: bound)) }
                 pending.value = null
             }
+            // A read may already have answered for this chat; the chip does not wait for a turn.
+            refreshComposerModel(bound, bound.id.value)
             return ChatHandle(this, bound)
         }
         val created = ChatSession(id = MutableStateFlow(chatId))
         registry.update { current -> current + (chatId to (current[chatId] ?: created)) }
-        return ChatHandle(this, registry.value.getValue(chatId))
+        val session = registry.value.getValue(chatId)
+        refreshComposerModel(session, chatId)
+        return ChatHandle(this, session)
     }
 
     /** Refresh the drawer from `GET /api/sessions` (plan.md C5.1, D15.6). */
@@ -239,6 +247,8 @@ public class NanobotCore internal constructor(
         val rows = (outcome as? SessionListOutcome.Loaded)?.rows ?: _sessions.value.rows
         // A refresh that fails keeps the rows it had: an empty drawer is worse than a stale one.
         _sessions.value = SessionListState(rows = rows, loaded = true)
+        // The rows carry each chat's own `model_preset`, which outranks the gateway's current one.
+        republishComposerModels()
         // The mention sheet names chats by the same rows, so it is refreshed with them (C6.4).
         _palette.value = _palette.value.copy(sessions = PaletteCatalog.sessionsIn(rows))
     }
@@ -309,6 +319,9 @@ public class NanobotCore internal constructor(
         return when (val outcome = SettingsClient(client, profile.url).fetch(token)) {
             is SettingsOutcome.Loaded -> {
                 _settings.value = outcome.state
+                // The settings read is the first thing that names a chat's model, so the chips
+                // that were waiting on it take it now (I5).
+                republishComposerModels()
                 null
             }
             is SettingsOutcome.Failed -> outcome.error
@@ -504,8 +517,21 @@ public class NanobotCore internal constructor(
         routed.effects.mapNotNull { (it as? Effect.Send)?.frame }.forEach { engine.send(it) }
         // Once per chat per socket: the page cannot have changed under a chat this core has
         // already replayed, and a second read would double nothing but the round trip.
-        if (!hydrated.add(chatId)) return
-        replayHistory(chatId)
+        val fresh = hydrated.add(chatId)
+        coroutineScope {
+            if (fresh) launch { replayHistory(chatId) }
+            // A chat that has run no turn on this device knows no model: the greeting carries
+            // none (`runtime.py` `_connection_loop`) and a compacted page stores no
+            // `turn_model_updated`. The settings read that names the chip goes out beside the
+            // page, which is the moment the WebUI reads it too (`ThreadShell.tsx`).
+            launch { readModelsForChip() }
+        }
+    }
+
+    /** Once per socket: the gateway's own answer to "which preset is this chat on" (I5). */
+    private suspend fun readModelsForChip() {
+        if (_settings.value.loaded || payload?.apiToken == null || http == null) return
+        refreshSettings()
     }
 
     /**
@@ -645,20 +671,55 @@ public class NanobotCore internal constructor(
         registry.update { current -> current + (chatId to (current[chatId] ?: waiting)) }
         pending.value = null
         chatSet = chatSet.copy(threads = chatSet.threads + (chatId to chatSet.thread(chatId)))
+        refreshComposerModel(waiting, chatId)
     }
 
     /** The composer mirrors the thread's model and usage: the ring is drawn from here (C6.7). */
     private fun publish(chatId: String, thread: ThreadState) {
         val session = registry.value[chatId] ?: return
         session.thread.value = thread
+        val model = composerModel(chatId)
         session.composer.update { composer ->
             composer.copy(
-                modelPreset = thread.modelPreset ?: composer.modelPreset,
-                modelName = thread.modelName ?: composer.modelName,
+                modelPreset = model.preset,
+                modelName = model.name ?: composer.modelName,
                 contextWindowTokens = thread.contextWindowTokens ?: composer.contextWindowTokens,
                 usage = thread.usage ?: composer.usage,
             )
         }
+    }
+
+    /**
+     * What the composer's chip should name (I5), in the WebUI's order (`ThreadShell.tsx`
+     * `activeModelPreset`): the preset this chat's own turn reported, then the one the gateway
+     * stored for the chat, then the one the gateway is on. A chat that overrides the global
+     * preset must not be labelled with the global one, which is why the chat's own answer leads.
+     */
+    private fun composerModel(chatId: String?): ModelOnChip {
+        val thread = chatId?.let { chatSet.thread(it) }
+        val row = chatId?.let { id -> _sessions.value.rows.firstOrNull { it.chatId == id } }
+        val settings = _settings.value
+        return ModelOnChip(
+            preset = thread?.modelPreset?.takeIf(String::isNotBlank)
+                ?: row?.modelPreset?.takeIf(String::isNotBlank)
+                // `agent.model_preset` is the configured one; `active` is the gateway's own mark
+                // for the same question, and one of the two is present on every real payload.
+                ?: settings.modelPreset?.takeIf(String::isNotBlank)
+                ?: settings.modelPresets.firstOrNull { it.active }?.name,
+            name = thread?.modelName?.takeIf(String::isNotBlank) ?: settings.modelName,
+        )
+    }
+
+    /** A settings or drawer read can answer for a chat that has had no turn yet. */
+    private fun republishComposerModels() {
+        registry.value.forEach { (chatId, session) -> refreshComposerModel(session, chatId) }
+        pending.value?.let { refreshComposerModel(it, it.id.value) }
+    }
+
+    /** The chip's model, for a chat the gateway has answered about but that has not run a turn. */
+    private fun refreshComposerModel(session: ChatSession, chatId: String?) {
+        val model = composerModel(chatId)
+        session.composer.update { it.copy(modelPreset = model.preset, modelName = model.name ?: it.modelName) }
     }
 
     private fun persist(chatId: String) {
