@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 import Testing
 import UIKit
@@ -30,6 +31,35 @@ struct CameraAttachmentTests {
         let second = try #require(CameraPicker.Coordinator.attachment(from: image(), now: Date(timeIntervalSince1970: 2_000)))
 
         #expect(first.name != second.name, "two shots in one second must not collide")
+    }
+
+    /// A 12-megapixel shot at `jpegData(compressionQuality: 0.85)` is 6–10 MiB and the gateway
+    /// caps a file at 6 MiB, so an unsized capture is a refusal for the reader's own photo.
+    @Test func aCapturedPhotoFitsUnderTheGatewaysCeiling() throws {
+        let context = CGContext(
+            data: nil, width: 4_000, height: 3_000, bitsPerComponent: 8, bytesPerRow: 4_000 * 4,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        )!
+        arc4random_buf(context.data!, 4_000 * 3_000 * 4)
+        let shot = UIImage(cgImage: context.makeImage()!)
+        #expect(
+            shot.jpegData(compressionQuality: 0.85)!.count > UploadLimits.fallback.maxFileBytes,
+            "the fixture has to be over the ceiling to prove anything"
+        )
+
+        let attachment = try #require(CameraPicker.Coordinator.attachment(from: shot))
+
+        #expect(attachment.data.count <= UploadLimits.fallback.maxFileBytes, "under the gateway's 6 MiB ceiling")
+        #expect(UIImage(data: attachment.data) != nil, "and still a picture")
+    }
+
+    /// A camera switched off in Settings opens a black screen with no explanation, which reads as
+    /// a broken camera. The decision is a function of the status so it can be asserted.
+    @Test func aCameraTheReaderTurnedOffIsExplainedInsteadOfOpened() {
+        #expect(CameraAccess.refusal(for: .denied) == "The camera is off for Nanobot. Turn it on in Settings.")
+        #expect(CameraAccess.refusal(for: .restricted) != nil)
+        #expect(CameraAccess.refusal(for: .authorized) == nil, "an allowed camera is simply opened")
+        #expect(CameraAccess.refusal(for: .notDetermined) == nil, "the system's own prompt is the first answer")
     }
 
     @Test func theBundleExplainsWhyItWantsTheCamera() {

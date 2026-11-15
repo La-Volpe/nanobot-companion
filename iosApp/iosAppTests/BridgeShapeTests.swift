@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import core
+@testable import iosApp
 
 /// What Swift really gets from the Kotlin framework (C8.2, D38). `BridgeShapeTest` asserts the
 /// header's shape; this asserts the other half — that the shape compiles and behaves when a
@@ -95,6 +96,16 @@ struct BridgeShapeTests {
         )
         defer { trusting.close() }
         #expect(trusting.core.profile.url == "https://home.lan:8443")
+    }
+
+    /// The picker asks the gateway's whitelist before it re-encodes a photo, and it asks through
+    /// the core rather than keeping a second copy of the list (I6). An iPhone photo is HEIC, and
+    /// the gateway's `UPLOAD_MIME_ALLOWED` has no HEIC in it.
+    @Test func theUploadWhitelistIsTheCoresAnswerAndNotTheApps() {
+        #expect(UploadWhitelist.takes("image/jpeg"))
+        #expect(UploadWhitelist.takes("video/quicktime"), "an iPhone records .mov")
+        #expect(UploadWhitelist.takes("image/heic") == false, "the default camera type the gateway refuses")
+        #expect(UploadWhitelist.takes("application/zip") == false)
     }
 
     @Test func aRealCallReturnsATypedResultInsteadOfTrapping() async throws {

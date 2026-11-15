@@ -16,6 +16,11 @@ final class Container {
     /// Set when the launch asked for a scripted thread; the shell builds the chat around this.
     var scripted = false
 
+    /// Set when the launch asked the composer to open with attachments on screen. The system
+    /// photo picker cannot be driven by a UI test, so this is how the cards' own states are
+    /// proved: a pick that landed, and one whose upload failed.
+    var scriptedAttachments = false
+
     /// A scripted launch can start on the connected shell, which is what a drawer or chat flow
     /// test needs: onboarding is already covered by its own suite.
     let startsConnected: Bool
@@ -74,6 +79,7 @@ final class Container {
                 // The chat is created by the shell, which is where its callback lands.
                 container.scripted = true
             }
+            container.scriptedAttachments = environment["NANOBOT_ATTACH"] != nil
             return container
         }
         #endif

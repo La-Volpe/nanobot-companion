@@ -657,6 +657,18 @@ extension CoreChat: AttachmentDriving {
             return .failed
         }
     }
+
+    /// The gateway's upload whitelist, asked of the core before a byte is prepared: an iPhone
+    /// photo is HEIC by default and HEIC is not on the list, so the picker has to know.
+    func accepts(mimeType: String) -> Bool { UploadWhitelist.takes(mimeType) }
+}
+
+/// The one place the app asks which upload types the gateway takes. `gatewayAcceptsUpload` is
+/// the same set `AttachmentPolicy` refuses with, so the answer cannot drift from the refusal.
+enum UploadWhitelist {
+    static func takes(_ mimeType: String) -> Bool {
+        UploadFormatsKt.gatewayAcceptsUpload(mimeType: mimeType)
+    }
 }
 
 extension CoreChat: VoiceDriving {

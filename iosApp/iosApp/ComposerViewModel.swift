@@ -74,6 +74,17 @@ final class ComposerViewModel: ObservableObject {
         return min(100, max(0, Int(percent)))
     }
 
+    /// The send is waiting for an upload that has not landed. Derived rather than remembered, so
+    /// the line goes away the moment the upload does.
+    var waitingForUpload: Bool { attachments?.isUploading ?? false }
+
+    /// The line under the field about the send, if there is one: the upload it is waiting for, or
+    /// why the gateway refused the last message.
+    var refusalLine: String? {
+        if waitingForUpload { return "Waiting for the upload to finish." }
+        return lastRefusal
+    }
+
     var activePreset: ChatModelPreset? { presets.first(where: \.active) }
 
     /// The model pill's label: the preset's name when there is one, else the model itself.
@@ -106,6 +117,10 @@ final class ComposerViewModel: ObservableObject {
             await driver.stop()
             return
         }
+        // An upload that is still running has no reference, so it is not on this message yet:
+        // sending would leave the picture behind and then clear the card that promised it (the
+        // dropped-attachment defect, in another costume). Wait instead of sending half a message.
+        if waitingForUpload { return }
         guard canSend else { return }
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         if streaming {

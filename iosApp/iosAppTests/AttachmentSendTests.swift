@@ -105,6 +105,48 @@ struct AttachmentSendTests {
         #expect(driver.sends.first?.media.isEmpty == true)
     }
 
+    /// An upload in flight has no reference, so no message can carry it yet. Sending anyway sent
+    /// the text with nothing attached and then cleared the card that promised the picture — the
+    /// dropped attachment, back through another door.
+    final class GatedUploader: AttachmentDriving {
+        let gate = AsyncGate()
+        private(set) var started = false
+        private(set) var uploads = 0
+
+        func upload(name: String, mimeType: String, data: Data) async -> AttachmentOutcome {
+            started = true
+            uploads += 1
+            await gate.wait()
+            return .uploaded(reference: "ref-\(uploads)")
+        }
+    }
+
+    @Test func sendWhileAnUploadRunsWaitsForIt() async {
+        let driver = SendingDriver()
+        let uploader = GatedUploader()
+        let attachments = AttachmentViewModel(driver: uploader)
+        let model = ComposerViewModel(driver: driver)
+        model.attach(attachments: attachments)
+
+        let task = Task { await attachments.add(image("IMG_2841.png")) }
+        await waitUntil { uploader.started && !attachments.attachments.isEmpty }
+
+        model.draft = "what is in this picture?"
+        await model.primaryAction()
+
+        #expect(driver.sends.isEmpty, "the message waits for the upload instead of leaving it behind")
+        #expect(model.draft == "what is in this picture?", "and the text is still the reader's")
+        #expect(model.refusalLine == "Waiting for the upload to finish.", "with a line on screen saying why")
+        #expect(attachments.attachments.count == 1, "and the card was not spent")
+
+        await uploader.gate.open()
+        await task.value
+
+        await model.primaryAction()
+        #expect(driver.sends.first?.media.map(\.reference) == ["ref-1"], "once it lands it rides the message")
+        #expect(model.refusalLine == nil, "and the waiting line goes with the wait")
+    }
+
     /// While a turn runs, typing queues instead of sending — and the cards stay for the message
     /// that comes later, unlike a send that empties them.
     @Test func queueingDoesNotSpendTheCards() async {

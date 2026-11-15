@@ -24,7 +24,9 @@ struct ComposerBar: View {
             if let queued = model.snapshot.queued, !queued.isEmpty {
                 QueueChip(text: queued, onSendNow: { Task { await model.sendQueuedNow() } }, onDelete: model.deleteQueued)
             }
-            if !attachments.attachments.isEmpty {
+            // The strip also carries a refusal, which arrives with no card at all: gating this
+            // on the cards hid the one sentence that explains a failed first pick.
+            if attachments.showsStrip {
                 AttachmentStrip(model: attachments)
             }
             if voice.phase == .recording {
@@ -32,6 +34,13 @@ struct ComposerBar: View {
             }
             metaRow
             field
+            if let refusal = model.refusalLine {
+                Text(refusal)
+                    .font(.system(size: Design.Interface.microSize))
+                    .foregroundStyle(Palette.destructive)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("composer.refusal")
+            }
             if let notice = voice.notice {
                 Text(notice)
                     .font(.system(size: Design.Interface.microSize))

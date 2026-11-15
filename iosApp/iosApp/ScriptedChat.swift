@@ -1,5 +1,6 @@
 #if DEBUG
 import Foundation
+import UIKit
 
 /// A chat that answers without a gateway, for the flows a tap can prove and for the debug menu
 /// G2 asks for (plan.md I8). It streams the way the real one does — a pending prompt, an
@@ -158,11 +159,45 @@ final class ScriptedComposer: ComposerDriving {
 @MainActor
 final class ScriptedUploader: AttachmentDriving {
     private var uploads = 0
+    /// One named file fails its first upload and lands on the second, so a flow test can see the
+    /// card that keeps a reason and a Retry *and* watch the retry change it — without cutting
+    /// the network.
+    private let failingName: String?
+    private var failedOnce = false
+
+    init(failingName: String? = nil) {
+        self.failingName = failingName
+    }
 
     func upload(name: String, mimeType: String, data: Data) async -> AttachmentOutcome {
         uploads += 1
+        if name == failingName, !failedOnce {
+            failedOnce = true
+            return .failed
+        }
         // One small PNG stands in for every pick: the point is the card, not the image.
         return .uploaded(reference: "scripted-ref-\(uploads)")
+    }
+
+    /// The two picks the seeded composer opens with: a photo that landed, and a document whose
+    /// upload did not.
+    static var seededPicks: [(name: String, mimeType: String, data: Data)] {
+        [
+            ("IMG_2841.jpg", "image/jpeg", demoImage()),
+            ("attachment_policy.py", "text/plain", Data("print('policy')\n".utf8)),
+        ]
+    }
+
+    /// A drawn picture, not a blank one: a card with no preview would not prove the preview.
+    private static func demoImage() -> Data {
+        let size = CGSize(width: 240, height: 160)
+        let image = UIGraphicsImageRenderer(size: size).image { context in
+            UIColor.systemOrange.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+            UIColor.black.setFill()
+            context.fill(CGRect(x: 40, y: 60, width: 160, height: 40))
+        }
+        return image.jpegData(compressionQuality: 0.8) ?? Data()
     }
 }
 
