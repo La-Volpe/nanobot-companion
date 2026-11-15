@@ -3,6 +3,7 @@ package de.arjmandi.nanobot.companion.media
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -20,8 +20,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -99,7 +102,7 @@ private fun MediaImageView(row: MediaRow, modifier: Modifier = Modifier) {
 
 /** The sentence and the retry: what a row offers instead of a blank box. */
 @Composable
-private fun MediaFailureCard(
+internal fun MediaFailureCard(
     title: String,
     identifier: String,
     onRetry: suspend () -> Unit,
@@ -129,28 +132,26 @@ private fun MediaFailureCard(
     }
 }
 
-/** A clip. The row is here so the media is not invisible; playback needs a player this build
- * does not ship, and the screen says so rather than offering a control that does nothing. */
+/**
+ * A clip. The row opens the player over the thread, as the iOS row opens
+ * `AVPlayerViewController` in a sheet — the same tap, the same dismissal back to the turn. The
+ * state the row holds is only "is the sheet up"; everything about the clip is `VideoPlayerModel`'s.
+ */
 @Composable
 private fun MediaVideoRow(row: MediaRow, modifier: Modifier = Modifier) {
+    var playing by remember(row.id) { mutableStateOf(false) }
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = Design.minimumTarget)
             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Design.Radius.field))
+            .clickable(enabled = row.loadable) { playing = true }
             .padding(horizontal = 12.dp)
             .testTag("media.video"),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .background(MaterialTheme.colorScheme.surface, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("▶", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-        }
+        VideoRowFace(unavailable = !row.loadable)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = row.name.ifEmpty { stringResource(R.string.media_video) },
@@ -159,11 +160,21 @@ private fun MediaVideoRow(row: MediaRow, modifier: Modifier = Modifier) {
                 maxLines = 1,
             )
             Text(
-                text = stringResource(R.string.media_videoUnavailable),
+                text = stringResource(
+                    if (row.loadable) R.string.media_videoTapToPlay else R.string.media_unavailable,
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+    val url = row.url
+    if (playing && url != null) {
+        VideoPlayerSheet(
+            url = url,
+            title = row.name.ifEmpty { stringResource(R.string.media_video) },
+            onClose = { playing = false },
+        )
     }
 }
 
@@ -222,27 +233,9 @@ private fun MediaAudioRow(row: MediaRow, modifier: Modifier = Modifier) {
                     }
                 }
             } else {
-                AudioProgressLine(progress = player.progress)
+                PlaybackProgressLine(progress = player.progress, identifier = "media.audio.progress")
             }
         }
-    }
-}
-
-@Composable
-private fun AudioProgressLine(progress: Float) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(3.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant, CircleShape)
-            .testTag("media.audio.progress"),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(progress.coerceIn(0f, 1f))
-                .height(3.dp)
-                .background(MaterialTheme.colorScheme.onSurface, CircleShape),
-        )
     }
 }
 
