@@ -44,6 +44,12 @@ public data class AutomationJob(
 public data class AutomationsState(
     public val jobs: List<AutomationJob> = emptyList(),
     public val loaded: Boolean = false,
+    /**
+     * The last read was refused or could not be made. "The gateway said no" and "the gateway has
+     * nothing scheduled" are two different pages, and a client that only sees an empty list draws
+     * the wrong one (T41: the phone said "No automations yet" over four jobs).
+     */
+    public val failed: Boolean = false,
 ) {
     public fun job(id: String): AutomationJob? = jobs.firstOrNull { it.id == id }
 }

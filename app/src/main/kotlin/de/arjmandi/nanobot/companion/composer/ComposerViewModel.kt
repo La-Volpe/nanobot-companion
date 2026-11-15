@@ -95,15 +95,11 @@ class ComposerViewModel(
         else -> PrimaryState.Voice
     }
 
-    /** The ring, rounded to the whole percent the pill prints; null before there is a window. */
-    val usagePercent: Int?
-        get() {
-            val window = snapshot.contextWindowTokens ?: return null
-            val used = snapshot.usedTokens ?: return null
-            if (window <= 0) return null
-            val percent = (used.toDouble() / window * 100).toInt()
-            return percent.coerceIn(0, 100)
-        }
+    /**
+     * The ring's percent, as the core resolved it: the WebUI's rounding over the WebUI's choice
+     * of window (T37). Null before there is a window, because a percentage of nothing is a lie.
+     */
+    val usagePercent: Int? get() = snapshot.contextPercent
 
     val activePreset: ChatModelPreset? get() = presets.firstOrNull { it.active }
 
@@ -254,9 +250,16 @@ class ComposerViewModel(
         presetState = PresetState.Loaded
     }
 
+    /**
+     * A pick either applies or the reader is told it did not (T39): the chip already shows the
+     * choice, so a silence would leave it naming a model the chat is not on.
+     */
     suspend fun pick(preset: ChatModelPreset) {
         sheet = null
-        driver.setModelPreset(preset.name)
+        lastRefusalRes = null
+        if (!driver.setModelPreset(preset.name)) {
+            lastRefusalRes = de.arjmandi.nanobot.companion.R.string.chat_preset_refused
+        }
     }
 
     suspend fun pick(access: WorkspaceAccess) {

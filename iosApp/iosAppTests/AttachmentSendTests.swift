@@ -26,7 +26,7 @@ struct AttachmentSendTests {
         func stop() async {}
         func sendQueuedNow() async {}
         func discardQueued() {}
-        func setModelPreset(_ preset: String) async {}
+        func setModelPreset(_ preset: String) async -> Bool { true }
         func setWorkspaceScope(_ access: WorkspaceAccess) async {}
         func loadPalette(text: String, cursor: Int) async -> PaletteSheet? { nil }
     }

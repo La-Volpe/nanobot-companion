@@ -99,6 +99,9 @@ final class Container {
             }
             // A scripted gateway answers the settings read too, so a tap can walk Overview.
             container.holder.seedSettingsForUITest(.scriptedGateway)
+            // And its model sheet lists the three presets the owner's gateway lists, built-in one
+            // included: a tap proves which of them a phone offers (T40).
+            container.holder.seedPresetsForUITest()
             if environment["NANOBOT_THREAD"] != nil || scripted == .markdown {
                 // The chat is created by the shell, which is where its callback lands.
                 container.scripted = true

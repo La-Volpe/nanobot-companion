@@ -28,6 +28,8 @@ class ComposerViewModelTest {
         val accesses = mutableListOf<WorkspaceAccess>()
         var palettes = 0
         var paletteSheet: PaletteSheet? = null
+        /** False is a pick the socket refused (T39). */
+        var presetAccepted = true
 
         override suspend fun sendPrompt(text: String): Boolean {
             sent += text
@@ -50,8 +52,9 @@ class ComposerViewModelTest {
             discarded += 1
         }
 
-        override suspend fun setModelPreset(preset: String) {
+        override suspend fun setModelPreset(preset: String): Boolean {
             presets += preset
+            return presetAccepted
         }
 
         override suspend fun setWorkspaceScope(access: WorkspaceAccess) {
@@ -210,18 +213,50 @@ class ComposerViewModelTest {
         assertFalse(model.isCopied("code-1"), "and the checkmark goes away on its own")
     }
 
+    /**
+     * The pill draws the core's own percent, from `:core`'s `ContextUsage`: the arithmetic
+     * (rounding, the cap at 100, the choice of denominator) is `ContextUsageTest`'s to prove,
+     * and two platforms holding two copies of it is how the phone and the table drifted apart.
+     */
     @Test
-    fun theRingReadsUsedTokensOverTheContextWindow() {
+    fun theRingDrawsTheCoresPercent() {
         val model = model()
 
-        model.update(ComposerSnapshot(contextWindowTokens = 200_000, usedTokens = 84_000))
-        assertEquals(42, model.usagePercent, "42% of the window, which is the number the pill shows")
+        model.update(ComposerSnapshot(contextWindowTokens = 200_000, usedTokens = 141_510, contextPercent = 71))
+        assertEquals(71, model.usagePercent, "the number the pill shows is the core's")
 
-        model.update(ComposerSnapshot(contextWindowTokens = 200_000, usedTokens = 999_999))
+        model.update(ComposerSnapshot(contextWindowTokens = 200_000, usedTokens = 999_999, contextPercent = 100))
         assertEquals(100, model.usagePercent, "a ring never overflows")
 
-        model.update(ComposerSnapshot())
-        assertNull(model.usagePercent, "no window yet, no ring: a percentage of nothing is a lie")
+        model.update(ComposerSnapshot(contextWindowTokens = 200_000, usedTokens = 84_000))
+        assertNull(model.usagePercent, "no percent from the core, no ring: a view model does not invent one")
+    }
+
+    /**
+     * T37: the WebUI computes `Math.min(100, Math.round(tokens / window * 100))`
+     * (`thread/ComposerUsagePopover.tsx:78`). Android truncated, so the same two numbers read a
+     * point lower here than on iOS and in the browser — the owner's 141 510 of 200 000 is 71%,
+     * and 141 510 of 1 000 000 is 14%.
+     */
+    /**
+     * T39: the pick the socket refused used to vanish. The chip had already moved, so a silence
+     * left it naming a model the chat was not on.
+     */
+    @Test
+    fun aPickTheSocketRefusedIsSaidOutLoud() = runTest {
+        val driver = FakeDriver()
+        driver.presetAccepted = false
+        val model = model(driver)
+        model.openModelSheet()
+
+        model.pick(preset("primary"))
+
+        assertEquals(listOf("primary"), driver.presets, "the command was attempted")
+        assertEquals(
+            de.arjmandi.nanobot.companion.R.string.chat_preset_refused,
+            model.lastRefusalRes,
+            "and the reader hears about it",
+        )
     }
 
     @Test

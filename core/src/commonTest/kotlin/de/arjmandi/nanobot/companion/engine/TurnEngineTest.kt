@@ -174,6 +174,19 @@ class TurnEngineTest {
         assertEquals(1, socket.closed)
     }
 
+    /** T42: a receipt may not claim a frame the socket refused. The channel takes the frame, the
+     * writer hands it on, and only the writer knows whether the socket wanted it. */
+    @Test
+    fun aWriteTheSocketRefusedIsNotASend() = runTest {
+        val socket = FakeSocket()
+        val engine = TurnEngine(backgroundScope, attempt(socket), RecordingHost())
+        connectReady(socket, engine)
+        socket.refusesWrites = true
+
+        assertFalse(engine.send(Outbound.NewChat), "a frame the socket would not take is not a frame sent")
+        assertEquals(emptyList<String>(), socket.sent)
+    }
+
     @Test
     fun sendAfterCloseIsRefused() = runTest {
         val socket = FakeSocket()

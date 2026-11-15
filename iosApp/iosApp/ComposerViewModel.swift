@@ -70,12 +70,9 @@ final class ComposerViewModel: ObservableObject {
     /// The WebUI rule (design README, "Controls worth trying").
     var showsStop: Bool { streaming && !canSend }
 
-    /// The ring, rounded to the whole percent the pill prints; nil before there is a window.
-    var usagePercent: Int? {
-        guard let window = snapshot.contextWindowTokens, window > 0, let used = snapshot.usedTokens else { return nil }
-        let percent = (Double(used) / Double(window) * 100).rounded()
-        return min(100, max(0, Int(percent)))
-    }
+    /// The ring's percent, as the core resolved it: the WebUI's rounding over the WebUI's choice
+    /// of window (T37). Nil before there is a window, because a percentage of nothing is a lie.
+    var usagePercent: Int? { snapshot.contextPercent }
 
     /// The send is waiting for an upload that has not landed. Derived rather than remembered, so
     /// the line goes away the moment the upload does.
@@ -182,9 +179,15 @@ final class ComposerViewModel: ObservableObject {
         presetState = .loaded
     }
 
+    /// A pick either applies or the reader is told it did not (T39): the chip already shows the
+    /// choice, so a silence would leave it naming a model the chat is not on.
     func pick(preset: ChatModelPreset) async {
         sheet = nil
-        await driver.setModelPreset(preset.name)
+        lastRefusal = nil
+        let sent = await driver.setModelPreset(preset.name)
+        if !sent {
+            lastRefusal = "The gateway did not take that model."
+        }
     }
 
     func pick(access: WorkspaceAccess) async {

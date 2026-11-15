@@ -262,6 +262,7 @@ extension SettingsViewModel.Snapshot {
         modelPreset: "primary",
         provider: "ollama",
         contextWindowTokens: 32_768,
+        contextWindowLabel: "32.8K",
         transcriptionProvider: "groq",
         transcriptionModel: "whisper-large-v3",
         presets: ["default", "primary"]

@@ -53,22 +53,48 @@ public class ChatHandle internal constructor(
         core.openChat(chatId)
     }
 
+    /**
+     * A prompt that landed, asked the only way a screen can: is there a bubble for it that was
+     * not there before? [mark] is the thread's turn ids from before the attempt, so a second
+     * send of the same words is not credited to the first bubble (T42).
+     *
+     * This exists because a receipt can fail where the message did not: the phone showed the
+     * prompt under its own bubble *and* back in the composer, so the restore has to be decided by
+     * the thread rather than by whether the call returned.
+     */
+    public fun promptLanded(text: String, mark: List<String>): Boolean =
+        landedTurn(session.thread.value, text, mark) != null
+
+    /** The ids a caller keeps across a send, so `promptLanded` can tell new from old. */
+    public fun threadMark(): List<String> = session.thread.value.turns.map { turn -> turn.id }
+
     @Throws(Throwable::class)
     public suspend fun send(draft: OutboundDraft): SendReceipt {
         val chatId = session.id.value ?: return SendReceipt.Rejected(SendRejection.NotConnected)
         return core.sendDraft(chatId, draft)
     }
 
-    /** A preset switch is the `/model` command on this chat, not a frame of its own (C6.2). */
+    /**
+     * A preset switch is the `/model` command on this chat, not a frame of its own (C6.2).
+     *
+     * The pick is the chat's own until the gateway answers, which is the WebUI's `localModelPreset`:
+     * `/model` comes back as a turn with an ordinary message and **no** `turn_model_updated`
+     * (measured against the dev gateway), so the chip has nothing else to name the new preset and
+     * a frame in between used to wipe it back (T39). A pick that never reached the socket is a
+     * rejection rather than a silence, and the chip goes back to what the chat is really on.
+     */
     @Throws(Throwable::class)
-    public suspend fun setModelPreset(preset: String) {
-        val chatId = session.id.value ?: return
-        // The chip shows the pick before the gateway confirms it, which is the WebUI's own
-        // `localModelPreset`; without this a chat whose preset nobody announced keeps naming
-        // the old one until a turn happens to run.
-        session.thread.value = session.thread.value.copy(modelPreset = preset)
+    public suspend fun setModelPreset(preset: String): PresetResult {
+        val chatId = session.id.value ?: return PresetResult.Rejected(PresetRejection.NotConnected)
+        session.pickedPreset = preset
         session.composer.value = session.composer.value.copy(modelPreset = preset)
-        core.write(Outbound.Message(chatId = chatId, turnId = core.nextTurnId(), content = "/model $preset"))
+        val written = core.write(Outbound.Message(chatId = chatId, turnId = core.nextTurnId(), content = "/model $preset"))
+        if (!written) {
+            session.pickedPreset = null
+            core.remirrorComposer(session, chatId)
+            return PresetResult.Rejected(PresetRejection.NotSent)
+        }
+        return PresetResult.Sent
     }
 
     /**
@@ -205,6 +231,15 @@ public class ChatHandle internal constructor(
     }
 }
 
+/** The turn a bubble for [text] became, or null when this thread has no such prompt (T42). */
+internal fun landedTurn(thread: ThreadState, text: String, before: List<String>): String? {
+    val prompt = text.trim()
+    if (prompt.isEmpty()) return null
+    return thread.turns
+        .firstOrNull { turn -> turn.id !in before && turn.prompt?.text == prompt }
+        ?.id
+}
+
 /** The mutable half of one chat: a handle is a view of this, never a copy of it. */
 internal class ChatSession(id: MutableStateFlow<String?>) {
 
@@ -226,6 +261,13 @@ internal class ChatSession(id: MutableStateFlow<String?>) {
 
     /** The mode to go back to if the gateway refuses the switch (C6.3). */
     var scopeBeforeSwitch: WorkspaceScope? = null
+
+    /**
+     * The preset this chat was last told to switch to, until the gateway names the model it ran
+     * (`turn_model_updated`). `/model` has no frame of its own, so this is what the chip reads
+     * in between (T39).
+     */
+    var pickedPreset: String? = null
 
     /** What was typed before a recording started; the transcript is appended to it (C6.5). */
     var draftBeforeRecording: String = ""

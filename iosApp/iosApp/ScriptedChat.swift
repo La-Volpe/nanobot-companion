@@ -218,7 +218,8 @@ final class ScriptedComposer: ComposerDriving {
         queued = nil
     }
 
-    func setModelPreset(_ preset: String) async {}
+    /// A scripted chat takes the pick, the way the gateway takes `/model` (T39).
+    func setModelPreset(_ preset: String) async -> Bool { true }
 
     func setWorkspaceScope(_ access: WorkspaceAccess) async {}
 

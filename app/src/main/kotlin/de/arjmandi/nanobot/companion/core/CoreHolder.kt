@@ -8,6 +8,8 @@ import de.arjmandi.nanobot.companion.facade.ChatHandle
 import de.arjmandi.nanobot.companion.facade.ConnectResult
 import de.arjmandi.nanobot.companion.facade.ConnectionFailure
 import de.arjmandi.nanobot.companion.facade.ConnectionState
+import de.arjmandi.nanobot.companion.facade.ModelPresets
+import de.arjmandi.nanobot.companion.facade.TokenCount
 import de.arjmandi.nanobot.companion.projection.TaskNotice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -178,6 +180,7 @@ class CoreHolder(
             modelPreset = state.modelPreset,
             provider = state.provider,
             contextWindowTokens = state.contextWindowTokens,
+            contextWindowLabel = state.contextWindowTokens?.let(TokenCount::modelWindow),
             transcriptionProvider = state.transcription?.provider,
             transcriptionModel = state.transcription?.model,
             presets = state.modelPresets.map { it.name },
@@ -189,11 +192,11 @@ class CoreHolder(
      * the read did not answer: the sheet says so instead of showing a list that is empty because
      * nobody looked.
      */
-    suspend fun presets(): List<ChatModelPreset>? {
+    suspend fun presets(chosen: String? = null): List<ChatModelPreset>? {
         val core = stack?.core ?: return null
         val refusal = runCatching { core.refreshSettings() }.getOrElse { return null }
         if (refusal != null) return null
-        return core.settings.value.modelPresets.map(ModelPreset::toPreset)
+        return ModelPresets.offered(core.settings.value, chosen).map(ModelPreset::toPreset)
     }
 
     fun isOpen(): Boolean = stack != null

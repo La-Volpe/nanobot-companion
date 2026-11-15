@@ -364,14 +364,6 @@ struct ComposerSheets: View {
                         }
                     }
                 }
-                SheetRow(
-                    title: "Manage presets",
-                    subtitle: "Providers and fallbacks in Settings",
-                    checked: false,
-                    identifier: "composer.model.manage"
-                ) {
-                    model.closeSheet()
-                }
             }
             .task { await model.loadPresets(from: loadPresets) }
         case .access:

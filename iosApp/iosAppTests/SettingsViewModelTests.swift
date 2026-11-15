@@ -67,7 +67,7 @@ struct SettingsViewModelTests {
         )
     }
 
-    private func snapshot() -> SettingsViewModel.Snapshot {
+    private func snapshot(contextWindowTokens: Int? = 32_768, contextWindowLabel: String? = "32.8K") -> SettingsViewModel.Snapshot {
         SettingsViewModel.Snapshot(
             version: "0.4.1",
             commit: "28d73b69",
@@ -76,7 +76,8 @@ struct SettingsViewModelTests {
             modelName: "deepseek-v4.1-flash:cloud",
             modelPreset: "primary",
             provider: "ollama",
-            contextWindowTokens: 32_768,
+            contextWindowTokens: contextWindowTokens,
+            contextWindowLabel: contextWindowLabel,
             transcriptionProvider: "groq",
             transcriptionModel: "whisper-large-v3",
             presets: ["default", "primary"]
@@ -128,8 +129,22 @@ struct SettingsViewModelTests {
         #expect(rows.first { $0.label == "nanobot Gateway" }?.value == "0.4.1")
         #expect(rows.first { $0.label == "nanobot Gateway" }?.detail == "Commit 28d73b69")
         #expect(labels.allSatisfy { !$0.lowercased().contains("uptime") }, "the payload has no uptime: \(labels)")
-        #expect(rows.contains { $0.label == "Context window" && $0.value == "32k tokens" })
+        #expect(rows.contains { $0.label == "Context window" && $0.value == "32.8K tokens" })
         #expect(rows.contains { $0.label == "Transcription" && $0.value == "Whisper-large-v3" })
+    }
+
+    /// T36: the owner's gateway answers 1 000 000 and the row read "1000k tokens". The WebUI
+    /// prints a million as `1M` (`model-context-format.ts`), so this row says `1M tokens` — the
+    /// unit stays, because a bare `1M` next to a version string reads like one.
+    @Test func aMillionTokenWindowReadsOneM() {
+        let model = model()
+        // The label is the core's (`TokenCountTest` pins 1 000 000 -> 1M); the row adds the unit.
+        model.update(snapshot: snapshot(contextWindowTokens: 1_000_000, contextWindowLabel: "1M"))
+
+        #expect(
+            model.overviewRows.contains { $0.label == "Context window" && $0.value == "1M tokens" },
+            "a million is 1M, not 1000k: \(model.overviewRows)"
+        )
     }
 
     /// The plan's red line: notifications are local, and the model never pretends otherwise.

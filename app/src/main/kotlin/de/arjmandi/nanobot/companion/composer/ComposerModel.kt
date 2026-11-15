@@ -10,6 +10,8 @@ data class ComposerSnapshot(
     val contextWindowTokens: Int? = null,
     /** `turn_end.usage.context_tokens`: the ring's numerator (D15.4). */
     val usedTokens: Int? = null,
+    /** The core's `Math.min(100, Math.round(used / window * 100))`; the ring draws this (T37). */
+    val contextPercent: Int? = null,
     val access: WorkspaceAccess = WorkspaceAccess.Default,
     /** The prompt waiting for the running turn to end, if there is one. */
     val queued: String? = null,
@@ -28,12 +30,14 @@ data class ChatModelPreset(
     val contextWindowTokens: Int?,
     val active: Boolean,
     val isDefault: Boolean,
+    /** The window as the core's token copy prints it (`1M`, `200K`): T36. */
+    val contextLabel: String? = null,
 ) {
     /** The second line of the sheet's row: what the preset actually runs. */
     val subtitle: String
         get() = buildList {
             add(if (isDefault) "preset default" else "preset $name")
-            contextWindowTokens?.let { add("${it / 1000}k context") }
+            contextLabel?.let { add("$it context") }
             provider?.let { add(it) }
         }.joinToString(" \u00b7 ")
 }
@@ -109,7 +113,8 @@ interface ComposerDriving {
 
     fun discardQueued()
 
-    suspend fun setModelPreset(preset: String)
+    /** False when the `/model` command never reached the socket, so the pick can say so (T39). */
+    suspend fun setModelPreset(preset: String): Boolean
 
     suspend fun setWorkspaceScope(access: WorkspaceAccess)
 
@@ -129,7 +134,7 @@ class EmptyComposerDriver : ComposerDriving {
 
     override fun discardQueued() = Unit
 
-    override suspend fun setModelPreset(preset: String) = Unit
+    override suspend fun setModelPreset(preset: String): Boolean = false
 
     override suspend fun setWorkspaceScope(access: WorkspaceAccess) = Unit
 

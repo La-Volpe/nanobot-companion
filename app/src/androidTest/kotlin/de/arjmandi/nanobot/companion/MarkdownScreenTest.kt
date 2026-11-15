@@ -42,7 +42,7 @@ class MarkdownScreenTest {
         override suspend fun stop() = Unit
         override suspend fun sendQueuedNow() = Unit
         override fun discardQueued() = Unit
-        override suspend fun setModelPreset(preset: String) = Unit
+        override suspend fun setModelPreset(preset: String): Boolean = true
         override suspend fun setWorkspaceScope(access: WorkspaceAccess) = Unit
         override suspend fun loadPalette(text: String, cursor: Int): PaletteSheet? = null
     }

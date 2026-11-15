@@ -307,7 +307,7 @@ private fun Thread(
                     model = chat,
                     sessionTitle = main.title,
                     sessionChatId = main.selected?.chatId,
-                    loadPresets = { main.presets() },
+                    loadPresets = { main.presets(chat.composer.snapshot.modelPreset) },
                 )
             } else {
                 Text(
