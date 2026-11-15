@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug builds only (T27): a dev gateway is `http://10.0.2.2:18765` from the emulator and
+  `http://192.168.x.y:8787` on the LAN, and neither is a host this file can enumerate. The release
+  policy in `src/main` denies cleartext outright, and this override is merged only into a debug
+  build.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
