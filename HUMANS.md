@@ -7,9 +7,11 @@ The short version, for a human on a coffee break.
 A phone client for your own nanobot. You give it the address of your gateway
 and the WebUI secret you already use in the browser, and it opens the same
 socket the browser opens. Sessions in the drawer, a chat with streaming
-answers, tool rows and diffs, attachments, voice notes, settings that tell the
-truth about what a phone can actually do. Two native apps — SwiftUI and
-Compose — over one shared Kotlin core that contains no UI at all.
+answers, tool rows and diffs, attachments, voice notes, images and video that
+play in the conversation, a notification when an answer lands while you are
+looking at something else, settings that tell the truth about what a phone can
+actually do. Two native apps — SwiftUI and Compose — over one shared Kotlin
+core that contains no UI at all.
 
 No account, no companion server, nothing leaves your network.
 
@@ -91,12 +93,18 @@ environment.
 
 ## What this is not
 
-- **No push.** The gateway has no APNs or FCM, so notifications are
-  foreground-only and Settings says exactly that instead of hinting at more.
+- **No push.** The gateway has no APNs or FCM, so a notice is a *local*
+  notification: it arrives when the app is alive but in the background. A
+  terminated app gets nothing, and an automation that finishes in a chat this
+  phone is not attached to gets nothing either, because the gateway only sends
+  `turn_end` to attached connections. Settings says exactly that instead of
+  hinting at more.
 - **No background sync.** A reconnect replays history; between launches the app
   keeps a cache, not a queue.
-- **Math and diagrams are not rendered.** The design artifact excludes them from
-  v1, so the parser does not pretend.
+- **Math and diagrams are not rendered.** A mermaid block is shown as its source
+  with the language on the fence and a Copy button, before and after a turn;
+  the browser draws it with a JS/WASM engine this app has no way to carry.
+  Math is left as text, and the parser does not pretend otherwise.
 - **Transcription is unproven end to end** on a gateway with no STT provider
   (the dev one has none): the round trip and the refusal are tested, the
   transcript is not.
