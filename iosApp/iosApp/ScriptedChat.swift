@@ -38,8 +38,8 @@ final class ScriptedChat: ChatDriving {
     }
 
     /// One answer holding every construct the matrix covers, in the order a reader meets them:
-    /// a table (the row still arriving mid-stream), a nested list, task items, then the two
-    /// fences — the mermaid one is source on this client, before and after the turn ends.
+    /// a table (the row still arriving mid-stream), a nested list, task items, then the fences —
+    /// a code block, a mermaid diagram that draws, and a mermaid diagram that cannot.
     static let document = """
     ## Limit table
 
@@ -68,6 +68,12 @@ final class ScriptedChat: ChatDriving {
     ```mermaid
     graph TD
       A-->B
+      B-->C
+    ```
+
+    ```mermaid
+    graph TD
+      A-->
     ```
     """
 
@@ -80,7 +86,8 @@ final class ScriptedChat: ChatDriving {
             "  - the tail is held back\n    - until a blank line follows\n- tables\n",
             "  - a row arrives one cell at a time\n\n- [x] the reducer is shared\n",
             "- [ ] the soak runs nightly\n\n## Blocks\n\n```kotlin\nval x = 1\n```\n",
-            "\n```mermaid\ngraph TD\n  A-->B\n```\n",
+            "\n```mermaid\ngraph TD\n  A-->B\n  B-->C\n```\n",
+            "\n```mermaid\ngraph TD\n  A-->\n```\n",
         ]
         Task { [weak self] in
             for chunk in chunks {

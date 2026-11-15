@@ -472,6 +472,7 @@ private fun TurnRow(
                 isCopied = isCopied,
                 onCopy = { blockId -> onCopy(blockId, turn.answer) },
                 modifier = Modifier.testTag("chat.answer"),
+                streaming = turn.answerStreaming,
             )
             if (turn.answerStreaming) {
                 Box(
