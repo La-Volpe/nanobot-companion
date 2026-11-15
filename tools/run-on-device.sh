@@ -3,8 +3,10 @@
 #
 #   tools/run-on-device.sh --list                 # what is plugged in
 #   tools/run-on-device.sh --local                # connect to the LAN dev gateway (.dev)
-#   tools/run-on-device.sh                        # connect to https://your-gateway.example
-#   tools/run-on-device.sh --url http://192.168.0.9:18765 --secret-file .dev/secret
+#   tools/run-on-device.sh --url https://your-gateway.example --secret-file ~/.nanobot-companion.secret
+#
+# There is no default gateway: the address belongs to whoever runs this, and a committed one
+# would be somebody's own gateway in a public repo (T23).
 #
 # The secret is handed to the app through its launch environment (DEVICECTL_CHILD_*), so it is
 # never typed on the phone and never printed here. The app needs a signed build; signing is set
@@ -14,7 +16,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IOS="$ROOT/iosApp"
 BUNDLE="de.arjmandi.nanobot.companion"
-URL="https://your-gateway.example"
+URL=""
 SECRET_FILE="$HOME/.nanobot-companion.secret"
 DEVICE=""
 MODE="run"
@@ -80,6 +82,8 @@ if [ "$MODE" = "list" ]; then
   echo "only 'reality = physical' rows can be installed to; simulators are driven by xcodebuild instead."
   exit 0
 fi
+
+[ -n "$URL" ] || die "pass --url with your gateway's address, or --local for the LAN dev gateway"
 
 PICKED="$(pick_device || true)"
 [ -n "$PICKED" ] || {

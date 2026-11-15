@@ -93,7 +93,7 @@ class TlsTrustTest {
     @Test
     fun addressesTheUserActuallyTypesAllYieldAHost() {
         assertEquals("192.168.1.10", TlsPolicy.forGateway("http://192.168.1.10:18765", true).host)
-        assertEquals("your-gateway.example", TlsPolicy.forGateway("https://your-gateway.example", true).host)
+        assertEquals("gateway.example", TlsPolicy.forGateway("https://gateway.example", true).host)
         assertEquals("home.lan", TlsPolicy.forGateway("home.lan:18765", true).host, "no scheme is the common paste")
         assertEquals("home.lan", TlsPolicy.forGateway("  https://home.lan/  ", true).host, "whitespace and a trailing slash are noise")
         assertEquals("home.lan", TlsPolicy.forGateway("http://user:pass@home.lan:18765", true).host, "credentials never become the host")

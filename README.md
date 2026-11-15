@@ -115,7 +115,7 @@ tools/nanobot-dev.sh stop
 ```
 
 It writes everything to `.dev/` (venv, config, secret, profile, logs) and
-never touches `~/.nanobot`. Point the app at `https://your-gateway.example` or at
+never touches `~/.nanobot`. Point the app at your own gateway or at
 that LAN address; the secret is the gateway's WebUI secret.
 
 ## Testing
