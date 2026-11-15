@@ -52,6 +52,12 @@ sealed interface MdBlock {
     }
 }
 
+/**
+ * Which half of a diagram block is on screen. The rule that picks it is the core's
+ * (`diagramView`); this is the name the screens use, so no composable knows a facade type.
+ */
+enum class DiagramMode { Preview, Source }
+
 /** One item; `checked` is non-null only for a task item, whose box sits in the gutter. */
 data class MdListItem(val depth: Int, val inlines: List<MdInline>, val checked: Boolean? = null)
 

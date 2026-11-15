@@ -42,6 +42,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.arjmandi.nanobot.companion.R
+import de.arjmandi.nanobot.companion.core.Diagrams
 import de.arjmandi.nanobot.companion.ui.Design
 import de.arjmandi.nanobot.companion.ui.scaledReadingStyle
 
@@ -58,16 +59,30 @@ fun MarkdownBlocks(
     isCopied: (String) -> Boolean,
     onCopy: (blockId: String) -> Unit,
     modifier: Modifier = Modifier,
+    /** Whether the answer is still arriving: a diagram opens on its source until it is not. */
+    streaming: Boolean = false,
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         blocks.forEachIndexed { index, block ->
-            BlockView(block = block, blockId = "$idPrefix-$index", isCopied = isCopied, onCopy = onCopy)
+            BlockView(
+                block = block,
+                blockId = "$idPrefix-$index",
+                streaming = streaming,
+                isCopied = isCopied,
+                onCopy = onCopy,
+            )
         }
     }
 }
 
 @Composable
-private fun BlockView(block: MdBlock, blockId: String, isCopied: (String) -> Boolean, onCopy: (String) -> Unit) {
+private fun BlockView(
+    block: MdBlock,
+    blockId: String,
+    streaming: Boolean,
+    isCopied: (String) -> Boolean,
+    onCopy: (String) -> Unit,
+) {
     when (block) {
         is MdBlock.Heading -> Text(
             text = inlineText(block.inlines),
@@ -112,7 +127,18 @@ private fun BlockView(block: MdBlock, blockId: String, isCopied: (String) -> Boo
             }
         }
 
-        is MdBlock.Code -> CodeBlock(block = block, blockId = blockId, copied = isCopied(blockId), onCopy = { onCopy(blockId) })
+        // A mermaid fence is a diagram the reader can flip; every other fence is source.
+        is MdBlock.Code -> if (Diagrams.isDiagram(block.language)) {
+            DiagramBlock(
+                block = block,
+                blockId = blockId,
+                streaming = streaming,
+                copied = isCopied(blockId),
+                onCopy = { onCopy(blockId) },
+            )
+        } else {
+            CodeBlock(block = block, blockId = blockId, copied = isCopied(blockId), onCopy = { onCopy(blockId) })
+        }
 
         is MdBlock.Table -> TableBlock(block)
 
@@ -128,7 +154,7 @@ private fun BlockView(block: MdBlock, blockId: String, isCopied: (String) -> Boo
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 block.blocks.forEachIndexed { index, inner ->
-                    BlockView(inner, "$blockId-quote-$index", isCopied, onCopy)
+                    BlockView(inner, "$blockId-quote-$index", streaming, isCopied, onCopy)
                 }
             }
         }
@@ -218,27 +244,36 @@ private fun CodeBlock(block: MdBlock.Code, blockId: String, copied: Boolean, onC
                 )
             }
         }
-        val numbered = block.lines.size > 1
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 10.dp)
-                .padding(bottom = 10.dp),
-        ) {
-            block.lines.forEachIndexed { index, line ->
-                Row {
-                    if (numbered) {
-                        Text(
-                            text = "${index + 1}",
-                            fontSize = Design.Activity.diffSize,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.width(24.dp).testTag("markdown.code.lineNumber"),
-                        )
-                    }
-                    Text(text = line.ifEmpty { " " }, fontSize = Design.Activity.diffSize, fontFamily = FontFamily.Monospace)
+        SourceLines(code = block.code, testTag = "markdown.code.lineNumber")
+    }
+}
+
+/**
+ * A fence's lines as one scrollable block, numbered once there is more than one: the code block and
+ * the diagram's source half draw through this, so they cannot drift.
+ */
+@Composable
+internal fun SourceLines(code: String, testTag: String) {
+    val lines = code.trimEnd('\n').split("\n")
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 10.dp)
+            .padding(bottom = 10.dp),
+    ) {
+        lines.forEachIndexed { index, line ->
+            Row {
+                if (lines.size > 1) {
+                    Text(
+                        text = "${index + 1}",
+                        fontSize = Design.Activity.diffSize,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.width(24.dp).testTag(testTag),
+                    )
                 }
+                Text(text = line.ifEmpty { " " }, fontSize = Design.Activity.diffSize, fontFamily = FontFamily.Monospace)
             }
         }
     }

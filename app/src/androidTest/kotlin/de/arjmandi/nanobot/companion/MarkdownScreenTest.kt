@@ -47,7 +47,11 @@ class MarkdownScreenTest {
         override suspend fun loadPalette(text: String, cursor: Int): PaletteSheet? = null
     }
 
-    private fun screen(view: MarkdownView, composer: ComposerViewModel = ComposerViewModel(NoComposer)) {
+    private fun screen(
+        view: MarkdownView,
+        composer: ComposerViewModel = ComposerViewModel(NoComposer),
+        streaming: Boolean = false,
+    ) {
         compose.setContent {
             NanobotTheme {
                 MarkdownBlocks(
@@ -55,6 +59,7 @@ class MarkdownScreenTest {
                     idPrefix = "t1",
                     isCopied = composer::isCopied,
                     onCopy = composer::copy,
+                    streaming = streaming,
                 )
             }
         }
@@ -159,22 +164,21 @@ class MarkdownScreenTest {
 
     @Test
     fun aDiagramIsItsSourceAndCanBeCopiedWhileTheTurnRuns() {
-        // Mermaid is source on this client (no diagram engine, no dependency): the block is the
-        // fence the gateway sent, with a language chip and Copy, and Copy is there before the
-        // turn ends because the source is worth taking as it arrives.
+        // A mermaid fence is the diagram block now (owner's decision, 2026-11-15), and the half it
+        // shows is the core's: source while the turn runs. Copy is there before the turn ends,
+        // because the source is worth taking as it arrives. `DiagramScreenTest` covers the picture.
         screen(
             MarkdownView(
                 listOf(MdBlock.Code(language = "mermaid", code = "graph TD\n  A-->B", closed = false)),
             ),
+            streaming = true,
         )
 
-        compose.onNodeWithTag("markdown.code").assertIsDisplayed()
         compose.onNodeWithText("mermaid").assertIsDisplayed()
-        // The code lines live inside the block's own horizontal scroll, so they are in the tree
-        // rather than guaranteed inside the viewport: the chip and Copy above them are what is
-        // reliably on screen at any width.
-        compose.onNodeWithText("  A-->B").fetchSemanticsNode()
+        compose.onNodeWithText("  A-->B").assertExists()
         compose.onNodeWithText("Copy").assertIsDisplayed()
+        compose.onNodeWithText("Preview").assertIsDisplayed()
+        compose.onNodeWithText("Source").assertIsDisplayed()
     }
 
     @Test

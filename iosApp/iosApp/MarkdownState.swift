@@ -40,6 +40,13 @@ struct ReadingListItem: Equatable {
     var checked: Bool? = nil
 }
 
+/// Which half of a diagram block is on screen. The rule that picks it is the core's (`Diagrams.view`);
+/// this is only the name the views use, so no view has to know the framework.
+enum ReadingDiagramView: Equatable {
+    case preview
+    case source
+}
+
 enum ReadingAlignment: Equatable {
     case none
     case left

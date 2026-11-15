@@ -135,6 +135,10 @@
     <string name="markdown_code">code</string>
     <string name="markdown_copy">Copy</string>
     <string name="markdown_copied">Copied</string>
+    <string name="diagram_preview">Preview</string>
+    <string name="diagram_source">Source</string>
+    <!-- One sentence above the fence's source, when the renderer refused the diagram. -->
+    <string name="diagram_failed">This diagram could not be drawn, so its source is shown.</string>
 
     <!-- Attachments (A6): the sheet, the cards, and one sentence per typed refusal from the
          core's `AttachmentRejection.copyKey` (plan.md §9's limits row). -->

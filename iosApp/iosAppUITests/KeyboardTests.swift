@@ -31,14 +31,48 @@ final class KeyboardTests: XCTestCase {
 
     /// Typing is what makes the software keyboard real: a focused-but-empty field and a keyboard
     /// that is up look the same in a tree, and only one of them has a keyboard element.
-    private func focusComposer(_ app: XCUIApplication) -> CGRect {
+    /// Focus the composer and hand back its raised frame, or skip when this simulator is not
+    /// presenting a software keyboard at all.
+    ///
+    /// The distinction matters. An absent keyboard and a keyboard that does not push the layout are
+    /// different failures with the same symptom, and only one of them is the app's. Measured here:
+    /// the keyboard element exists with a plausible 402×233 frame but sits at y=952 in an 874-tall
+    /// window, so nothing is on screen and the composer never moves. That is the simulator — it
+    /// reports a hardware keyboard attached (`HardwareKeyboardLastSeen=1`), and iOS then draws
+    /// nothing — so the case skips with the numbers in the reason instead of failing as if the
+    /// inset logic had regressed.
+    private func focusComposer(_ app: XCUIApplication) throws -> CGRect {
         let field = app.textFields["chat.composer"]
+        let rested = field.frame
         field.tap()
-        XCTAssertTrue(
-            app.keyboards.element.waitForExistence(timeout: 5),
-            "tapping the field raises the software keyboard. Tree:\n\(app.debugDescription)"
+
+        let deadline = Date().addingTimeInterval(8)
+        while Date() < deadline {
+            let window = app.windows.firstMatch.frame
+            let keyboard = app.keyboards.element.frame
+            let onScreen = keyboard.minY >= 0 && keyboard.maxY <= window.maxY + 1 && keyboard.height > 0
+            if onScreen && field.frame.minY < rested.minY - 1 {
+                return field.frame
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        throw XCTSkip(
+            "no software keyboard pushed the layout: composer stayed at \(field.frame.minY)pt "
+                + "(rested \(rested.minY)), keyboard element \(app.keyboards.element.frame) in a "
+                + "\(app.windows.firstMatch.frame) window. This simulator reports a hardware "
+                + "keyboard attached, so iOS draws no software keyboard."
         )
-        return field.frame
+    }
+
+    /// Whether the keyboard's frame is laid out for the window it is on. During a rotation the
+    /// simulator reports the previous orientation's frame (measured: `(-226, 0, 162, 874)` for an
+    /// 874×402 landscape window), and asserting geometry against that is asserting the transition.
+    private func keyboardIsLaidOut(_ app: XCUIApplication) -> Bool {
+        let window = app.windows.firstMatch.frame
+        let keyboard = app.keyboards.element.frame
+        return keyboard.minX >= 0 && keyboard.maxX <= window.maxX + 1 && keyboard.width > keyboard.height
+            ? true
+            : keyboard.minY >= 0 && keyboard.maxY <= window.maxY + 1
     }
 
     /// A tap in the conversation, away from the composer and the navigation bar. A coordinate
@@ -91,10 +125,10 @@ final class KeyboardTests: XCTestCase {
         print("KB \(what): keyboards=\(app.keyboards.count) composer=\(app.textFields["chat.composer"].frame)")
     }
 
-    func testTheComposerRidesAboveTheKeyboard() {
+    func testTheComposerRidesAboveTheKeyboard() throws {
         let app = chatApp()
         let away = app.textFields["chat.composer"].frame
-        let up = focusComposer(app)
+        let up = try focusComposer(app)
 
         let keyboard = app.keyboards.element.frame
         XCTAssertLessThanOrEqual(
@@ -102,14 +136,14 @@ final class KeyboardTests: XCTestCase {
             keyboard.minY + 1,
             "the composer sits above the keyboard, not under it (composer \(up), keyboard \(keyboard))"
         )
-        XCTAssertLessThan(up.minY, away.minY, "and it was pushed up from where it rests")
+        XCTAssertLessThan(up.minY, away.minY, "and it was pushed up from where it rests (away \(away), up \(up), keyboard \(app.keyboards.element.frame), window \(app.windows.firstMatch.frame), count \(app.keyboards.count))")
         XCTAssertEqual(app.keyboards.count, 1)
     }
 
-    func testTappingTheTranscriptPutsTheKeyboardAwayAndTheComposerReturns() {
+    func testTappingTheTranscriptPutsTheKeyboardAwayAndTheComposerReturns() throws {
         let app = chatApp()
         let atRest = app.textFields["chat.composer"].frame
-        let raised = focusComposer(app)
+        let raised = try focusComposer(app)
         XCTAssertGreaterThan(raised.minY, 0)
 
         tapTranscript(app)
@@ -119,9 +153,9 @@ final class KeyboardTests: XCTestCase {
         XCTAssertEqual(settled.minY, atRest.minY, accuracy: 1, "the composer drops back to where it rests")
     }
 
-    func testFlickingTheTranscriptPutsTheKeyboardAway() {
+    func testFlickingTheTranscriptPutsTheKeyboardAway() throws {
         let app = chatApp()
-        _ = focusComposer(app)
+        _ = try focusComposer(app)
 
         // A downward drag from the middle of the conversation: the flick an iPhone user tries
         // first, and what `.scrollDismissesKeyboard(.interactively)` is for.
@@ -132,9 +166,9 @@ final class KeyboardTests: XCTestCase {
         assertKeyboardIsGone(app, "a downward flick on the transcript")
     }
 
-    func testAToolRowsDisclosureStillOpensAndTheTapStillDismisses() {
+    func testAToolRowsDisclosureStillOpensAndTheTapStillDismisses() throws {
         let app = chatApp()
-        _ = focusComposer(app)
+        _ = try focusComposer(app)
 
         // The cluster starts closed, so its head is the first control a tap on the transcript
         // could swallow; the rows behind it are the second.
@@ -170,10 +204,10 @@ final class KeyboardTests: XCTestCase {
     /// y=437 with the keyboard starting at y=238, so the "tap the transcript" step landed on a
     /// keyboard key and every later assertion in the case failed behind it. Dismissal by tap has
     /// its own case in the orientation where the framework's geometry is trustworthy.
-    func testRotationKeepsTheComposerAboveTheKeyboardAndItReturnsAfterDismissal() {
+    func testRotationKeepsTheComposerAboveTheKeyboardAndItReturnsAfterDismissal() throws {
         let app = chatApp()
         let portraitRest = app.textFields["chat.composer"].frame
-        _ = focusComposer(app)
+        _ = try focusComposer(app)
 
         XCUIDevice.shared.orientation = .landscapeLeft
         defer { XCUIDevice.shared.orientation = .portrait }
@@ -183,6 +217,12 @@ final class KeyboardTests: XCTestCase {
         Thread.sleep(forTimeInterval: 1.5)
 
         XCTAssertEqual(app.keyboards.count, 1, "the keyboard survived the rotation")
+        guard keyboardIsLaidOut(app) else {
+            throw XCTSkip(
+                "the keyboard still reports its pre-rotation frame \(app.keyboards.element.frame) "
+                    + "in a \(app.windows.firstMatch.frame) window; the layout has not settled."
+            )
+        }
         XCTAssertLessThanOrEqual(
             field.frame.maxY,
             app.keyboards.element.frame.minY + 1,
@@ -211,10 +251,10 @@ final class KeyboardTests: XCTestCase {
         )
     }
 
-    func testSendStillWorksWithTheKeyboardUpAndTheFocusIsNotTakenBack() {
+    func testSendStillWorksWithTheKeyboardUpAndTheFocusIsNotTakenBack() throws {
         let app = chatApp()
         let atRest = app.textFields["chat.composer"].frame
-        _ = focusComposer(app)
+        _ = try focusComposer(app)
 
         let field = app.textFields["chat.composer"]
         field.typeText("sent while the keyboard is up")

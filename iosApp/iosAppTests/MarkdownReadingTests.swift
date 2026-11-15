@@ -51,7 +51,7 @@ struct MarkdownReadingTests {
             Issue.record("the fence did not survive the adapter: \(blocks)")
             return
         }
-        #expect(language == "mermaid", "the chip names the diagram kind, and the block stays source")
+        #expect(language == "mermaid", "the fence stays a fence; which half a diagram shows is the core's rule")
         #expect(code == "graph TD\n  A-->B")
         #expect(closed)
     }

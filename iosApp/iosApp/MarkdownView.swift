@@ -12,6 +12,8 @@ struct ReadingBlocksView: View {
     let blocks: [ReadingBlock]
     /// The turn's id, so a block's identity survives a re-render without hashing its text.
     let idPrefix: String
+    /// Whether the answer is still arriving: a diagram opens on its source until it is not.
+    var streaming: Bool = false
     let isCopied: (String) -> Bool
     let onCopy: (String) -> Void
 
@@ -64,17 +66,33 @@ struct ReadingBlocksView: View {
                 }
             }
         case let .code(language, code, _):
-            ReadingCodeBlock(
-                id: id,
-                language: language,
-                code: code,
-                copied: isCopied(id),
-                onCopy: { onCopy(id) }
-            )
+            // A mermaid fence is a diagram the reader can flip; every other fence is source.
+            if Diagrams.isDiagram(language: language) {
+                ReadingDiagramBlock(
+                    source: code,
+                    streaming: streaming,
+                    copied: isCopied(id),
+                    onCopy: { onCopy(id) }
+                )
+            } else {
+                ReadingCodeBlock(
+                    id: id,
+                    language: language,
+                    code: code,
+                    copied: isCopied(id),
+                    onCopy: { onCopy(id) }
+                )
+            }
         case let .table(header, alignments, rows):
             ReadingTableView(header: header, alignments: alignments, rows: rows)
         case let .quote(blocks):
-            ReadingBlocksView(blocks: blocks, idPrefix: "\(id)-quote", isCopied: isCopied, onCopy: onCopy)
+            ReadingBlocksView(
+                blocks: blocks,
+                idPrefix: "\(id)-quote",
+                streaming: streaming,
+                isCopied: isCopied,
+                onCopy: onCopy
+            )
                 .padding(.leading, 10)
                 .overlay(alignment: .leading) {
                     Rectangle().fill(Color.secondary.opacity(0.35)).frame(width: 2)
@@ -118,15 +136,11 @@ struct TaskBox: View {
 /// A fence: the language in the head, Copy on the right, and line numbers once there is more
 /// than one line of code.
 struct ReadingCodeBlock: View {
-    @Environment(\.readingSize) private var readingSize
     let id: String
     let language: String?
     let code: String
     let copied: Bool
     let onCopy: () -> Void
-
-    private var lines: [String] { code.split(separator: "\n", omittingEmptySubsequences: false).map(String.init) }
-    private var numbered: Bool { lines.count > 1 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -149,27 +163,7 @@ struct ReadingCodeBlock: View {
             .padding(.vertical, 2)
             .background(Palette.code)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 8) {
-                    if numbered {
-                        VStack(alignment: .trailing, spacing: 0) {
-                            ForEach(Array(lines.indices), id: \.self) { index in
-                                Text("\(index + 1)")
-                                    .font(.system(size: readingSize * 0.72, design: .monospaced))
-                                    .foregroundStyle(.secondary.opacity(0.7))
-                            }
-                        }
-                    }
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                            Text(line.isEmpty ? " " : line)
-                                .font(.system(size: readingSize * 0.72, design: .monospaced))
-                        }
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-            }
+            ReadingSourceLines(code: code)
         }
         .background(Palette.secondarySurface)
         .clipShape(RoundedRectangle(cornerRadius: Design.Radius.field, style: .continuous))
@@ -177,6 +171,39 @@ struct ReadingCodeBlock: View {
             RoundedRectangle(cornerRadius: Design.Radius.field, style: .continuous)
                 .strokeBorder(Color.secondary.opacity(0.25), lineWidth: 1)
         )
+    }
+}
+
+/// A fence's lines: numbered once there is more than one, at the reading scale's smaller size. The
+/// code block and the diagram's source half draw through this one view, so they cannot drift.
+struct ReadingSourceLines: View {
+    @Environment(\.readingSize) private var readingSize
+    let code: String
+
+    private var lines: [String] { code.split(separator: "\n", omittingEmptySubsequences: false).map(String.init) }
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 8) {
+                if lines.count > 1 {
+                    VStack(alignment: .trailing, spacing: 0) {
+                        ForEach(Array(lines.indices), id: \.self) { index in
+                            Text("\(index + 1)")
+                                .font(.system(size: readingSize * 0.72, design: .monospaced))
+                                .foregroundStyle(.secondary.opacity(0.7))
+                        }
+                    }
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                        Text(line.isEmpty ? " " : line)
+                            .font(.system(size: readingSize * 0.72, design: .monospaced))
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+        }
     }
 }
 

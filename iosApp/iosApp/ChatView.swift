@@ -271,6 +271,7 @@ private struct ChatRowView: View, Equatable {
                 ReadingBlocksView(
                     blocks: blocks,
                     idPrefix: row.id,
+                    streaming: streaming,
                     isCopied: { $0 == copiedBlockId },
                     onCopy: { blockId in onCopy(blocks, blockId) }
                 )
