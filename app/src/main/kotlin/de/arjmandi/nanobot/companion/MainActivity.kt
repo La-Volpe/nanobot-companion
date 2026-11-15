@@ -46,6 +46,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var main: MainViewModel
     private lateinit var recovery: ConnectionRecovery
 
+    /** The launch's one decision: onboarding, the shell, or the moment before either. */
+    private lateinit var launch: LaunchModel
+
     /** The phone's half of a task notice: post what the core allowed, remember what it refused. */
     private lateinit var notifier: AndroidNotifier
     private lateinit var delivery: TaskNoticeDelivery
@@ -77,17 +80,20 @@ class MainActivity : ComponentActivity() {
             openCompanion(applicationContext, address, secret, allowUnverified)
         }
         // A live launch (DEBUG) carries its address and key, so a running instrument never types
-        // a secret into a log; every other launch reads the encrypted store.
-        val launch = if (BuildConfig.DEBUG) DebugLaunchReader.read(intent) else DebugLaunch()
-        val credentials: CredentialsStoring = if (launch.address != null && launch.secret != null) {
-            LaunchCredentials(launch.address, launch.secret, allowUnverifiedCertificate = false)
-        } else {
-            StoredCredentials(
-                applicationContext,
-                getSharedPreferences(StoredCredentials.PREFERENCES, MODE_PRIVATE),
-            )
-        }
-        val connect = ConnectViewModel(holder, credentials, prefillKey = launch.secret)
+        // a secret into a log. The extras are a prefill of the same store, never a store of their
+        // own: a connect made through one has to survive the next launch, or the device asks for a
+        // key it already holds.
+        val debugLaunch = if (BuildConfig.DEBUG) DebugLaunchReader.read(intent) else DebugLaunch()
+        val credentials: CredentialsStoring = StoredCredentials(
+            applicationContext,
+            getSharedPreferences(StoredCredentials.PREFERENCES, MODE_PRIVATE),
+        )
+        val connect = ConnectViewModel(
+            holder,
+            credentials,
+            prefillAddress = debugLaunch.address,
+            prefillKey = debugLaunch.secret,
+        )
         main = MainViewModel(holder) { chatId ->
             // A chat the core cannot name yet (no gateway, no greeting) still gets a model: the
             // screen shows an empty thread and an idle composer rather than nothing.
@@ -101,12 +107,31 @@ class MainActivity : ComponentActivity() {
         notifier = AndroidNotifier(applicationContext)
         delivery = TaskNoticeDelivery(notifier)
 
+        // One launch decision, made before a screen is drawn: onboarding, or the shell with the
+        // stored gateway reopening inside it. The store is the reason a second launch is not a
+        // second setup, and a gateway that stopped answering is the shell's banner, not the
+        // address and key questions again.
+        launch = LaunchModel(
+            scope = scope,
+            hasStoredGateway = { connect.resolveStoredGateway() },
+            connect = {
+                if (connect.reopenStoredGateway()) holder.refreshSessions()
+            },
+        )
+
         // Settings is built after the shell because its one way out is the shell's own disconnect.
         val settings = SettingsViewModel(
             credentials = credentials,
             notifier = notifier,
             preferences = SharedPreferencesSettings(getSharedPreferences(SETTINGS_PREFERENCES, MODE_PRIVATE)),
-            disconnectGateway = { main.disconnect() },
+            // Forgetting the gateway is the owner's decision, so the questions come back — empty,
+            // and staying asked: the launch's second look never walks them back in behind their
+            // back, and the connect model's `Connected` phase cannot either.
+            disconnectGateway = {
+                connect.forget()
+                launch.signedOut()
+                main.disconnect()
+            },
         )
         main.attachSettings(settings)
 
@@ -179,18 +204,13 @@ class MainActivity : ComponentActivity() {
                 dark = dark,
                 readingScale = de.arjmandi.nanobot.companion.settings.ReadingScale.size(settings.readingSize) / 16f,
             ) {
-                // The launch environment is the live instrument's: one press, or none at all.
-                // A device that remembers a gateway reopens it here — the key is in the
-                // encrypted store, so asking for it again would be theatre.
-                LaunchedEffect(launch.autoConnect) {
-                    val remembered = !credentials.address.isNullOrBlank() &&
-                        !credentials.storedKey.isNullOrBlank()
-                    if (launch.autoConnect || remembered) connect.connect()
-                }
+                // One decision per launch, made before a screen is drawn: see [LaunchModel].
+                LaunchedEffect(Unit) { launch.begin() }
                 RootScreen(
                     connect = connect,
                     main = main,
                     holder = holder,
+                    launch = launch,
                     modifier = Modifier.fillMaxSize().systemBarsPadding(),
                 )
             }
@@ -215,7 +235,10 @@ class MainActivity : ComponentActivity() {
         // In front of the user again: the chat on screen is announced by the thread itself, so a
         // banner for it would be the app saying what the app is already showing.
         holder.setForeground(true)
-        if (!main.connected) return
+        // A store read that ran while the phone was locked comes back empty, so a launch that is
+        // still waiting for an address looks again now that there is someone to show it to.
+        launch.resumed()
+        if (launch.screen != LaunchModel.Screen.Shell) return
         recovery.resumed(main.connectionView.status, main.connectionView.everConnected)
     }
 
@@ -242,7 +265,7 @@ class MainActivity : ComponentActivity() {
         val chatId = intent?.getStringExtra(EXTRA_CHAT_ID) ?: return
         // Consumed once: a rotation or a second `onNewIntent` must not reopen a chat nobody tapped.
         intent.removeExtra(EXTRA_CHAT_ID)
-        if (main.connected) {
+        if (launch.screen == LaunchModel.Screen.Shell) {
             scope.launch { main.openNotifiedChat(chatId) }
         } else {
             pendingChatId = chatId

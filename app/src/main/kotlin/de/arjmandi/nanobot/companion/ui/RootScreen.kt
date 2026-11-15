@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.arjmandi.nanobot.companion.MainViewModel
+import de.arjmandi.nanobot.companion.LaunchModel
 import de.arjmandi.nanobot.companion.R
 import de.arjmandi.nanobot.companion.automations.AutomationsScreen
 import de.arjmandi.nanobot.companion.chat.ChatScreen
@@ -66,11 +67,14 @@ fun RootScreen(
     connect: ConnectViewModel,
     main: MainViewModel,
     holder: CoreHolder,
+    /** The launch's one decision: onboarding, the shell, or the moment before either. */
+    launch: LaunchModel,
     onSessionActions: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val connection by holder.connection.collectAsStateWithLifecycle()
     val sessions by holder.sessions.collectAsStateWithLifecycle()
+    val shell = launch.screen == LaunchModel.Screen.Shell
 
     LaunchedEffect(sessions) {
         main.updateSessions(sessions.rows, sessions.loaded, sessions.failed)
@@ -78,8 +82,8 @@ fun RootScreen(
     // The greeting minted a chat before this screen existed, so the shell opens one on its first
     // appearance rather than waiting for a row to be picked; picking a row opens that chat instead,
     // which is the same command on a different id.
-    LaunchedEffect(main.connected, main.selected?.chatId) {
-        if (main.connected) main.openChat(main.selected?.chatId)
+    LaunchedEffect(shell, main.selected?.chatId) {
+        if (shell) main.openChat(main.selected?.chatId)
     }
 
     if (main.debugOpen) {
@@ -113,20 +117,37 @@ fun RootScreen(
         }
     }
 
-    if (main.connected) {
-        Shell(
+    when (launch.screen) {
+        LaunchModel.Screen.Deciding -> LaunchPlaceholder(modifier)
+        LaunchModel.Screen.Onboarding -> ConnectScreen(
+            model = connect,
+            onConnected = { launch.finishedOnboarding() },
+            modifier = modifier,
+        )
+
+        LaunchModel.Screen.Shell -> Shell(
             main = main,
             status = connection.status,
             onSessionActions = onSessionActions,
             modifier = modifier,
         )
-    } else {
-        ConnectScreen(
-            model = connect,
-            onConnected = { main.enterShell() },
-            modifier = modifier,
-        )
     }
+}
+
+/**
+ * What a launch draws while it reads the store and lets the stored gateway answer. Drawing
+ * onboarding here is what reads as "the app forgot my gateway": the question, for a moment, is
+ * still the question. It is the canvas and nothing else, because a spinner would be a claim about
+ * how long a handshake takes.
+ */
+@Composable
+private fun LaunchPlaceholder(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
+            .testTag("launch.deciding"),
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -159,7 +180,9 @@ private fun Shell(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = main.connected,
+        // The shell is only drawn for a launch that decided on it, so a swipe is always the
+        // drawer's here — the onboarding screen has no shell to open it on.
+        gesturesEnabled = true,
         drawerContent = {
             ModalDrawerSheet {
                 DrawerContent(

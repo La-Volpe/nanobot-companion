@@ -180,4 +180,127 @@ class ConnectViewModelTest {
         assertNull(model.messageRes)
         assertEquals(ConnectPhase.Idle, model.phase, "the screen is editable again, not stuck on the failure")
     }
+
+    // A launch, not a tap. ---------------------------------------------------
+
+    /** The store, filled as a previous launch left it. */
+    private fun stored(
+        gateway: FakeGateway,
+        address: String = "http://home.lan:18765",
+        key: String = "the-secret",
+        prefillAddress: String? = null,
+        prefillKey: String? = null,
+    ): Pair<ConnectViewModel, MemoryCredentials> {
+        val credentials = MemoryCredentials(address = address).also { it.storedKey = key }
+        return ConnectViewModel(gateway, credentials, prefillAddress = prefillAddress, prefillKey = prefillKey) to credentials
+    }
+
+    @Test
+    fun aStoredGatewayReopensWithoutAsking() = runTest {
+        val gateway = FakeGateway()
+        val (model, _) = stored(gateway)
+
+        assertTrue(model.hasStoredGateway, "an address and a key is a gateway this device already holds")
+
+        val opened = model.reopenStoredGateway()
+
+        assertTrue(opened)
+        assertEquals(1, gateway.connects, "the stored gateway is reopened, not assumed")
+        assertEquals("http://home.lan:18765", gateway.lastAddress)
+        assertEquals("the-secret", gateway.lastKey)
+        assertEquals(ConnectPhase.Connected("deepseek"), model.phase)
+    }
+
+    /**
+     * The one difference from the button: a launch keeps the stack. The banner's "Try again" is a
+     * reconnect on it, so a launch that closed it would leave the button with nothing to retry.
+     */
+    @Test
+    fun aReopenThatFailsKeepsTheStackForTryAgain() = runTest {
+        val gateway = FakeGateway(outcome = GatewayOutcome.Failed(ConnectionFailure.Unreachable, null))
+        val (model, credentials) = stored(gateway)
+
+        val opened = model.reopenStoredGateway()
+
+        assertFalse(opened)
+        assertEquals(ConnectPhase.Failed, model.phase)
+        assertEquals(0, gateway.disconnects, "the banner's Try again reconnects on the stack this keeps open")
+        assertEquals("the-secret", credentials.storedKey, "a key that was not refused is still the one we hold")
+    }
+
+    /** `tools/`-style live launch: the instrument names the gateway it is about, so it wins. */
+    @Test
+    fun aLaunchCarriedGatewayWinsOverTheStore() = runTest {
+        val gateway = FakeGateway()
+        val (model, _) = stored(
+            gateway,
+            address = "http://stored.lan:18765",
+            key = "stored-secret",
+            prefillAddress = "http://127.0.0.1:18765",
+            prefillKey = "launch-secret",
+        )
+
+        assertEquals("http://127.0.0.1:18765", model.address)
+        assertEquals("launch-secret", model.key)
+
+        model.reopenStoredGateway()
+
+        assertEquals("http://127.0.0.1:18765", gateway.lastAddress)
+        assertEquals("launch-secret", gateway.lastKey)
+    }
+
+    @Test
+    fun halfASetupIsNotAGatewayToReopen() = runTest {
+        val gateway = FakeGateway()
+        val credentials = MemoryCredentials(address = "http://home.lan:18765")
+        val model = ConnectViewModel(gateway, credentials)
+
+        assertFalse(model.hasStoredGateway, "an address without a key is the connect screen's job")
+    }
+
+    /**
+     * A second look at the store, because an encrypted read that ran before the phone was unlocked
+     * comes back empty. What the owner has started typing is theirs and is never overwritten.
+     */
+    @Test
+    fun aSecondLookAtTheStoreNeverOverwritesTyping() = runTest {
+        val gateway = FakeGateway()
+        val (model, credentials) = stored(gateway, address = "", key = "")
+
+        assertFalse(model.resolveStoredGateway(), "an empty store is the connect screen")
+
+        credentials.remember("http://home.lan:18765", "the-secret", allowUnverifiedCertificate = false)
+        assertTrue(model.resolveStoredGateway(), "a store that could be read this time is the gateway to reopen")
+        assertEquals("http://home.lan:18765", model.address)
+        assertEquals("the-secret", model.key)
+
+        model.address = "http://typed.lan:18765"
+        model.key = "typed-secret"
+        credentials.remember("http://other.lan:18765", "other-secret", allowUnverifiedCertificate = false)
+
+        assertFalse(model.resolveStoredGateway(), "a half-typed setup is not connected behind the owner's back")
+        assertEquals("http://typed.lan:18765", model.address)
+        assertEquals("typed-secret", model.key)
+    }
+
+    /**
+     * Settings → Gateway: the store is emptied and the screen goes back to the questions. The
+     * model's own phase has to go with it — a `Connected` phase on a screen that no longer exists
+     * is how a launch walks itself back into the shell it just left (`RootScreen`'s connected
+     * effect fires on first composition).
+     */
+    @Test
+    fun forgettingTheGatewayLeavesTheScreenAsking() = runTest {
+        val gateway = FakeGateway()
+        val (model, credentials) = stored(gateway)
+        model.reopenStoredGateway()
+        assertEquals(ConnectPhase.Connected("deepseek"), model.phase)
+
+        credentials.forget()
+        model.forget()
+
+        assertEquals(ConnectPhase.Idle, model.phase, "a Connected phase walks the launch back into the shell it left")
+        assertEquals("", model.address, "the screen must not keep the address the store just forgot")
+        assertEquals("", model.key)
+    }
 }

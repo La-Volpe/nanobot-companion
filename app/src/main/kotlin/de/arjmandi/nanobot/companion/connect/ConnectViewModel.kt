@@ -26,12 +26,23 @@ sealed interface ConnectPhase {
 class ConnectViewModel(
     private val gateway: GatewayConnecting,
     private val credentials: CredentialsStoring,
-    prefillKey: String? = null,
+    /**
+     * A launch that already knows its gateway (DEBUG live instrument) hands it here instead of
+     * typing it: the secret never reaches a log. The values win over the store, because the
+     * instrument names the gateway it is about — and what it connects with is then stored like
+     * any other connect, so the next launch needs nothing.
+     */
+    private val prefillAddress: String? = null,
+    private val prefillKey: String? = null,
 ) {
 
-    var address by mutableStateOf(credentials.address ?: "")
+    var address by mutableStateOf(prefillAddress ?: credentials.address ?: "")
     // A stored key is why the app can reopen a chat without asking for the secret again.
     var key by mutableStateOf(prefillKey ?: credentials.storedKey ?: "")
+
+    /** What this launch read, so a second look can tell an untouched screen from a typed one. */
+    private val launchAddress: String = address
+    private val launchKey: String = key
 
     /** The switch. Set through [rememberTrustDecision] so the decision is also stored. */
     var allowUnverifiedCertificate by mutableStateOf(credentials.allowUnverifiedCertificate)
@@ -54,15 +65,49 @@ class ConnectViewModel(
 
     val isConnecting: Boolean get() = phase is ConnectPhase.Connecting
 
-    val canConnect: Boolean
-        get() = !isConnecting && address.trim().isNotEmpty() && key.isNotEmpty()
+    /**
+     * Both halves and nothing of the user's to do: this launch can open a gateway by itself. An
+     * address without a key (or the reverse) is half a setup, which the connect screen finishes.
+     */
+    val hasStoredGateway: Boolean
+        get() = address.trim().isNotEmpty() && key.isNotEmpty()
+
+    val canConnect: Boolean get() = !isConnecting && hasStoredGateway
+
+    /**
+     * The store, read again: an encrypted read that ran before the phone was unlocked comes back
+     * empty, and the return to the foreground is the second chance. True when the device holds a
+     * gateway now, which the fields are then prefilled with. Nothing is adopted over a screen the
+     * owner has started typing on: what someone is halfway through entering is theirs.
+     */
+    fun resolveStoredGateway(): Boolean {
+        val storedAddress = (prefillAddress ?: credentials.address ?: "").trim()
+        val storedKey = prefillKey ?: credentials.storedKey ?: ""
+        if (storedAddress.isEmpty() || storedKey.isEmpty()) return false
+        if (address != launchAddress || key != launchKey) return false
+        address = storedAddress
+        key = storedKey
+        return true
+    }
 
     /** Whether "try again" is an honest offer: the core decides per taxonomy entry, not the screen. */
     val offersRetry: Boolean get() = failure?.retryable == true
 
     /** The one command. Local refusals come first and cost no round trip. */
     suspend fun connect(): Unit {
-        if (isConnecting) return
+        attempt(closeOnFailure = true)
+    }
+
+    /**
+     * The launch's own attempt on the gateway the device already holds: the same bookkeeping the
+     * button does, and one difference — it keeps the stack when the handshake fails. A typed
+     * attempt leaves a form to fix; a launch leaves the shell's banner, and that banner's "Try
+     * again" is a reconnect on the stack this keeps open. True when the gateway greeted it.
+     */
+    suspend fun reopenStoredGateway(): Boolean = attempt(closeOnFailure = false)
+
+    private suspend fun attempt(closeOnFailure: Boolean): Boolean {
+        if (isConnecting) return false
         messageRes = null
         trustSwitchIsTheRemedy = false
         failure = null
@@ -77,16 +122,17 @@ class ConnectViewModel(
         if (refusal != null) {
             messageRes = refusal.text
             phase = ConnectPhase.Failed
-            return
+            return false
         }
 
         phase = ConnectPhase.Connecting
-        when (val outcome = gateway.connect(trimmed, key, allowUnverifiedCertificate)) {
+        return when (val outcome = gateway.connect(trimmed, key, allowUnverifiedCertificate)) {
             is GatewayOutcome.Connected -> {
                 // The key is only kept once it was accepted; a refused one is not persisted.
                 credentials.remember(trimmed, key, allowUnverifiedCertificate)
                 phase = ConnectPhase.Connected(outcome.modelName)
                 messageRes = null
+                true
             }
 
             is GatewayOutcome.Failed -> {
@@ -95,7 +141,8 @@ class ConnectViewModel(
                     outcome.failure == ConnectionFailure.TlsRejected && !allowUnverifiedCertificate
                 messageRes = ConnectionCopy.text(outcome.failure, outcome.detail)
                 phase = ConnectPhase.Failed
-                gateway.disconnect()
+                if (closeOnFailure) gateway.disconnect()
+                false
             }
         }
     }
@@ -116,6 +163,21 @@ class ConnectViewModel(
         trustSwitchIsTheRemedy = false
         failure = null
         if (phase is ConnectPhase.Failed) phase = ConnectPhase.Idle
+    }
+
+    /**
+     * Settings → Gateway, once the store is empty: the screen must not keep the address it just
+     * forgot, and a `Connected` phase must not walk the launch back into the shell it left — the
+     * connect screen reports its first composition as a success otherwise.
+     */
+    fun forget() {
+        address = ""
+        key = ""
+        allowUnverifiedCertificate = false
+        messageRes = null
+        failure = null
+        trustSwitchIsTheRemedy = false
+        phase = ConnectPhase.Idle
     }
 }
 
