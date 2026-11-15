@@ -13,6 +13,9 @@ struct PickedAttachment: Equatable {
     let data: Data
     /// A local file URL for a preview; nil for bytes that came from a picker without a file.
     let url: URL?
+    /// A small JPEG of the picture, made off the main actor when it was picked. A card that
+    /// decodes the original on every redraw stutters, and a picker's bytes have no URL to read.
+    var preview: Data? = nil
 
     var size: Int { data.count }
 }
@@ -53,22 +56,55 @@ struct SentAttachment: Equatable {
     let name: String?
 }
 
-/// One attachment in the composer, as a card.
+/// One attachment in the composer, as a card. Its state is what the card says: a spinner while
+/// the bytes go up, the gateway's reference once they have, the reason when they did not.
 struct PendingAttachment: Identifiable, Equatable {
     let id: String
-    let name: String
-    let mimeType: String
-    let size: Int
-    let kind: AttachmentKind
-    /// The gateway's reference, once the upload came back. Nil means still in flight.
-    var reference: String?
+    var name: String
+    var mimeType: String
+    var size: Int
+    var state: AttachmentUpload
     var url: URL?
+    var preview: Data?
+
+    /// The gateway's reference, once the upload came back. Nil means still in flight, or failed.
+    var reference: String? {
+        if case let .ready(reference) = state { return reference }
+        return nil
+    }
+
+    var uploading: Bool { state == .uploading }
+
+    /// Why this one did not go up, when it did not: a link failure is worth another try, so the
+    /// card keeps the bytes and the sentence.
+    var failure: String? {
+        if case let .failed(reason) = state { return reason }
+        return nil
+    }
+
+    /// From the type actually being uploaded, so a re-encode changes the card with the bytes.
+    var kind: AttachmentKind { AttachmentKind(mimeType: mimeType) }
 
     var sizeLabel: String {
         if size >= 1024 * 1024 { return String(format: "%.1f MB", Double(size) / (1024 * 1024)) }
         if size >= 1024 { return "\(size / 1024) KB" }
         return "\(size) B"
     }
+}
+
+/// Where one attachment is between the pick and the message.
+enum AttachmentUpload: Equatable {
+    case uploading
+    case ready(reference: String)
+    case failed(reason: String)
+}
+
+/// Why a pick never became a card, with the file it was in it. The sentence alone cannot tell a
+/// reader which of four picks was refused, and the sheet that shows it is the sheet the pick
+/// closed.
+struct UploadNotice: Equatable {
+    let name: String
+    let sentence: String
 }
 
 /// The gateway's own limits, as the composer validates and words them.
@@ -133,6 +169,17 @@ enum AttachmentOutcome: Equatable {
 @MainActor
 protocol AttachmentDriving: AnyObject {
     func upload(name: String, mimeType: String, data: Data) async -> AttachmentOutcome
+
+    /// Whether the gateway's upload whitelist takes this type, asked of the core so the list is
+    /// not copied into the app. The phone has to know before it sends: an iPhone photo is HEIC
+    /// by default and HEIC is not on the gateway's list.
+    func accepts(mimeType: String) -> Bool
+}
+
+extension AttachmentDriving {
+    /// A driver with no gateway in front of it has no whitelist to ask, so it says yes and
+    /// leaves the refusal to the core.
+    func accepts(mimeType: String) -> Bool { true }
 }
 
 @MainActor

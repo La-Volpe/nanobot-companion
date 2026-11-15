@@ -42,6 +42,26 @@ public sealed interface AttachmentRejection {
     }
 }
 
+/** The gateway's own whitelist, copied from `attachment_policy.py` rather than invented. */
+internal val IMAGE_MIME_ALLOWED: Set<String> = setOf("image/png", "image/jpeg", "image/webp", "image/gif")
+
+internal val VIDEO_MIME_ALLOWED: Set<String> = setOf("video/mp4", "video/webm", "video/quicktime")
+
+internal val DOCUMENT_MIME_ALLOWED: Set<String> = setOf(
+    "application/json", "application/pdf", "application/toml",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/x-yaml", "application/xhtml+xml", "application/xml", "application/yaml",
+    "text/csv", "text/html", "text/markdown", "text/plain", "text/xml", "text/yaml",
+)
+
+/**
+ * The gateway's `UPLOAD_MIME_ALLOWED`, file level because the facade answers the phone with it
+ * (`gatewayAcceptsUpload`): one set, so the picker's answer cannot drift from the refusal.
+ */
+internal val UPLOAD_MIME_ALLOWED: Set<String> = IMAGE_MIME_ALLOWED + VIDEO_MIME_ALLOWED + DOCUMENT_MIME_ALLOWED
+
 /**
  * Local validation before upload (plan.md C3.7). Numbers and the MIME whitelist are the
  * gateway's own: `channels/websocket/attachment_policy.py` (max_count 4, 6 MiB each,
@@ -56,7 +76,7 @@ internal class AttachmentPolicy(private val limits: AttachmentLimits) {
     fun validate(files: List<CandidateFile>): AttachmentRejection? {
         if (files.isEmpty()) return null
         if (files.any { it.bytes <= 0 }) return AttachmentRejection.EmptyFile
-        if (files.any { it.mimeType !in ALLOWED_MIME }) return AttachmentRejection.UnsupportedType
+        if (files.any { it.mimeType !in UPLOAD_MIME_ALLOWED }) return AttachmentRejection.UnsupportedType
 
         val videos = files.filter { it.mimeType in VIDEO_MIME_ALLOWED }
         val others = files.filterNot { it.mimeType in VIDEO_MIME_ALLOWED }
@@ -71,17 +91,5 @@ internal class AttachmentPolicy(private val limits: AttachmentLimits) {
     private companion object {
         const val MAX_VIDEOS_PER_MESSAGE = 1
         const val MAX_VIDEO_BYTES = 20L * 1024 * 1024
-
-        val IMAGE_MIME_ALLOWED = setOf("image/png", "image/jpeg", "image/webp", "image/gif")
-        val VIDEO_MIME_ALLOWED = setOf("video/mp4", "video/webm", "video/quicktime")
-        val DOCUMENT_MIME_ALLOWED = setOf(
-            "application/json", "application/pdf", "application/toml",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/x-yaml", "application/xhtml+xml", "application/xml", "application/yaml",
-            "text/csv", "text/html", "text/markdown", "text/plain", "text/xml", "text/yaml",
-        )
-        val ALLOWED_MIME = IMAGE_MIME_ALLOWED + VIDEO_MIME_ALLOWED + DOCUMENT_MIME_ALLOWED
     }
 }

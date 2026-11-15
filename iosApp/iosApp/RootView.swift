@@ -176,7 +176,15 @@ struct RootView: View {
                             attachments: attachments,
                             loadPresets: loadPresets,
                             onPickPhotos: { photosPresented = true },
-                            onTakePhoto: { cameraPresented = true },
+                            onTakePhoto: {
+                                // A camera that is off in Settings opens to a black screen, so
+                                // the reason goes on the composer instead of a dead cover.
+                                if let refusal = CameraAccess.refusal {
+                                    attachments.note(UploadNotice(name: "Camera", sentence: refusal))
+                                } else {
+                                    cameraPresented = true
+                                }
+                            },
                             onPickFiles: { filesPresented = true }
                         )
                         .presentationDetents([.medium, .large])
@@ -264,7 +272,19 @@ struct RootView: View {
             // The scripted chat answers the composer's commands too, so a tap proves the
             // button rule and the queue without a gateway (I8's debug menu does the same).
             composer.attach(ScriptedComposer(chat: scripted))
-            attachments.use(ScriptedUploader(), chatId: selected?.chatId)
+            attachments.use(
+                ScriptedUploader(failingName: container.scriptedAttachments ? "attachment_policy.py" : nil),
+                chatId: selected?.chatId
+            )
+            if container.scriptedAttachments {
+                // A seeded composer: the photo lands as a card, the document does not, so both
+                // card states are on screen for a flow test without the system photo picker.
+                for pick in ScriptedUploader.seededPicks {
+                    await attachments.add(
+                        PickedAttachment(name: pick.name, mimeType: pick.mimeType, data: pick.data, url: nil)
+                    )
+                }
+            }
             voice.use(ScriptedVoice(), recording: ScriptedRecorder())
             await scripted.open()
             return
