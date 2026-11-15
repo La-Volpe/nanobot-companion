@@ -22,6 +22,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -111,7 +112,10 @@ class ModelChipTest {
         val handle = core.chat(chat)
 
         handle.open()
-        advanceUntilIdle()
+        // The settings read is the socket's, started at connect (T28), so the chip follows it
+        // rather than the other way round: waiting on the flow is what a reader sees, and on
+        // Kotlin/Native the mock engine's answer lands outside the virtual clock.
+        core.settings.first { it.loaded }
 
         assertEquals("primary", handle.composer.value.modelPreset, "the chip names the preset, not the bare word")
         assertEquals("deepseek-v4.1-flash:cloud", handle.composer.value.modelName)
@@ -123,7 +127,9 @@ class ModelChipTest {
         val handle = core.chat("b")
 
         handle.open()
-        advanceUntilIdle()
+        // The drawer's rows carry this chat's own preset, and they are a read of their own: the
+        // chip follows the read that names it (the settings read is the socket's, T28).
+        core.sessions.first { it.loaded }
 
         assertEquals("cheap", handle.composer.value.modelPreset, "the session row is what this chat runs")
     }
@@ -134,7 +140,7 @@ class ModelChipTest {
         val core = core(engine(), socket)
         val handle = core.chat(chat)
         handle.open()
-        advanceUntilIdle()
+        core.sessions.first { it.loaded }
 
         socket.push(
             """{"event":"turn_model_updated","chat_id":"$chat",
@@ -157,6 +163,22 @@ class ModelChipTest {
         advanceUntilIdle()
 
         assertEquals("cheap", handle.composer.value.modelPreset, "the chip shows the pick at once (I5)")
+    }
+
+    @Test
+    fun aBrandNewChatNamesThePresetWithoutAnyChatBeingOpened() = runTest {
+        val core = core(engine())
+
+        // The shell's fresh chat: no drawer row was picked, so no `open()` of a chat with an id
+        // ever ran. The chip still has to name the gateway's preset (T28 — the device's
+        // screenshot said "Model" on exactly this screen).
+        val handle = core.chat(null)
+        // The read runs beside the pump, so the chip follows it rather than the other way round.
+        core.settings.first { it.loaded }
+
+        assertEquals("primary", handle.composer.value.modelPreset, "the chip names the preset, not the bare word")
+        assertEquals("deepseek-v4.1-flash:cloud", handle.composer.value.modelName)
+        assertEquals(1, reads.count { it == "/api/settings" }, "and the read is the socket's, once")
     }
 
     @Test

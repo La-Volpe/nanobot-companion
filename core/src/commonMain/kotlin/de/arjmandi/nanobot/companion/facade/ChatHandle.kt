@@ -213,10 +213,12 @@ internal class ChatSession(id: MutableStateFlow<String?>) {
     val thread: MutableStateFlow<ThreadState> = MutableStateFlow(ThreadState(chatId = id.value.orEmpty()))
 
     /**
-     * The page read behind [thread]. It starts `Loading` because a chat the client has just learned
-     * about has not been asked for yet — `open()` is the only thing that changes it.
+     * The page read behind [thread]. It starts `Loaded` because nobody has asked for a page: a
+     * chat with no id has none to ask for, and a chat just learned about is empty until `open()`
+     * puts a read in flight. Starting it `Loading` made a brand-new chat wear the skeleton of a
+     * page that was never on its way (T29).
      */
-    val history: MutableStateFlow<HistoryStatus> = MutableStateFlow(HistoryStatus.Loading)
+    val history: MutableStateFlow<HistoryStatus> = MutableStateFlow(HistoryStatus.Loaded)
 
     val composer: MutableStateFlow<ComposerState> = MutableStateFlow(ComposerState())
 

@@ -250,29 +250,32 @@ public class NanobotCore internal constructor(
      * resetting what the socket already filled in.
      */
     public fun chat(chatId: String?): ChatHandle {
-        if (chatId == null) {
-            // Before the greeting there is no chat to name; after it, the gateway has already
-            // told us which chat a "new chat" became, so a handle opened late still binds.
-            val greeted = greetingChatId
-            val created = ChatSession(id = MutableStateFlow(greeted))
-            pending.update { current -> current ?: created }
-            val bound = pending.value ?: created
-            if (greeted != null) {
-                // The greeting already named the chat, so this handle is registered straight
-                // away and the frames that arrive find it.
-                bound.id.value = greeted
-                registry.update { current -> current + (greeted to (current[greeted] ?: bound)) }
-                pending.value = null
-            }
-            // A read may already have answered for this chat; the chip does not wait for a turn.
-            refreshComposerModel(bound, bound.id.value)
-            return ChatHandle(this, bound)
-        }
+        val session = if (chatId == null) newChatSession() else registered(chatId)
+        // A read may already have answered for this chat; the chip does not wait for a turn.
+        refreshComposerModel(session, session.id.value)
+        return ChatHandle(this, session)
+    }
+
+    /**
+     * The one session a "new chat" means. Before the greeting there is nothing to name, so it is
+     * the single pending slot; after it, it is the session the greeting minted. A fresh session
+     * per ask was two chats wearing one name: the shell asks twice (once to mark the chat for the
+     * notice rule, once for the screen), and the second one was never in the registry, so the
+     * send filled a thread nobody drew and its history stayed unread forever (T29, T30).
+     */
+    private fun newChatSession(): ChatSession {
+        val greeted = greetingChatId
+        if (greeted != null) return registered(greeted)
+        val created = ChatSession(id = MutableStateFlow(null))
+        pending.update { current -> current ?: created }
+        return pending.value ?: created
+    }
+
+    /** One session per chat id, whichever caller asked first. */
+    private fun registered(chatId: String): ChatSession {
         val created = ChatSession(id = MutableStateFlow(chatId))
         registry.update { current -> current + (chatId to (current[chatId] ?: created)) }
-        val session = registry.value.getValue(chatId)
-        refreshComposerModel(session, chatId)
-        return ChatHandle(this, session)
+        return registry.value.getValue(chatId)
     }
 
     /** Refresh the drawer from `GET /api/sessions` (plan.md C5.1, D15.6). */
@@ -398,6 +401,10 @@ public class NanobotCore internal constructor(
 
     private suspend fun onOpening(payload: BootstrapPayload) {
         this.payload = payload
+        // The chip is the gateway's own answer and it has one for a chat that has no turns yet,
+        // so it is read once per socket rather than as a side effect of opening a chat with an
+        // id: a brand-new chat has none, and it named nothing until a turn ran (T28).
+        readModelsLater()
         // A new socket was told nothing: the gateway subscribes per connection (`runtime.py`
         // `_attach`, `_conn_chats`), so an `attached` from the socket before it says nothing about
         // this one. Without this, `open()` after a reconnect asks for nothing and an answer that
@@ -603,24 +610,26 @@ public class NanobotCore internal constructor(
      * the same reducer as a live turn (plan.md D9).
      */
     internal suspend fun openChat(chatId: String) {
+        // Once per chat per socket: the page cannot have changed under a chat this core has
+        // already replayed, and a second read would double nothing but the round trip. The read
+        // is in flight from the moment it is asked for, before the attach goes out, so a screen
+        // that has just asked never draws "nothing here" over a page that is on its way.
+        val fresh = hydrated.add(chatId)
+        if (fresh) registry.value[chatId]?.history?.value = HistoryStatus.Loading
         val routed = ChatRouter.open(chatSet, chatId)
         chatSet = routed.set
         routed.effects.mapNotNull { (it as? Effect.Send)?.frame }.forEach { engine.send(it) }
-        // Once per chat per socket: the page cannot have changed under a chat this core has
-        // already replayed, and a second read would double nothing but the round trip.
-        val fresh = hydrated.add(chatId)
         coroutineScope {
-            if (fresh) {
-                // The read is starting: from here until it answers, an empty thread is "not yet".
-                registry.value[chatId]?.history?.value = HistoryStatus.Loading
-                launch { replayHistory(chatId) }
-            }
-            // A chat that has run no turn on this device knows no model: the greeting carries
-            // none (`runtime.py` `_connection_loop`) and a compacted page stores no
-            // `turn_model_updated`. The settings read that names the chip goes out beside the
-            // page, which is the moment the WebUI reads it too (`ThreadShell.tsx`).
-            launch { readModelsForChip() }
+            if (fresh) launch { replayHistory(chatId) }
         }
+    }
+
+    /**
+     * The settings read runs beside the pump: `/api/settings` is an HTTP round trip, and a
+     * connect that awaited one would be as slow as the gateway's slowest read.
+     */
+    private fun readModelsLater() {
+        scope.launch { readModelsForChip() }
     }
 
     /** Once per socket: the gateway's own answer to "which preset is this chat on" (I5). */
