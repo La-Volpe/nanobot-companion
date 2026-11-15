@@ -26,10 +26,12 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -144,9 +146,15 @@ class ChatRoundTripTest {
         val core = NanobotCore(GatewayProfile(url = "http://localhost", secret = "s3cr3t"), deps(), client())
 
         assertIs<ConnectResult.Connected>(core.connect())
-        core.connection.first { it is ConnectionState.Offline }
+        val noticed = withTimeoutOrNull(15_000) { core.connection.first { it is ConnectionState.Offline } }
+        assertNotNull(
+            noticed,
+            "the client noticed the closed socket; it was ${core.connection.value} after 15 s",
+        )
 
-        assertIs<ConnectResult.Connected>(core.connect())
+        val again = withTimeoutOrNull(15_000) { core.connect() }
+        assertNotNull(again, "the second connect returned; the state was ${core.connection.value}")
+        assertIs<ConnectResult.Connected>(again)
         core.disconnect(forget = false)
 
         assertEquals(listOf("token-1", "token-2"), handshakes, "a reconnect handshakes with a token minted for it, never the spent one")

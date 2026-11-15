@@ -185,7 +185,11 @@ public class NanobotCore internal constructor(
             }
 
             is EngineOpen.Ready -> {
-                _connection.value = ConnectionState.Open
+                // No `Open` here: the pump sets it when it reduces `ready`, and that is the only
+                // place it can be set in order. Assigning it again on the way out of `connect()`
+                // clobbered the `Offline` a socket that died during the handshake had already
+                // reported — a green dot over a socket nobody was reading, which is how a
+                // closed-by-the-gateway connection stayed "Open" for the life of the app.
                 ConnectResult.Connected(opened.payload.modelName)
             }
         }
