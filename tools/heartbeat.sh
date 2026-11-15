@@ -12,7 +12,10 @@ cd "$ROOT" 2>/dev/null || { echo "repo: unreachable at $ROOT"; exit 0; }
 
 dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
 head=$(git log --oneline -1 2>/dev/null | cut -c1-60)
-queue=$(sed -n 's/^Done: //p' tasks.md 2>/dev/null | head -1)
+# The queue line moved into a status sentence when tasks.md was rewritten for
+# reading; read both shapes so a tidy-up cannot silently turn this into "?".
+queue=$(sed -n 's/^\*\*Status: \(.*\)\*\*.*/\1/p' tasks.md 2>/dev/null | head -1)
+[ -n "$queue" ] || queue=$(sed -n 's/^Done: //p' tasks.md 2>/dev/null | head -1)
 gateway=$(tools/nanobot-dev.sh status >/dev/null 2>&1 && echo up || echo down)
 run=$(stat -L -f '%z B, mtime %Sm' -t '%H:%M' .pi/current-run.output 2>/dev/null || echo none)
 next=$(grep -m1 '^Next:' HEARTBEAT.md 2>/dev/null | sed 's/^Next: //')
