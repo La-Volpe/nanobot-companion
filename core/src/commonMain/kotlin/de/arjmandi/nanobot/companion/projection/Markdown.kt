@@ -37,8 +37,16 @@ public sealed interface MarkdownBlock {
     public data object Rule : MarkdownBlock
 }
 
-/** One list item: how deep it sits, and its own inline content. */
-public data class ListItem(public val depth: Int, public val inlines: List<Inline>)
+/**
+ * One list item: how deep it sits, and its own inline content. `checked` is non-null only for a
+ * task item (`- [ ]`, `- [x]`), which is a markdown checkbox and not a list of its own: the
+ * WebUI draws the box in the item's gutter.
+ */
+public data class ListItem(
+    public val depth: Int,
+    public val inlines: List<Inline>,
+    public val checked: Boolean? = null,
+)
 
 public enum class Alignment { None, Left, Center, Right }
 
@@ -51,6 +59,8 @@ public sealed interface Inline {
     public data class Emphasis(public val inlines: List<Inline>) : Inline
 
     public data class Strong(public val inlines: List<Inline>) : Inline
+
+    public data class Strikethrough(public val inlines: List<Inline>) : Inline
 
     public data class Link(public val inlines: List<Inline>, public val destination: String) : Inline
 }
@@ -71,6 +81,7 @@ public fun List<Inline>.plainText(): String = joinToString("") { inline ->
         is Inline.Code -> inline.text
         is Inline.Emphasis -> inline.inlines.plainText()
         is Inline.Strong -> inline.inlines.plainText()
+        is Inline.Strikethrough -> inline.inlines.plainText()
         is Inline.Link -> inline.inlines.plainText()
     }
 }

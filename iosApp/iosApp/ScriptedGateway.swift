@@ -22,6 +22,10 @@ final class ScriptedGateway: GatewayConnecting {
         /// Answers with whatever the switch says: a self-signed gateway that only works once
         /// the user allows an unverified certificate.
         case selfSigned
+        /// A connected shell whose chat streams the markdown fixture (`ScriptedChat.document`),
+        /// so every construct the core parses can be seen on a device without a model in the
+        /// loop: the parser, the split and both renderers are the real ones.
+        case markdown
     }
 
     private let scenario: Scenario
@@ -34,7 +38,7 @@ final class ScriptedGateway: GatewayConnecting {
     func connect(address: String, key: String, allowUnverifiedCertificate: Bool) async -> GatewayOutcome {
         lastAllowUnverified = allowUnverifiedCertificate
         switch scenario {
-        case .connected: return .connected(model: "scripted-model")
+        case .connected, .markdown: return .connected(model: "scripted-model")
         case .authFailed: return .failed(.authFailed, detail: nil)
         case .tlsRejected: return .failed(.tlsRejected, detail: nil)
         case .unreachable: return .failed(.unreachable, detail: nil)

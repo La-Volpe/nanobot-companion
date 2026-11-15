@@ -52,7 +52,8 @@ sealed interface MdBlock {
     }
 }
 
-data class MdListItem(val depth: Int, val inlines: List<MdInline>)
+/** One item; `checked` is non-null only for a task item, whose box sits in the gutter. */
+data class MdListItem(val depth: Int, val inlines: List<MdInline>, val checked: Boolean? = null)
 
 enum class MdAlignment { None, Left, Center, Right }
 
@@ -72,6 +73,10 @@ sealed interface MdInline {
     }
 
     data class Strong(val inlines: List<MdInline>) : MdInline {
+        override val plainText: String get() = inlines.plainText
+    }
+
+    data class Strikethrough(val inlines: List<MdInline>) : MdInline {
         override val plainText: String get() = inlines.plainText
     }
 

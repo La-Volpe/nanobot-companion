@@ -9,25 +9,35 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,11 +92,16 @@ private fun BlockView(block: MdBlock, blockId: String, isCopied: (String) -> Boo
             block.items.forEachIndexed { index, item ->
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Spacer(modifier = Modifier.width((item.depth * 16).dp))
-                    Text(
-                        text = if (block.ordered) "${block.start + index}." else "\u2022",
-                        style = scaledReadingStyle(),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    val box = item.checked
+                    if (box != null) {
+                        TaskBox(checked = box)
+                    } else {
+                        Text(
+                            text = if (block.ordered) "${block.start + index}." else "\u2022",
+                            style = scaledReadingStyle(),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = inlineText(item.inlines),
@@ -123,8 +138,58 @@ private fun BlockView(block: MdBlock, blockId: String, isCopied: (String) -> Boo
 }
 
 /**
+ * The WebUI's `emerald-500`: the ring and fill of a task box (`border-emerald-500 bg-emerald-500`,
+ * with a white tick, in both themes). iOS draws the same value from the same place.
+ */
+private val TaskBoxFill = Color(0xFF10B981)
+
+/**
+ * The gutter of a task item, drawn as the WebUI draws it: a dashed ring that fills solid, with a
+ * tick, once the box is checked (`MarkdownTextRenderer`'s checkbox span).
+ */
+@Composable
+private fun TaskBox(checked: Boolean) {
+    val ring = if (checked) TaskBoxFill else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+    val density = LocalDensity.current
+    Box(
+        modifier = Modifier
+            .padding(top = 3.dp)
+            .size(14.dp)
+            .clip(CircleShape)
+            .background(if (checked) ring else Color.Transparent)
+            // The WebUI's unchecked box is a dashed ring; a checked one is solid.
+            .drawBehind {
+                val stroke = 1.dp.toPx()
+                drawCircle(
+                    color = ring,
+                    radius = size.minDimension / 2 - stroke / 2,
+                    style = Stroke(
+                        width = stroke,
+                        pathEffect = if (checked) null else PathEffect.dashPathEffect(
+                            floatArrayOf(with(density) { 2.dp.toPx() }, with(density) { 1.5.dp.toPx() })
+                        )
+                    ),
+                )
+            }
+            .testTag(if (checked) "markdown.task.done" else "markdown.task.open"),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (checked) {
+            Icon(
+                painter = painterResource(R.drawable.ic_webui_check),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(9.dp),
+            )
+        }
+    }
+}
+
+/**
  * A fence: the language chip and Copy sit above the code, and a block with more than one line is
- * numbered. A fence that is still arriving has no Copy, because the text is not finished yet.
+ * numbered. Copy is there while the fence is still arriving too, because that is the state a
+ * diagram's source is in for the whole turn: the source is readable and worth taking before the
+ * turn ends.
  */
 @Composable
 private fun CodeBlock(block: MdBlock.Code, blockId: String, copied: Boolean, onCopy: () -> Unit) {
@@ -146,13 +211,11 @@ private fun CodeBlock(block: MdBlock.Code, blockId: String, copied: Boolean, onC
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp).testTag("markdown.code.language"),
             )
-            if (block.closed) {
-                TextButton(onClick = onCopy, modifier = Modifier.heightIn(min = Design.minimumTarget)) {
-                    Text(
-                        text = stringResource(if (copied) R.string.markdown_copied else R.string.markdown_copy),
-                        fontSize = Design.Interface.microSize,
-                    )
-                }
+            TextButton(onClick = onCopy, modifier = Modifier.heightIn(min = Design.minimumTarget)) {
+                Text(
+                    text = stringResource(if (copied) R.string.markdown_copied else R.string.markdown_copy),
+                    fontSize = Design.Interface.microSize,
+                )
             }
         }
         val numbered = block.lines.size > 1
@@ -233,6 +296,10 @@ private fun androidx.compose.ui.text.AnnotatedString.Builder.appendInlines(
             }
 
             is MdInline.Strong -> withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
+                appendInlines(inline.inlines, codeColour, linkColour)
+            }
+
+            is MdInline.Strikethrough -> withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) {
                 appendInlines(inline.inlines, codeColour, linkColour)
             }
 

@@ -36,6 +36,8 @@ struct ReadingListItem: Equatable {
     /// How deep the item sits; both platforms indent from this number rather than nesting.
     let depth: Int
     let inlines: [ReadingInline]
+    /// Non-nil only for a task item (`- [ ]`), whose box sits in the gutter.
+    var checked: Bool? = nil
 }
 
 enum ReadingAlignment: Equatable {
@@ -50,12 +52,14 @@ indirect enum ReadingInline: Equatable {
     case code(String)
     case emphasis([ReadingInline])
     case strong([ReadingInline])
+    case strikethrough([ReadingInline])
     case link([ReadingInline], destination: String)
 
     var readingText: String {
         switch self {
         case let .text(value), let .code(value): value
-        case let .emphasis(inlines), let .strong(inlines), let .link(inlines, _): inlines.readingText
+        case let .emphasis(inlines), let .strong(inlines), let .strikethrough(inlines),
+             let .link(inlines, _): inlines.readingText
         }
     }
 }

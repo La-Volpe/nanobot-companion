@@ -44,10 +44,16 @@ struct ReadingBlocksView: View {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(ordered ? "\(start + index)." : "•")
-                            .font(ReadingType.font(size: readingSize))
-                            .foregroundStyle(.secondary)
-                            .frame(minWidth: 16, alignment: .trailing)
+                        if let checked = item.checked {
+                            // A task item's box, drawn rather than glyphed: the WebUI's own box is
+                            // a control, and a checkmark character here would be a different mark.
+                            TaskBox(checked: checked, size: readingSize)
+                        } else {
+                            Text(ordered ? "\(start + index)." : "•")
+                                .font(ReadingType.font(size: readingSize))
+                                .foregroundStyle(.secondary)
+                                .frame(minWidth: 16, alignment: .trailing)
+                        }
                         Text(ReadingText.attributed(item.inlines))
                             .font(ReadingType.font(size: readingSize))
                             .lineSpacing(readingSize * 0.5)
@@ -76,6 +82,36 @@ struct ReadingBlocksView: View {
         case .rule:
             Divider()
         }
+    }
+}
+
+/// The gutter of a task item, drawn as the WebUI draws it: a dashed ring, filled solid with a
+/// tick once the box is checked (`MarkdownTextRenderer`'s `input[type=checkbox]` span uses
+/// `border-emerald-500 bg-emerald-500` and a white `Check` in both themes).
+struct TaskBox: View {
+    let checked: Bool
+    let size: CGFloat
+
+    private static let emerald = Color(hex: 0x10B981)
+    private var box: CGFloat { max(11, size * 0.72) }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(checked ? Self.emerald : Color.clear)
+            Circle()
+                .strokeBorder(
+                    checked ? Self.emerald : Color.secondary.opacity(0.55),
+                    style: StrokeStyle(lineWidth: 1, dash: checked ? [] : [2, 1.5])
+                )
+            if checked {
+                WebUIIcon(name: "Check", size: box * 0.66)
+                    .foregroundStyle(Color.white)
+            }
+        }
+        .frame(width: box, height: box)
+        .frame(minWidth: 16, alignment: .trailing)
+        .accessibilityLabel(checked ? "done" : "open")
     }
 }
 
@@ -225,6 +261,10 @@ enum ReadingText {
         case let .strong(inlines):
             var run = attributed(inlines)
             run.inlinePresentationIntent = .stronglyEmphasized
+            return run
+        case let .strikethrough(inlines):
+            var run = attributed(inlines)
+            run.strikethroughStyle = .single
             return run
         case let .link(inlines, destination):
             var run = attributed(inlines)

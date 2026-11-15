@@ -135,6 +135,49 @@ class MarkdownScreenTest {
     }
 
     @Test
+    fun aTaskItemDrawsItsBoxAndStrikethroughKeepsItsLine() {
+        screen(
+            MarkdownView(
+                listOf(
+                    MdBlock.Bullets(
+                        ordered = false,
+                        start = 1,
+                        items = listOf(
+                            MdListItem(0, listOf(MdInline.Text("shipped")), checked = true),
+                            MdListItem(0, listOf(MdInline.Text("pending")), checked = false),
+                        ),
+                    ),
+                    MdBlock.Paragraph(listOf(MdInline.Strikethrough(listOf(MdInline.Text("gone"))))),
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("markdown.task.done").assertIsDisplayed()
+        compose.onNodeWithTag("markdown.task.open").assertIsDisplayed()
+        compose.onNodeWithText("gone").assertIsDisplayed()
+    }
+
+    @Test
+    fun aDiagramIsItsSourceAndCanBeCopiedWhileTheTurnRuns() {
+        // Mermaid is source on this client (no diagram engine, no dependency): the block is the
+        // fence the gateway sent, with a language chip and Copy, and Copy is there before the
+        // turn ends because the source is worth taking as it arrives.
+        screen(
+            MarkdownView(
+                listOf(MdBlock.Code(language = "mermaid", code = "graph TD\n  A-->B", closed = false)),
+            ),
+        )
+
+        compose.onNodeWithTag("markdown.code").assertIsDisplayed()
+        compose.onNodeWithText("mermaid").assertIsDisplayed()
+        // The code lines live inside the block's own horizontal scroll, so they are in the tree
+        // rather than guaranteed inside the viewport: the chip and Copy above them are what is
+        // reliably on screen at any width.
+        compose.onNodeWithText("  A-->B").fetchSemanticsNode()
+        compose.onNodeWithText("Copy").assertIsDisplayed()
+    }
+
+    @Test
     fun aTableScrollsInsideItsOwnBox() {
         screen(
             MarkdownView(
