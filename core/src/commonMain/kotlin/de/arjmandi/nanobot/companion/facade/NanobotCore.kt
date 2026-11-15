@@ -50,6 +50,7 @@ import de.arjmandi.nanobot.companion.wire.TranscriptionErrorFrame
 import de.arjmandi.nanobot.companion.wire.TranscriptionResultFrame
 import de.arjmandi.nanobot.companion.wire.SessionUpdatedFrame
 import de.arjmandi.nanobot.companion.wire.TurnEndFrame
+import de.arjmandi.nanobot.companion.wire.TurnModelUpdatedFrame
 import de.arjmandi.nanobot.companion.wire.SettingsState
 import de.arjmandi.nanobot.companion.wire.UploadCapability
 import de.arjmandi.nanobot.companion.wire.UploadReference
@@ -252,7 +253,7 @@ public class NanobotCore internal constructor(
     public fun chat(chatId: String?): ChatHandle {
         val session = if (chatId == null) newChatSession() else registered(chatId)
         // A read may already have answered for this chat; the chip does not wait for a turn.
-        refreshComposerModel(session, session.id.value)
+        mirrorComposer(session, session.id.value)
         return ChatHandle(this, session)
     }
 
@@ -306,14 +307,36 @@ public class NanobotCore internal constructor(
     /** The automations page (`GET /api/webui/automations`, C7.2). */
     @Throws(Throwable::class)
     public suspend fun refreshAutomations(): CoreError? {
-        val token = payload?.apiToken ?: return CoreError.AuthFailed
-        val client = http ?: return CoreError.Unreachable
+        val token = payload?.apiToken ?: return automationsFailed(CoreError.AuthFailed)
+        val client = http ?: return automationsFailed(CoreError.Unreachable)
         return when (val outcome = AutomationsClient(client, profile.url).fetch(token)) {
             is AutomationsOutcome.Loaded -> {
                 _automations.value = AutomationsState(jobs = outcome.jobs, loaded = true)
                 null
             }
-            is AutomationsOutcome.Failed -> outcome.error
+            is AutomationsOutcome.Failed -> automationsFailed(outcome.error)
+        }
+    }
+
+    /**
+     * A read that did not answer leaves the state saying so, and keeps the jobs it already had:
+     * a stale page beats a blank one, and the page needs the difference between "refused" and
+     * "none" to avoid saying the wrong thing (T41).
+     */
+    private fun automationsFailed(error: CoreError): CoreError {
+        _automations.value = _automations.value.copy(loaded = true, failed = true)
+        return error
+    }
+
+    /**
+     * The automations read runs beside the pump, like the settings one: `/api/webui/automations`
+     * is an HTTP round trip. A reconnect blanks the page's state (`disconnect`), so the new socket
+     * asks again rather than leaving the page empty until someone taps it (T41).
+     */
+    private fun readAutomationsLater() {
+        scope.launch {
+            if (payload?.apiToken == null || http == null) return@launch
+            refreshAutomations()
         }
     }
 
@@ -405,6 +428,7 @@ public class NanobotCore internal constructor(
         // so it is read once per socket rather than as a side effect of opening a chat with an
         // id: a brand-new chat has none, and it named nothing until a turn ran (T28).
         readModelsLater()
+        readAutomationsLater()
         // A new socket was told nothing: the gateway subscribes per connection (`runtime.py`
         // `_attach`, `_conn_chats`), so an `attached` from the socket before it says nothing about
         // this one. Without this, `open()` after a reconnect asks for nothing and an answer that
@@ -449,6 +473,12 @@ public class NanobotCore internal constructor(
             }
 
             else -> Unit
+        }
+
+        // The gateway naming the model a turn ran is the answer to a `/model` pick, so the
+        // client's own guess steps aside before the row is mirrored (T39).
+        if (frame is TurnModelUpdatedFrame && !frame.modelPreset.isNullOrBlank()) {
+            frame.chatId?.let { chatId -> registry.value[chatId]?.pickedPreset = null }
         }
 
         val routed = ChatRouter.reduce(chatSet, frame, deps.clock.nowMs())
@@ -602,6 +632,11 @@ public class NanobotCore internal constructor(
     }
 
     internal suspend fun write(frame: Outbound): Boolean = engine.send(frame)
+
+    /** A command that changed what the row draws asks for it once (T39's refused pick). */
+    internal fun remirrorComposer(session: ChatSession, chatId: String?) {
+        mirrorComposer(session, chatId)
+    }
 
     /**
      * One `attach` for a chat the screen opened (I3), then the history page (D46). The socket's
@@ -789,20 +824,34 @@ public class NanobotCore internal constructor(
         registry.update { current -> current + (chatId to (current[chatId] ?: waiting)) }
         pending.value = null
         chatSet = chatSet.copy(threads = chatSet.threads + (chatId to chatSet.thread(chatId)))
-        refreshComposerModel(waiting, chatId)
+        mirrorComposer(waiting, chatId)
     }
 
     /** The composer mirrors the thread's model and usage: the ring is drawn from here (C6.7). */
     private fun publish(chatId: String, thread: ThreadState) {
         val session = registry.value[chatId] ?: return
         session.thread.value = thread
-        val model = composerModel(chatId)
+        mirrorComposer(session, chatId)
+    }
+
+    /**
+     * One place where what the thread knows becomes what the row draws. A settings read lands
+     * after the frames that used it, so this runs again when the presets do (`republish`), and
+     * the ring's denominator is resolved the same way both times (T37).
+     */
+    private fun mirrorComposer(session: ChatSession, chatId: String?) {
+        val model = composerModel(chatId, session.pickedPreset)
         session.composer.update { composer ->
+            val thread = session.thread.value
+            val preset = model.preset ?: composer.modelPreset
+            val window = ContextUsage.window(thread, _settings.value, preset)
+            val usage = thread.usage ?: composer.usage
             composer.copy(
                 modelPreset = model.preset,
                 modelName = model.name ?: composer.modelName,
-                contextWindowTokens = thread.contextWindowTokens ?: composer.contextWindowTokens,
-                usage = thread.usage ?: composer.usage,
+                contextWindowTokens = window,
+                usage = usage,
+                contextPercent = ContextUsage.percent(usage?.contextTokens, window),
             )
         }
     }
@@ -813,12 +862,15 @@ public class NanobotCore internal constructor(
      * stored for the chat, then the one the gateway is on. A chat that overrides the global
      * preset must not be labelled with the global one, which is why the chat's own answer leads.
      */
-    private fun composerModel(chatId: String?): ModelOnChip {
+    private fun composerModel(chatId: String?, picked: String? = null): ModelOnChip {
         val thread = chatId?.let { chatSet.thread(it) }
         val row = chatId?.let { id -> _sessions.value.rows.firstOrNull { it.chatId == id } }
         val settings = _settings.value
         return ModelOnChip(
-            preset = thread?.modelPreset?.takeIf(String::isNotBlank)
+            // The chat's own pick leads: `/model` answers with a turn and no `turn_model_updated`,
+            // so until a frame names the model this is the only thing that knows (T39).
+            preset = picked?.takeIf(String::isNotBlank)
+                ?: thread?.modelPreset?.takeIf(String::isNotBlank)
                 ?: row?.modelPreset?.takeIf(String::isNotBlank)
                 // `agent.model_preset` is the configured one; `active` is the gateway's own mark
                 // for the same question, and one of the two is present on every real payload.
@@ -830,14 +882,8 @@ public class NanobotCore internal constructor(
 
     /** A settings or drawer read can answer for a chat that has had no turn yet. */
     private fun republishComposerModels() {
-        registry.value.forEach { (chatId, session) -> refreshComposerModel(session, chatId) }
-        pending.value?.let { refreshComposerModel(it, it.id.value) }
-    }
-
-    /** The chip's model, for a chat the gateway has answered about but that has not run a turn. */
-    private fun refreshComposerModel(session: ChatSession, chatId: String?) {
-        val model = composerModel(chatId)
-        session.composer.update { it.copy(modelPreset = model.preset, modelName = model.name ?: it.modelName) }
+        registry.value.forEach { (chatId, session) -> mirrorComposer(session, chatId) }
+        pending.value?.let { mirrorComposer(it, it.id.value) }
     }
 
     private fun persist(chatId: String) {

@@ -13,6 +13,7 @@ import de.arjmandi.nanobot.companion.wire.BootstrapParser
 import de.arjmandi.nanobot.companion.wire.BootstrapResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -97,6 +98,25 @@ class SendTest {
         assertTrue(handle.thread.value.turns.isEmpty(), "a send that never reached the socket leaves no bubble")
     }
 
+    /**
+     * T42: the owner's prompt was in the thread *and* back in the composer, so the receipt said
+     * "refused" about a message the gateway had taken. The mirror image of that is this: a
+     * socket that will not take the frame must not leave a bubble and an emptied field.
+     */
+    @Test
+    fun aSocketThatRefusesTheWriteLeavesNoBubble() = runTest {
+        val socket = FakeSocket()
+        val core = core(socket)
+        val handle = core.chat(chat)
+        socket.refusesWrites = true
+
+        val receipt = handle.send(OutboundDraft(text = "the socket will not carry this"))
+
+        assertEquals(SendReceipt.Rejected(SendRejection.NotConnected), receipt, "a write the socket refused is not a send")
+        assertTrue(handle.thread.value.turns.isEmpty(), "and a send that never went leaves no bubble")
+        assertEquals("the socket will not carry this", handle.composer.value.draft, "the text comes back to the composer")
+    }
+
     @Test
     fun frameTooLargeIsRejectedLocally() = runTest {
         val socket = FakeSocket()
@@ -124,6 +144,31 @@ class SendTest {
         assertEquals("message", envelopeType(socket.sent.single()))
         assertTrue(socket.sent.single().contains("\"content\":\"sent\""))
         assertNull(handle.thread.value.turn("companion-1000-0")?.answer?.text?.takeIf { it.isNotEmpty() })
+    }
+
+    /**
+     * T42: the send the phone showed twice. A bubble for the text is proof the message landed,
+     * so the composer keeps the field empty even when the call that sent it came back as a
+     * failure; and a bubble that was already there is not proof of anything new.
+     */
+    @Test
+    fun aBubbleForTheTextIsProofTheSendLanded() = runTest {
+        val socket = FakeSocket()
+        val core = core(socket)
+        val handle = core.chat(chat)
+
+        val mark = handle.threadMark()
+        assertTrue(mark.isEmpty(), "a chat with no turns marks nothing")
+
+        assertIs<SendReceipt.Accepted>(handle.send(OutboundDraft(text = "did this land?")))
+
+        assertTrue(handle.promptLanded(text = "did this land?", mark = mark), "the bubble is the proof")
+        assertTrue(handle.promptLanded(text = "  did this land?  ", mark = mark), "the same words, trimmed")
+        assertFalse(handle.promptLanded(text = "something else", mark = mark), "another text is not this send")
+        assertFalse(
+            handle.promptLanded(text = "did this land?", mark = handle.threadMark()),
+            "the same words again are a new send, not this bubble",
+        )
     }
 
     private fun envelopeType(text: String): String =

@@ -8,6 +8,9 @@ struct ComposerSnapshot: Equatable {
     var contextWindowTokens: Int?
     /// `turn_end.usage.context_tokens`: the ring's numerator (D15.4).
     var usedTokens: Int?
+    /// The core's `Math.min(100, Math.round(used / window * 100))`; the ring draws this, so
+    /// neither phone can round the same two numbers differently (T37).
+    var contextPercent: Int?
     var access: WorkspaceAccess = .default
     /// The prompt waiting for the running turn to end, if there is one.
     var queued: String?
@@ -17,6 +20,7 @@ struct ComposerSnapshot: Equatable {
         modelPreset: String? = nil,
         contextWindowTokens: Int? = nil,
         usedTokens: Int? = nil,
+        contextPercent: Int? = nil,
         access: WorkspaceAccess = .default,
         queued: String? = nil
     ) {
@@ -24,6 +28,7 @@ struct ComposerSnapshot: Equatable {
         self.modelPreset = modelPreset
         self.contextWindowTokens = contextWindowTokens
         self.usedTokens = usedTokens
+        self.contextPercent = contextPercent
         self.access = access
         self.queued = queued
     }
@@ -45,6 +50,9 @@ struct ChatModelPreset: Identifiable, Equatable {
     let model: String
     let provider: String?
     let contextWindowTokens: Int?
+    /// The window as the core's token copy prints it (`1M`, `200K`): the sheet is not the place
+    /// for a third opinion about how a million is written (T36).
+    var contextLabel: String? = nil
     let active: Bool
     let isDefault: Bool
 
@@ -53,7 +61,7 @@ struct ChatModelPreset: Identifiable, Equatable {
     /// The second line of the sheet's row: what the preset actually runs.
     var subtitle: String {
         var parts = [isDefault ? "preset default" : "preset \(name)"]
-        if let contextWindowTokens { parts.append("\(contextWindowTokens / 1000)k context") }
+        if let contextLabel { parts.append("\(contextLabel) context") }
         if let provider { parts.append(provider) }
         return parts.joined(separator: " · ")
     }
@@ -112,7 +120,8 @@ protocol ComposerDriving: AnyObject {
     /// Send the queued prompt now: a steer on the running turn.
     func sendQueuedNow() async
     func discardQueued()
-    func setModelPreset(_ preset: String) async
+    /// False when the `/model` command never reached the socket, so the pick can say so (T39).
+    func setModelPreset(_ preset: String) async -> Bool
     func setWorkspaceScope(_ access: WorkspaceAccess) async
     /// The slash or mention sheet for this text, or nil when neither is open (C6.4).
     func loadPalette(text: String, cursor: Int) async -> PaletteSheet?
@@ -126,7 +135,8 @@ final class NoopComposer: ComposerDriving {
     func stop() async {}
     func sendQueuedNow() async {}
     func discardQueued() {}
-    func setModelPreset(_ preset: String) async {}
+    /// False when the `/model` command never reached the socket, so the pick can say so (T39).
+    func setModelPreset(_ preset: String) async -> Bool { false }
     func setWorkspaceScope(_ access: WorkspaceAccess) async {}
     func loadPalette(text: String, cursor: Int) async -> PaletteSheet? { nil }
 }

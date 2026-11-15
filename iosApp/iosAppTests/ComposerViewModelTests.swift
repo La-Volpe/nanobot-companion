@@ -19,6 +19,8 @@ struct ComposerViewModelTests {
         var palettes = 0
         var paletteRows: PaletteSheet?
         var sendNowSucceeds = true
+        /// False is a pick the socket refused (T39).
+        var presetAccepted = true
 
         func sendPrompt(_ text: String, media: [SentAttachment]) async -> Bool {
             sent.append(text)
@@ -29,7 +31,7 @@ struct ComposerViewModelTests {
         func stop() async { stops += 1 }
         func sendQueuedNow() async { sendNowCount += 1; sendNowSucceeds.toggle() }
         func discardQueued() { discarded += 1 }
-        func setModelPreset(_ preset: String) async { presets.append(preset) }
+        func setModelPreset(_ preset: String) async -> Bool { presets.append(preset); return presetAccepted }
         func setWorkspaceScope(_ access: WorkspaceAccess) async { accesses.append(access) }
         func loadPalette(text: String, cursor: Int) async -> PaletteSheet? {
             palettes += 1
@@ -145,17 +147,20 @@ struct ComposerViewModelTests {
         #expect(model.isCopied("code-1") == false, "and the checkmark goes away on its own")
     }
 
-    @Test func theRingReadsUsedTokensOverTheContextWindow() {
+    /// The pill draws the core's own percent, from `:core`'s `ContextUsage`: the arithmetic
+    /// (rounding, the cap at 100, the choice of denominator) is `ContextUsageTest`'s to prove,
+    /// and two platforms holding two copies of it is how the phone and the browser drifted apart.
+    @Test func theRingDrawsTheCoresPercent() {
         let model = model()
 
-        model.update(snapshot: ComposerSnapshot(contextWindowTokens: 200_000, usedTokens: 84_000))
-        #expect(model.usagePercent == 42, "42% of the window, which is the number the pill shows")
+        model.update(snapshot: ComposerSnapshot(contextWindowTokens: 200_000, usedTokens: 141_510, contextPercent: 71))
+        #expect(model.usagePercent == 71, "the number the pill shows is the core's")
 
-        model.update(snapshot: ComposerSnapshot(contextWindowTokens: 200_000, usedTokens: 999_999))
+        model.update(snapshot: ComposerSnapshot(contextWindowTokens: 200_000, usedTokens: 999_999, contextPercent: 100))
         #expect(model.usagePercent == 100, "a ring never overflows")
 
-        model.update(snapshot: ComposerSnapshot())
-        #expect(model.usagePercent == nil, "no window yet, no ring: a percentage of nothing is a lie")
+        model.update(snapshot: ComposerSnapshot(contextWindowTokens: 200_000, usedTokens: 84_000))
+        #expect(model.usagePercent == nil, "no percent from the core, no ring: a view model does not invent one")
     }
 
     @Test func theModelSheetOffersTheGatewaysPresetsAndNamesTheActiveOne() {
@@ -212,6 +217,21 @@ struct ComposerViewModelTests {
 
         #expect(driver.presets == ["primary"], "the switch is the /model command on this chat (C6.2)")
         #expect(model.sheet == nil, "picking closes the sheet")
+        #expect(model.refusalLine == nil, "a pick that went out says nothing under the field")
+    }
+
+    /// T39: the pick the socket refused used to vanish. The chip had already moved, so silence
+    /// left it naming a model the chat was not on.
+    @Test func aPickTheSocketRefusedIsSaidOutLoud() async {
+        let driver = FakeDriver()
+        driver.presetAccepted = false
+        let model = model(driver: driver)
+        model.openModelSheet()
+
+        await model.pick(preset: preset("primary"))
+
+        #expect(driver.presets == ["primary"], "the command was attempted")
+        #expect(model.refusalLine == "The gateway did not take that model.", "and the reader hears about it")
     }
 
     @Test func theAccessChipSwitchesToFullAndBack() async {

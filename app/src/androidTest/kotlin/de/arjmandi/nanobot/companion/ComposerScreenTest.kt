@@ -75,8 +75,9 @@ class ComposerScreenTest {
             discarded += 1
         }
 
-        override suspend fun setModelPreset(preset: String) {
+        override suspend fun setModelPreset(preset: String): Boolean {
             presets += preset
+            return true
         }
 
         override suspend fun setWorkspaceScope(access: WorkspaceAccess) {
@@ -165,7 +166,8 @@ class ComposerScreenTest {
 
     @Test
     fun theRingShowsTheUsedShareOfTheWindow() {
-        screen(snapshot = ComposerSnapshot(contextWindowTokens = 200_000, usedTokens = 84_000))
+        // The percent is the core's (`ContextUsage`), so the fixture carries what the adapter maps.
+        screen(snapshot = ComposerSnapshot(contextWindowTokens = 200_000, usedTokens = 84_000, contextPercent = 42))
 
         compose.onNodeWithText("42%").assertIsDisplayed()
     }

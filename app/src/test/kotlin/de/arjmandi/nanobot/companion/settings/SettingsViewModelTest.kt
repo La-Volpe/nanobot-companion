@@ -88,6 +88,7 @@ class SettingsViewModelTest {
         modelPreset = "primary",
         provider = "ollama",
         contextWindowTokens = 32_768,
+        contextWindowLabel = "32.8K",
         transcriptionProvider = "groq",
         transcriptionModel = "whisper-large-v3",
         presets = listOf("default", "primary"),
@@ -121,8 +122,25 @@ class SettingsViewModelTest {
         assertEquals("0.4.1", rows.first { it.label == "nanobot Gateway" }.value)
         assertEquals("Commit 28d73b69", rows.first { it.label == "nanobot Gateway" }.detail)
         assertTrue(labels.none { it.lowercase().contains("uptime") }, "the payload has no uptime: $labels")
-        assertTrue(rows.contains(SettingsRow("Context window", detail = null, value = "32k tokens")))
+        assertTrue(rows.contains(SettingsRow("Context window", detail = null, value = "32.8K tokens")))
         assertEquals("Whisper-large-v3", rows.first { it.label == "Transcription" }.value)
+    }
+
+    /**
+     * T36: the owner's gateway answers 1 000 000 and the row read "1000k tokens". The WebUI
+     * prints a million as `1M` (`model-context-format.ts`), so this row says `1M tokens` — the
+     * unit stays, because a bare `1M` next to a version string reads like one.
+     */
+    @Test
+    fun aMillionTokenWindowReadsOneM() {
+        val model = model()
+        // The label is the core's (`TokenCountTest` pins 1 000 000 -> 1M); the row adds the unit.
+        model.update(snapshot().copy(contextWindowTokens = 1_000_000, contextWindowLabel = "1M"))
+
+        assertTrue(
+            model.overviewRows.contains(SettingsRow("Context window", detail = null, value = "1M tokens")),
+            "a million is 1M, not 1000k: ${model.overviewRows}",
+        )
     }
 
     /** The plan's red line: notifications are local, and the model never pretends otherwise. */

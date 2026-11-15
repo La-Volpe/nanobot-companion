@@ -15,6 +15,8 @@ data class SettingsSnapshot(
     val modelPreset: String? = null,
     val provider: String? = null,
     val contextWindowTokens: Int? = null,
+    /** The window as the core's token copy prints it (`1M`, `200K`, `32.8K`): T36. */
+    val contextWindowLabel: String? = null,
     val transcriptionProvider: String? = null,
     val transcriptionModel: String? = null,
     val presets: List<String> = emptyList(),

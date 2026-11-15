@@ -33,7 +33,7 @@ import kotlinx.serialization.json.jsonPrimitive
 class ModelTest {
 
     private val chat = "websocket:a"
-    private suspend fun TestScope.core(socket: FakeSocket): NanobotCore {
+    private suspend fun TestScope.core(socket: FakeSocket, connect: Boolean = true): NanobotCore {
         val text = """
             {"token":"tok","ws_url":"ws://127.0.0.1:18765/","ws_path":"/","expires_in":300,
              "model_name":"deepseek-v4.1-flash:cloud",
@@ -56,6 +56,7 @@ class ModelTest {
             attempt = ConnectionAttempt({ BootstrapOutcome.Ready(payload) }, { socket }),
             http = null,
         )
+        if (!connect) return core
         socket.push("""{"event":"ready","chat_id":"$chat","client_id":"companion"}""")
         assertIs<ConnectResult.Connected>(core.connect())
         runCurrent()
@@ -64,6 +65,10 @@ class ModelTest {
         socket.sent.clear()
         return core
     }
+
+    /** The same core, before a greeting: its pending chat has no id yet (C5.3). */
+    private suspend fun TestScope.freshCore(socket: FakeSocket): NanobotCore =
+        core(socket = socket, connect = false)
 
     @Test
     fun setPresetSendsSlashModel() = runTest {
@@ -80,6 +85,78 @@ class ModelTest {
             sent.contains("\"content\":\"/model deepseek-v4.1-flash:cloud\""),
             "a preset switch is the /model command (builtin.py), not a frame of its own",
         )
+    }
+
+    /**
+     * T39: the owner tapped a preset and "nothing happened". `/model <preset>` is a turn of its
+     * own and the gateway answers it with a message and a `turn_end` — no `turn_model_updated`
+     * (measured against the dev gateway, 2026-11-15) — so the chip's optimistic pick is the only
+     * thing naming the new preset, and the next frame used to wipe it back to the gateway's
+     * configured one.
+     */
+    @Test
+    fun aPickedPresetSurvivesTheFramesThatFollow() = runTest {
+        val socket = FakeSocket()
+        val core = core(socket)
+        val handle = core.chat(chat)
+
+        handle.setModelPreset("Vision and OCR")
+        assertEquals("Vision and OCR", handle.composer.value.modelPreset, "the chip shows the pick at once")
+
+        socket.push("""{"event":"message","chat_id":"$chat","turn_id":"t39-0","text":"Switched model preset to `Vision and OCR`."}""")
+        socket.push("""{"event":"turn_end","chat_id":"$chat","turn_id":"t39-0","outcome":"completed"}""")
+        advanceUntilIdle()
+
+        assertEquals(
+            "Vision and OCR",
+            handle.composer.value.modelPreset,
+            "the pick stands until the gateway contradicts it, not until the next frame",
+        )
+    }
+
+    /** The gateway's own word for the model it ran wins over a pick it never confirmed (T39). */
+    @Test
+    fun theGatewaysAnswerOutranksThePick() = runTest {
+        val socket = FakeSocket()
+        val core = core(socket)
+        val handle = core.chat(chat)
+
+        handle.setModelPreset("Vision and OCR")
+        socket.push(
+            """{"event":"turn_model_updated","chat_id":"$chat","model_name":"deepseek-v4.1-flash",
+                "model_preset":"primary","context_window_tokens":32768}""".trimIndent(),
+        )
+        advanceUntilIdle()
+
+        assertEquals("primary", handle.composer.value.modelPreset, "the model that actually answered")
+    }
+
+    /**
+     * T39, the silent half: a pick on a socket that will not carry it told nobody and left the
+     * chip claiming a model the chat was not on.
+     */
+    @Test
+    fun aPickTheSocketRefusedSaysSoAndPutsTheChipBack() = runTest {
+        val socket = FakeSocket()
+        val core = core(socket)
+        val handle = core.chat(chat)
+        socket.push("""{"event":"turn_model_updated","chat_id":"$chat","model_name":"m","model_preset":"primary"}""")
+        advanceUntilIdle()
+        socket.refusesWrites = true
+
+        handle.setModelPreset("Vision and OCR")
+        assertEquals("primary", handle.composer.value.modelPreset, "and the chip goes back to what the chat is on")
+    }
+
+    /** A chat the gateway has not minted has nowhere to send `/model`: that is a sentence, not a no-op. */
+    @Test
+    fun aPickOnAChatWithNoIdIsRejected() = runTest {
+        val socket = FakeSocket()
+        val core = freshCore(socket)
+        // A chat with no greeting behind it keeps a null id (`newChatSession`, C5.3).
+        val fresh = core.chat(chatId = null)
+
+        assertEquals(PresetResult.Rejected(PresetRejection.NotConnected), fresh.setModelPreset("primary"))
     }
 
     @Test

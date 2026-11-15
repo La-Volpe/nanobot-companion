@@ -47,7 +47,7 @@ final class CoreHolder: ObservableObject {
 
     /// The last settings read, kept so a preset list survives the screen that asked for it.
     private var settings = CoreHolder.emptySettings {
-        didSet { presets = settings.modelPresets.map(ChatModelPreset.init(preset:)) }
+        didSet { presets = ModelPresets.shared.offered(settings: settings, chosen: nil).map(ChatModelPreset.init(preset:)) }
     }
 
     private var companion: Companion?
@@ -58,6 +58,20 @@ final class CoreHolder: ObservableObject {
     private var scriptedSettingsSnapshot: SettingsViewModel.Snapshot?
     func seedSettingsForUITest(_ snapshot: SettingsViewModel.Snapshot) {
         scriptedSettingsSnapshot = snapshot
+    }
+
+    /// The model sheet's list for a scripted launch, in the gateway's own shape: a tap can then
+    /// prove which rows the sheet offers, which is the one thing a seeded snapshot cannot (T40).
+    private var scriptedPresets: [ModelPreset] = []
+    /// The owner's own gateway (`/api/settings`, 2026-11-15), built-in preset and all: the sheet
+    /// hides that one because the core says so (`ModelPresets`), and this is what proves it on a
+    /// screen rather than in a unit test (T40).
+    func seedPresetsForUITest() {
+        scriptedPresets = [
+            ModelPreset(name: "default", model: "anthropic/claude-opus-4-5", provider: "auto", contextWindowTokens: 200_000, active: false, isDefault: true),
+            ModelPreset(name: "primary", model: "glm-5.3-flash:cloud", provider: "ollama", contextWindowTokens: 1_000_000, active: true, isDefault: false),
+            ModelPreset(name: "Vision and OCR", model: "gemma4:31b-cloud", provider: "ollama", contextWindowTokens: 256_000, active: false, isDefault: false),
+        ]
     }
     #endif
     private var subscriptions: [Cancellable] = []
@@ -77,6 +91,18 @@ final class CoreHolder: ObservableObject {
     @Published private(set) var requestedChatId: String?
 
     var isReachable: Bool { companion != nil }
+
+    /// The model sheet's list, ticked for the preset this chat is on (T39): the gateway's
+    /// `active` flag describes its configuration, and a chat can be on a different preset.
+    func presets(for chosen: String?) -> [ChatModelPreset] {
+        #if DEBUG
+        if !scriptedPresets.isEmpty {
+            return ModelPresets.shared.offered(settings: settings, chosen: chosen, presets: scriptedPresets)
+                .map(ChatModelPreset.init(preset:))
+        }
+        #endif
+        return ModelPresets.shared.offered(settings: settings, chosen: chosen).map(ChatModelPreset.init(preset:))
+    }
 
     /// Where the gateway lives. Media is signature-authenticated, not bearer-gated
     /// (`nanobot/webui/media_api.py:207`), so the only thing a signed path lacks is an origin.
@@ -244,14 +270,27 @@ final class CoreHolder: ObservableObject {
     }
 
     /// The automations page's read (I2b): the same socket, one HTTP GET through the core.
-    func refreshAutomations() async throws {
-        try await companion?.core.refreshAutomations()
+    ///
+    /// The core answers with the failure it got, not by throwing — a stale `api_token` is a 401,
+    /// not an exception — and this used to drop that answer on the floor, so a refused read
+    /// reached the page as an empty list: "No automations yet" over four jobs (T41).
+    func refreshAutomations() async -> Bool {
+        do {
+            return try await companion?.core.refreshAutomations() == nil
+        } catch {
+            return false
+        }
     }
 
     /// The jobs the core last read. A plain array, so the page never touches a framework type.
     var automationJobs: [AutomationJob] {
         guard let flow = companion?.core.automations else { return [] }
         return (flow.value as? AutomationsState)?.jobs ?? []
+    }
+
+    /// Whether the last read was refused: the page says "could not read" instead of "none" (T41).
+    var automationsReadFailed: Bool {
+        (companion?.core.automations.value as? AutomationsState)?.failed ?? false
     }
 
     /// One automation action. The core refuses a chat change with no values before it sends
@@ -276,6 +315,7 @@ final class CoreHolder: ObservableObject {
             modelPreset: settings.modelPreset,
             provider: settings.provider,
             contextWindowTokens: settings.contextWindowTokens.map { Int($0.int32Value) },
+            contextWindowLabel: settings.contextWindowTokens.map { TokenCount.shared.modelWindow(tokens: $0.int32Value) },
             transcriptionProvider: settings.transcription?.provider,
             transcriptionModel: settings.transcription?.model,
             presets: settings.modelPresets.map(\.name)
@@ -717,8 +757,13 @@ final class CoreGateway: GatewayConnecting {
 
 extension CoreChat: ComposerDriving {
 
+    /// A send landed if the call said so, or if the thread now holds its bubble: the receipt can
+    /// fail where the message did not, and the phone showed exactly that — the prompt under its
+    /// own bubble and back in the composer at once (T42).
     func sendPrompt(_ text: String, media: [SentAttachment]) async -> Bool {
-        await sendDraft(text: text, media: media) != nil
+        let mark = handle.threadMark()
+        if await sendDraft(text: text, media: media) != nil { return true }
+        return handle.promptLanded(text: text, mark: mark)
     }
 
     func enqueue(_ text: String) {
@@ -733,8 +778,15 @@ extension CoreChat: ComposerDriving {
         handle.discardQueued()
     }
 
-    func setModelPreset(_ preset: String) async {
-        try? await handle.setModelPreset(preset: preset)
+    /// A pick either went out or it did not: `Sent` is the socket's answer, not the gateway's
+    /// (its own "Switched model preset" turn is the confirmation), and a throw is no send at all.
+    func setModelPreset(_ preset: String) async -> Bool {
+        do {
+            let result = try await handle.setModelPreset(preset: preset)
+            return result is PresetResultSent
+        } catch {
+            return false
+        }
     }
 
     func setWorkspaceScope(_ access: WorkspaceAccess) async {
@@ -763,6 +815,7 @@ extension ComposerSnapshot {
             modelPreset: state.modelPreset,
             contextWindowTokens: state.contextWindowTokens.map { Int($0.int32Value) },
             usedTokens: state.usage.map { Int($0.contextTokens) },
+            contextPercent: state.contextPercent.map { Int($0.int32Value) },
             access: state.accessMode == WorkspaceScope.full ? .full : .default,
             queued: state.queued
         )
@@ -771,11 +824,13 @@ extension ComposerSnapshot {
 
 extension ChatModelPreset {
     init(preset: ModelPreset) {
+        let window = preset.contextWindowTokens.map { Int($0.int32Value) }
         self.init(
             name: preset.name,
             model: preset.model,
             provider: preset.provider,
-            contextWindowTokens: preset.contextWindowTokens.map { Int($0.int32Value) },
+            contextWindowTokens: window,
+            contextLabel: window.map { TokenCount.shared.modelWindow(tokens: Int32($0)) },
             active: preset.active,
             isDefault: preset.isDefault
         )
@@ -1000,13 +1055,12 @@ final class CoreAutomations: AutomationsDriving {
     }
 
     func load() async -> [AutomationRow]? {
-        do {
-            try await holder.refreshAutomations()
-        } catch {
-            // A failed read is not an empty page: the view keeps the rows it had.
-            guard !holder.automationJobs.isEmpty else { return nil }
-        }
-        return CoreAutomations.rows(from: holder.automationJobs)
+        let answered = await holder.refreshAutomations()
+        let jobs = holder.automationJobs
+        // A failed read with nothing to show is a failure; with rows in hand it is a stale page,
+        // which is better than a blank one.
+        if !answered && jobs.isEmpty { return nil }
+        return CoreAutomations.rows(from: jobs)
     }
 
     func act(_ act: AutomationAct, id: String) async -> String? {

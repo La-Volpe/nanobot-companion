@@ -16,6 +16,8 @@ final class SettingsViewModel: ObservableObject {
         var modelPreset: String?
         var provider: String?
         var contextWindowTokens: Int?
+        /// The window as the core's token copy prints it (`1M`, `200K`, `32.8K`): T36.
+        var contextWindowLabel: String? = nil
         var transcriptionProvider: String?
         var transcriptionModel: String?
         var presets: [String] = []
@@ -190,8 +192,8 @@ final class SettingsViewModel: ObservableObject {
             rows.append(Row(label: "Server", detail: snapshot.pythonVersion.map { "Python \($0)" }, value: os))
         }
         rows.append(Row(label: "Current model", detail: snapshot.modelPreset.map { "Preset \($0)" }, value: snapshot.modelName))
-        if let window = snapshot.contextWindowTokens {
-            rows.append(Row(label: "Context window", detail: nil, value: "\(window / 1000)k tokens"))
+        if let label = snapshot.contextWindowLabel {
+            rows.append(Row(label: "Context window", detail: nil, value: "\(label) tokens"))
         }
         rows.append(
             Row(

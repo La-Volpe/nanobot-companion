@@ -134,8 +134,8 @@ class SettingsViewModel(
                     value = snapshot.modelName,
                 ),
             )
-            snapshot.contextWindowTokens?.let { window ->
-                add(SettingsRow(label = "Context window", detail = null, value = "${window / 1000}k tokens"))
+            snapshot.contextWindowLabel?.let { label ->
+                add(SettingsRow(label = "Context window", detail = null, value = "$label tokens"))
             }
             add(
                 SettingsRow(

@@ -3,6 +3,8 @@ package de.arjmandi.nanobot.companion.facade
 import de.arjmandi.nanobot.companion.transport.AttachmentRejection
 import de.arjmandi.nanobot.companion.transport.CoreError
 import de.arjmandi.nanobot.companion.wire.Limits
+import de.arjmandi.nanobot.companion.wire.ModelPreset
+import de.arjmandi.nanobot.companion.wire.SettingsState
 import de.arjmandi.nanobot.companion.wire.Usage
 
 /** Where the gateway is and the secret that opens it (plan.md §2). */
@@ -116,6 +118,48 @@ public enum class SendRejection(public val copyKey: String) {
     FrameTooLarge("send.frameTooLarge"),
 }
 
+/**
+ * What a preset pick did (T39). `Sent` is not `Applied`: `/model <preset>` is a turn, and the
+ * gateway's answer — its "Switched model preset" message, or its refusal — is that turn's text.
+ * What this covers is the half the client owns: a pick with nowhere to go says so.
+ */
+public sealed interface PresetResult {
+    public data object Sent : PresetResult
+    public data class Rejected(public val reason: PresetRejection) : PresetResult
+}
+
+public enum class PresetRejection(public val copyKey: String) {
+    /** The chat the gateway minted has no id yet, so `/model` has nowhere to go (C5.3). */
+    NotConnected("preset.notConnected"),
+
+    /** The socket refused the frame: the chip must not keep naming a model the chat is not on. */
+    NotSent("preset.notSent"),
+}
+
+/**
+ * The presets a phone offers in the model sheet (T40). The gateway's built-in preset is not a
+ * choice — it is what runs when nothing else is configured — and the flag is the payload's own
+ * (`/api/settings` `model_presets[].is_default`), not a name this client hard-codes.
+ *
+ * [chosen] is the preset this chat is on when the client knows one, and it becomes the tick:
+ * the gateway's `active` flag is about its configuration, and a chat can be on another preset
+ * entirely — the owner's chat ran `default` while the sheet ticked `primary` (T37, T39).
+ */
+public object ModelPresets {
+    public fun offered(settings: SettingsState, chosen: String? = null): List<ModelPreset> =
+        offered(settings, chosen, settings.modelPresets)
+
+    /**
+     * The same narrowing over a list the caller already holds: a debug launch seeds its presets
+     * instead of reading them, and a second copy of "which one is a choice" is how the two
+     * platforms would drift apart again.
+     */
+    public fun offered(settings: SettingsState, chosen: String?, presets: List<ModelPreset>): List<ModelPreset> =
+        presets
+            .filterNot { it.isDefault }
+            .map { preset -> if (chosen.isNullOrBlank()) preset else preset.copy(active = preset.name == chosen) }
+}
+
 /** What a recording produced (plan.md C6.5): text, a local refusal, or the gateway's reason. */
 public sealed interface TranscriptionResult {
     public data class Transcribed(public val text: String) : TranscriptionResult
@@ -143,14 +187,18 @@ public enum class WorkspaceScope(public val wire: String) {
 
 /**
  * Everything the composer row shows (plan.md §2). `usage` is the ring and
- * `contextWindowTokens` is the ring's denominator; both come from `turn_model_updated` and
- * `turn_end` (D15.4), never from a separate call.
+ * `contextWindowTokens` is the ring's denominator; both come from the frames that carry the
+ * turn's own usage (D15.4), with the preset's configured window as the fallback and never an
+ * invented number (`ContextUsage`, T37). [contextPercent] is computed here so the two phones
+ * cannot round the same two numbers differently.
  */
 public data class ComposerState(
     public val modelPreset: String? = null,
     public val modelName: String? = null,
     public val contextWindowTokens: Int? = null,
     public val usage: Usage? = null,
+    /** `Math.min(100, Math.round(used / window * 100))`, null before there is a window. */
+    public val contextPercent: Int? = null,
     public val accessMode: WorkspaceScope = WorkspaceScope.Default,
     /** What is typed but not sent; a refused send leaves it here (C6.1). */
     public val draft: String = "",

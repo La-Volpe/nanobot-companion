@@ -106,6 +106,7 @@ class SettingsScreenTest {
             modelName = "deepseek-v4.1-flash:cloud",
             modelPreset = "primary",
             contextWindowTokens = 32_768,
+            contextWindowLabel = "32.8K",
             presets = listOf("default", "primary"),
         ),
     ) {
@@ -120,7 +121,7 @@ class SettingsScreenTest {
 
         compose.onNodeWithTag("settings.overview.nanobot Gateway").assertIsDisplayed()
         compose.onNodeWithText("Commit 28d73b69").assertIsDisplayed()
-        compose.onNodeWithText("32k tokens").assertIsDisplayed()
+        compose.onNodeWithText("32.8K tokens").assertIsDisplayed()
         assertEquals(
             0,
             compose.onAllNodesWithText("Uptime", substring = true, ignoreCase = true).fetchSemanticsNodes().size,

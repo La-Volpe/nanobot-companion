@@ -225,8 +225,12 @@ class MainViewModel(
         chat?.composer?.consumeAction()
     }
 
-    /** The model sheet's list: the gateway's presets, read when the sheet opens. */
-    suspend fun presets(): List<de.arjmandi.nanobot.companion.composer.ChatModelPreset>? = holder.presets()
+    /**
+     * The model sheet's list: the gateway's presets, read when the sheet opens, ticked for the
+     * preset this chat is on rather than for the gateway's configured one (T39).
+     */
+    suspend fun presets(chosen: String?): List<de.arjmandi.nanobot.companion.composer.ChatModelPreset>? =
+        holder.presets(chosen)
 
     fun disconnect() {
         debugOpen = false

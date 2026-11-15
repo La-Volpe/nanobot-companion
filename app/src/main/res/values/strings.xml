@@ -57,6 +57,7 @@
     <string name="chat_send">Send</string>
     <string name="chat_stop">Stop</string>
     <string name="chat_send_refused">The gateway did not take that message.</string>
+    <string name="chat_preset_refused">The gateway did not take that model.</string>
     <string name="chat_disconnect">Disconnect</string>
     <string name="chat_sending">Sending…</string>
     <string name="chat_empty_title">Nothing here yet</string>
@@ -102,8 +103,6 @@
     <string name="composer_access_default_body">Files and commands inside the working directory</string>
     <string name="composer_access_full_body">Files and commands outside the working directory</string>
     <string name="composer_choose_model">Choose model</string>
-    <string name="composer_manage_presets">Manage presets</string>
-    <string name="composer_manage_presets_body">Providers and fallbacks in Settings</string>
     <string name="composer_usage_title">Context usage</string>
     <string name="composer_usage_percent">%1$d%% of the window</string>
     <string name="composer_usage_none">No window yet</string>

@@ -426,7 +426,8 @@ struct RootView: View {
     private func loadPresets() async -> [ChatModelPreset]? {
         // Nil is "the read did not answer", which the sheet draws differently from an empty list.
         guard await holder.refreshSettings() else { return nil }
-        return holder.presets
+        // The tick follows the chat's own preset, which is what a tap changes (T39).
+        return holder.presets(for: composer.snapshot.modelPreset)
     }
 
     private static func nowMs() -> Int64 {

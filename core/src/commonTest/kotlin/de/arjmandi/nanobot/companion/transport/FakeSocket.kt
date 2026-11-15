@@ -24,6 +24,12 @@ internal class FakeSocket : Socket {
      */
     var answer: (suspend (String) -> Unit)? = null
 
+    /**
+     * A socket whose writes fail: Ktor's `send` throws when the connection is gone, and a client
+     * that reports a message as taken anyway is the receipt lying (T42).
+     */
+    var refusesWrites: Boolean = false
+
     var opened: Int = 0
         private set
 
@@ -40,6 +46,7 @@ internal class FakeSocket : Socket {
     }
 
     override suspend fun send(text: String) {
+        if (refusesWrites) throw IllegalStateException("the socket refused the write")
         sent += text
         answer?.invoke(text)
     }

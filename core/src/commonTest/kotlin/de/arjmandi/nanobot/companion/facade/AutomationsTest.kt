@@ -22,7 +22,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -70,6 +74,11 @@ class AutomationsTest {
 
     private fun engine(body: () -> String = { jobs }): MockEngine = MockEngine {
         respond(body(), HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+    }
+
+    /** A gateway that refuses the read, the way a stale `api_token` does. */
+    private fun refusingEngine(): MockEngine = MockEngine {
+        respond("""{"detail":"bad token"}""", HttpStatusCode.Unauthorized, headersOf(HttpHeaders.ContentType, "application/json"))
     }
 
     private suspend fun TestScope.core(socket: FakeSocket, engine: MockEngine = engine()): NanobotCore {
@@ -122,6 +131,56 @@ class AutomationsTest {
         assertTrue(!listed[1].protected)
     }
 
+    /**
+     * T41: the owner's phone said "No automations yet" while the gateway had four, and the page
+     * "disappears sometimes". Measured against their gateway on 2026-11-15: the global
+     * `GET /api/webui/automations` returns the four, and every per-chat
+     * `/api/sessions/{key}/automations` returns `{jobs: []}` — so the endpoint is right, and the
+     * page was blanked by a reconnect (`disconnect` empties this state) that nothing re-read.
+     */
+    @Test
+    fun aReconnectReadsTheAutomationsAgain() = runTest {
+        val socket = FakeSocket()
+        val core = core(socket)
+        assertNull(core.refreshAutomations())
+        assertEquals(2, core.automations.value.jobs.size)
+
+        core.disconnect(forget = false)
+        runCurrent()
+        assertTrue(core.automations.value.jobs.isEmpty(), "a new socket knows nothing until it asks")
+
+        socket.push("""{"event":"ready","chat_id":"websocket:a","client_id":"companion"}""")
+        assertIs<ConnectResult.Connected>(core.connect())
+
+        // The read runs beside the pump (an HTTP round trip must not hold up a handshake), so the
+        // test waits on the state it fills rather than on a dispatcher's idea of "idle".
+        val read = withContext(Dispatchers.Default) {
+            withTimeout(5_000) { core.automations.first { it.jobs.isNotEmpty() } }
+        }
+
+        assertEquals(
+            listOf("heartbeat", "weekly-digest"),
+            read.jobs.map { it.id },
+            "the socket came back, so the page's read comes back with it",
+        )
+    }
+
+    /**
+     * A refused read is not an empty gateway. The page needs to tell them apart, so the state
+     * carries the answer instead of leaving an empty list that reads as "nothing scheduled".
+     */
+    @Test
+    fun aRefusedReadIsRecordedAsAFailure() = runTest {
+        val socket = FakeSocket()
+        val core = core(socket, refusingEngine())
+
+        assertEquals(de.arjmandi.nanobot.companion.transport.CoreError.AuthFailed, core.refreshAutomations())
+
+        val state = core.automations.value
+        assertTrue(state.jobs.isEmpty())
+        assertTrue(state.failed, "the gateway said no, so the page says it could not read, not 'none'")
+    }
+
     @Test
     fun enableDisableRunDelete() = runTest {
         for ((kind, wire) in listOf(
@@ -154,6 +213,7 @@ class AutomationsTest {
     fun changeChat() = runTest {
         val socket = FakeSocket()
         val core = core(socket)
+        val before = core.automations.value.jobs.map { it.id }
         var result: AutomationActionResult? = null
         val job = launch {
             result = core.runAutomation(
@@ -203,7 +263,8 @@ class AutomationsTest {
     @Test
     fun noAnswerIsATimeoutNotAHang() = runTest {
         val socket = FakeSocket()
-        val core = core(socket)
+        // A refused read keeps the page empty, which is what "does not invent" is measured against.
+        val core = core(socket, refusingEngine())
         var result: AutomationActionResult? = null
         val job = launch { result = core.runAutomation("weekly-digest", AutomationActionKind.Run) }
         runCurrent()

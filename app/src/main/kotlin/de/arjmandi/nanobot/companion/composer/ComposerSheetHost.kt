@@ -96,12 +96,6 @@ fun ComposerSheetHost(
                             }
                         }
                     }
-                    SheetRow(
-                        title = stringResource(R.string.composer_manage_presets),
-                        subtitle = stringResource(R.string.composer_manage_presets_body),
-                        checked = false,
-                        identifier = "composer.model.manage",
-                    ) { close() }
                 }
 
                 ComposerSheet.Access -> {

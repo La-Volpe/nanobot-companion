@@ -45,6 +45,15 @@ internal sealed interface EngineOpen {
 }
 
 /**
+ * One frame and the writer's verdict on it. A caller that asks "was it sent?" cannot be answered
+ * by the queue: the queue takes everything, and the socket is what refuses (T42, where a receipt
+ * said `Accepted` about a frame the socket never took).
+ */
+private class Queued(val frame: Outbound) {
+    val written: CompletableDeferred<Boolean> = CompletableDeferred()
+}
+
+/**
  * Owns the socket (plan.md §2). One pump reads frames and hands them to the host, one writer
  * drains a single channel onto the socket, and every send goes through that channel — so
  * frame order is the order the caller asked for, and there is exactly one thing writing.
@@ -61,7 +70,7 @@ internal class TurnEngine(
 ) {
 
     private var connection: Job? = null
-    private var outbound: Channel<Outbound>? = null
+    private var outbound: Channel<Queued>? = null
     private var closing = false
 
     /** Wakes the heartbeat: the timer and a return to the foreground ask the same question. */
@@ -103,12 +112,19 @@ internal class TurnEngine(
         if (watched) askNow?.trySend(Unit)
     }
 
-    /** Put one envelope on the wire. False means the socket is not there to carry it. */
+    /**
+     * Put one envelope on the wire, and answer what the socket did with it. False means the
+     * socket is not there to carry it — or did not take it, which is the same answer to a caller
+     * deciding whether a message landed.
+     */
     suspend fun send(frame: Outbound): Boolean {
         val channel = outbound ?: return false
+        val queued = Queued(frame)
         return try {
-            channel.send(frame)
-            true
+            channel.send(queued)
+            // The write, not the queue (T42). A socket that never gets to the frame leaves the
+            // caller waiting only for this window, and "not sent" is the honest answer.
+            withTimeoutOrNull(WRITE_ACK_MS) { queued.written.await() } ?: false
         } catch (failure: CancellationException) {
             throw failure
         } catch (failure: Exception) {
@@ -139,7 +155,7 @@ internal class TurnEngine(
     private suspend fun start(payload: BootstrapPayload, socket: Socket): EngineOpen {
         host.opening(payload)
 
-        val channel = Channel<Outbound>(Channel.UNLIMITED)
+        val channel = Channel<Queued>(Channel.UNLIMITED)
         // One unit per frame in, drained by the heartbeat: the only proof of life a socket can
         // give is a frame coming back, and every frame counts, not just the answer to a question.
         val answers = Channel<Unit>(Channel.CONFLATED)
@@ -156,13 +172,28 @@ internal class TurnEngine(
 
         group.launch {
             try {
-                for (frame in channel) socket.send(OutboundCodec.encode(frame).toString())
-            } catch (failure: CancellationException) {
-                throw failure
-            } catch (failure: Exception) {
+                for (queued in channel) {
+                    val written = try {
+                        socket.send(OutboundCodec.encode(queued.frame).toString())
+                        true
+                    } catch (failure: CancellationException) {
+                        queued.written.complete(false)
+                        throw failure
+                    } catch (failure: Exception) {
+                        false
+                    }
+                    queued.written.complete(written)
+                    if (!written) break
+                }
+            } finally {
                 // A write that fails means the socket is gone; the pump sees the close and
-                // reports it, so there is nothing to decide here.
+                // reports it, so there is nothing to decide here. What is left in the channel
+                // will never be written, so it is settled rather than left waiting (T42).
                 channel.close()
+                while (true) {
+                    val left = channel.tryReceive().getOrNull() ?: break
+                    left.written.complete(false)
+                }
             }
         }
 
@@ -234,10 +265,10 @@ internal class TurnEngine(
      * before the question was asked is not an answer to it, so anything already buffered is
      * dropped first — otherwise a busy socket would look alive for an interval after it died.
      */
-    private suspend fun ask(chatId: String, channel: Channel<Outbound>, answers: Channel<Unit>): Boolean {
+    private suspend fun ask(chatId: String, channel: Channel<Queued>, answers: Channel<Unit>): Boolean {
         drain(answers)
         return try {
-            channel.send(Outbound.Attach(chatId = chatId))
+            channel.send(Queued(Outbound.Attach(chatId = chatId)))
             withTimeoutOrNull(heartbeat.windowMs) { answers.receive() } != null
         } catch (failure: CancellationException) {
             throw failure
@@ -258,7 +289,7 @@ internal class TurnEngine(
      * existing "Try again", no second failure surface — and take the same teardown a close
      * takes. `closing` is what stops the pump from reporting the same death twice.
      */
-    private suspend fun giveUp(channel: Channel<Outbound>, answers: Channel<Unit>) {
+    private suspend fun giveUp(channel: Channel<Queued>, answers: Channel<Unit>) {
         closing = true
         outbound = null
         askNow = null
@@ -271,9 +302,9 @@ internal class TurnEngine(
     }
 
     /** One frame to send is the engine's work; everything else belongs to the host. */
-    private suspend fun execute(effect: Effect, channel: Channel<Outbound>) {
+    private suspend fun execute(effect: Effect, channel: Channel<Queued>) {
         when (effect) {
-            is Effect.Send -> channel.send(effect.frame)
+            is Effect.Send -> channel.send(Queued(effect.frame))
             else -> host.effect(effect)
         }
     }
@@ -281,5 +312,12 @@ internal class TurnEngine(
     private companion object {
         /** The gateway greets a socket immediately; a silent one is a stuck host, not a slow one. */
         const val READY_TIMEOUT_MS: Long = 20_000
+
+        /**
+         * How long a caller waits for the socket to take one frame. A local write lands in
+         * milliseconds; five seconds is a socket that is not there, and a composer left with
+         * its text is better than one that waits on a connection nobody answered.
+         */
+        const val WRITE_ACK_MS: Long = 5_000
     }
 }

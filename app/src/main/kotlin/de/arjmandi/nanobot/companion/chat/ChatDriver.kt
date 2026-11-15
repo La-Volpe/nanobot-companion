@@ -102,7 +102,7 @@ class ChatComposerAdapter(private val chat: ChatDriver) : ComposerDriving {
 
     override fun discardQueued() = Unit
 
-    override suspend fun setModelPreset(preset: String) = Unit
+    override suspend fun setModelPreset(preset: String): Boolean = false
 
     override suspend fun setWorkspaceScope(access: WorkspaceAccess) = Unit
 

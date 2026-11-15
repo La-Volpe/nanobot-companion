@@ -31,9 +31,16 @@ final class ComposerTests: XCTestCase {
         model.tap()
 
         XCTAssertTrue(app.staticTexts["Choose model"].waitForExistence(timeout: 5), "the sheet says what it is")
-        let manage = app.buttons["composer.model.manage"]
-        XCTAssertTrue(manage.waitForExistence(timeout: 5))
-        manage.tap()
+        // T40: "Manage presets" is gone, and the built-in preset is not offered at all — the
+        // scripted launch seeds the owner's own three presets, so this is the sheet's real list.
+        XCTAssertFalse(app.buttons["composer.model.manage"].exists, "the phone does not manage presets")
+        XCTAssertFalse(
+            app.buttons["composer.model.default"].waitForExistence(timeout: 2),
+            "the gateway's built-in preset is not a choice"
+        )
+        let primary = app.buttons["composer.model.primary"]
+        XCTAssertTrue(primary.waitForExistence(timeout: 5), "the gateway's own presets are still here")
+        primary.tap()
         XCTAssertFalse(app.staticTexts["Choose model"].waitForExistence(timeout: 2), "picking closes the sheet")
     }
 
