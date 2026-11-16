@@ -16,7 +16,6 @@ final class AttachmentViewModel: ObservableObject {
     @Published private(set) var notice: UploadNotice?
     /// The index of the image the lightbox is showing, if it is open.
     @Published private(set) var lightbox: Int?
-    @Published private(set) var sheetOpen = false
 
     let limits: UploadLimits
 
@@ -33,6 +32,8 @@ final class AttachmentViewModel: ObservableObject {
     private var cardsByChat: [String: [PendingAttachment]] = [:]
     /// Stable, so a card's identity survives the attachment list changing around it.
     private var nextId = 0
+    /// The attach sheet's row that was tapped, held until the sheet has actually gone (T50).
+    private var pendingRow: AttachRow?
 
     init(driver: AttachmentDriving, limits: UploadLimits = .fallback) {
         self.driver = driver
@@ -70,8 +71,25 @@ final class AttachmentViewModel: ObservableObject {
         notice = nil
     }
 
-    func openSheet() { sheetOpen = true }
-    func closeSheet() { sheetOpen = false }
+    /// A row's tap says which door and waits. Asking for the picker in the same tap is a request
+    /// iOS drops — a sheet cannot be presented from a view whose own sheet is still up — which is
+    /// why the camera arrived only after the overlay had been closed by hand.
+    func request(_ row: AttachRow) {
+        pendingRow = row
+    }
+
+    /// What the closed sheet hands on, or nil when nothing was asked: a swipe down, or the model
+    /// sheet closing, must open nothing. The refusal is a parameter because reading it is the
+    /// platform's business and this model holds no `AVFoundation`.
+    func takeHandoff(cameraRefusal: String?) -> AttachHandoff? {
+        guard let row = pendingRow else { return nil }
+        pendingRow = nil
+        switch row {
+        case .photos: return .photos
+        case .files: return .files
+        case .camera: return cameraRefusal.map(AttachHandoff.refused) ?? .camera
+        }
+    }
 
     /// One picked file: a card at once, then the core validates against `ready.limits` and
     /// uploads. A refusal is a sentence naming the file; a link failure leaves a card to retry.

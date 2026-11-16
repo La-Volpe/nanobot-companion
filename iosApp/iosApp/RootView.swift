@@ -237,25 +237,24 @@ struct RootView: View {
                         SettingsView(model: settings, holder: holder, modelInUse: modelInUse)
                     }
                     // The composer's sheets are one value, so a sheet is either open or not.
-                    .sheet(isPresented: Binding(
-                        get: { composer.sheet != nil },
-                        set: { presented in if !presented { composer.closeSheet() } }
-                    )) {
+                    .sheet(
+                        isPresented: Binding(
+                            get: { composer.sheet != nil },
+                            set: { presented in if !presented { composer.closeSheet() } }
+                        ),
+                        // The attach sheet's rows hand their picker over here, not at the tap: a
+                        // second sheet cannot be presented over one that is still up, so the
+                        // request was dropped until the overlay was closed by hand (T50).
+                        onDismiss: { handOffAttachRow() }
+                    ) {
                         ComposerSheets(
                             model: composer,
                             attachments: attachments,
                             loadPresets: loadPresets,
-                            onPickPhotos: { photosPresented = true },
-                            onTakePhoto: {
-                                // A camera that is off in Settings opens to a black screen, so
-                                // the reason goes on the composer instead of a dead cover.
-                                if let refusal = CameraAccess.refusal {
-                                    attachments.note(UploadNotice(name: "Camera", sentence: refusal))
-                                } else {
-                                    cameraPresented = true
-                                }
-                            },
-                            onPickFiles: { filesPresented = true }
+                            onAttachRow: { row in
+                                composer.closeSheet()
+                                attachments.request(row)
+                            }
                         )
                         .presentationDetents([.medium, .large])
                         .presentationDragIndicator(.visible)
@@ -332,6 +331,19 @@ struct RootView: View {
         #endif
         guard chatDriver != nil else { return nil }
         return composer.snapshot.currentModel
+    }
+
+    /// The attach sheet is gone: now the picker can be presented. One request, one dismissal — a
+    /// swipe down or another sheet closing opens nothing. The camera's permission is read here
+    /// because it is the phone's answer, and a refusal is a sentence rather than a black cover.
+    private func handOffAttachRow() {
+        switch attachments.takeHandoff(cameraRefusal: CameraAccess.refusal) {
+        case .photos: photosPresented = true
+        case .camera: cameraPresented = true
+        case .files: filesPresented = true
+        case let .refused(sentence): attachments.note(UploadNotice(name: "Camera", sentence: sentence))
+        case nil: break
+        }
     }
 
     /// A banner's tap opens the chat it came from on the shell that is already running: the row

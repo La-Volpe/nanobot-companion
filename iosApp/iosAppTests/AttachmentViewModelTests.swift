@@ -144,6 +144,49 @@ struct AttachmentViewModelTests {
         #expect(UploadLimits.attachSheetSubtitle == "Up to 4 files, 6 MiB each, 1 video",
                 "the attach sheet's second line is the real limit, not a description of one")
     }
+
+    // MARK: - the attach sheet's hand-off (T50)
+
+    /// A row's tap says what to open and waits. iOS will not present a second sheet while the
+    /// composer's sheet is still up, so the request made in the same tap was the tap that did
+    /// nothing until the overlay was closed by hand.
+    @Test func theHandoffCarriesTheRowThatWasTapped() {
+        let model = model(FakeUploader())
+
+        #expect(model.takeHandoff(cameraRefusal: nil) == nil, "nothing asked, nothing opens")
+
+        model.request(.photos)
+        #expect(model.takeHandoff(cameraRefusal: nil) == .photos)
+
+        model.request(.files)
+        #expect(model.takeHandoff(cameraRefusal: nil) == .files)
+
+        model.request(.camera)
+        #expect(model.takeHandoff(cameraRefusal: nil) == .camera)
+    }
+
+    /// One dismissal spends one request: the next dismissal of a sheet nobody asked from opens
+    /// nothing, which is what a swipe down must do.
+    @Test func aSpentHandoffOpensNothing() {
+        let model = model(FakeUploader())
+
+        model.request(.files)
+        _ = model.takeHandoff(cameraRefusal: nil)
+
+        #expect(model.takeHandoff(cameraRefusal: nil) == nil)
+    }
+
+    /// A camera that is off in Settings is a sentence on the composer, never a black cover — and
+    /// the sentence is a parameter, because `AVFoundation` is the screen's business, not this
+    /// model's.
+    @Test func aRefusedCameraHandsOnTheReasonInsteadOfTheCamera() {
+        let model = model(FakeUploader())
+        let sentence = "The camera is off for Nanobot. Turn it on in Settings."
+
+        model.request(.camera)
+
+        #expect(model.takeHandoff(cameraRefusal: sentence) == .refused(sentence))
+    }
 }
 
 /// Hold to talk (T48, the iOS twin of `VoiceViewModelTest`): the press records the instant it
