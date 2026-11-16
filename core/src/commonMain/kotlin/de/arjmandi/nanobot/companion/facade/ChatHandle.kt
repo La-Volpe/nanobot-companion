@@ -82,15 +82,21 @@ public class ChatHandle internal constructor(
      * (measured against the dev gateway), so the chip has nothing else to name the new preset and
      * a frame in between used to wipe it back (T39). A pick that never reached the socket is a
      * rejection rather than a silence, and the chip goes back to what the chat is really on.
+     *
+     * The row is mirrored in full rather than the preset alone: a chip that names the new preset
+     * while the ring still divides by the old one's window is the half-updated row that read `GLM`
+     * over `256K` (T46).
      */
     @Throws(Throwable::class)
     public suspend fun setModelPreset(preset: String): PresetResult {
         val chatId = session.id.value ?: return PresetResult.Rejected(PresetRejection.NotConnected)
         session.pickedPreset = preset
-        session.composer.value = session.composer.value.copy(modelPreset = preset)
+        session.pickAnswered = false
+        core.remirrorComposer(session, chatId)
         val written = core.write(Outbound.Message(chatId = chatId, turnId = core.nextTurnId(), content = "/model $preset"))
         if (!written) {
             session.pickedPreset = null
+            session.pickAnswered = false
             core.remirrorComposer(session, chatId)
             return PresetResult.Rejected(PresetRejection.NotSent)
         }
@@ -264,10 +270,16 @@ internal class ChatSession(id: MutableStateFlow<String?>) {
 
     /**
      * The preset this chat was last told to switch to, until the gateway names the model it ran
-     * (`turn_model_updated`). `/model` has no frame of its own, so this is what the chip reads
-     * in between (T39).
+     * (`turn_model_updated`) or the chat's own session row answers for it. `/model` has no frame
+     * of its own, so this is what the chip reads in between (T39, T46).
      */
     var pickedPreset: String? = null
+
+    /**
+     * Whether the turn the pick became has ended: only then has the gateway committed the preset
+     * to the session's metadata, so only then is a drawer read an answer about it (T46).
+     */
+    var pickAnswered: Boolean = false
 
     /** What was typed before a recording started; the transcript is appended to it (C6.5). */
     var draftBeforeRecording: String = ""
