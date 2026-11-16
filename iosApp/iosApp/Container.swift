@@ -16,6 +16,10 @@ final class Container {
     /// The one implementation of the system's notification calls: banners and Settings both use it.
     let notifications: SystemNotificationCentre
 
+    /// Where the voice hint's "shown once" lives (T48): the real store on a phone, a throwing-away
+    /// one for a scripted launch, so every UI test starts with the hint unshown.
+    let voiceHints: VoiceHints
+
     /// A scripted chat for a flow test (DEBUG only): the real one needs a gateway.
     var scriptedChat: ChatDriving?
     /// The gateway key a live-session launch prefills (DEBUG only): typed keys land in test logs.
@@ -46,10 +50,12 @@ final class Container {
         gateway: GatewayConnecting? = nil,
         credentials: CredentialsStoring? = nil,
         startsConnected: Bool = false,
-        prefilledKey: String? = nil
+        prefilledKey: String? = nil,
+        voiceHints: VoiceHints? = nil
     ) {
         self.prefilledKey = prefilledKey
         self.startsConnected = startsConnected
+        self.voiceHints = voiceHints ?? UserDefaultsVoiceHints(defaults: .standard)
         let holder = holder ?? CoreHolder()
         self.holder = holder
         let centre = SystemNotificationCentre()
@@ -97,7 +103,10 @@ final class Container {
                     address: environment["NANOBOT_ADDRESS"],
                     allowUnverifiedCertificate: false
                 ),
-                startsConnected: environment["NANOBOT_START_CONNECTED"] != nil
+                startsConnected: environment["NANOBOT_START_CONNECTED"] != nil,
+                // The hint is a once-ever sentence, so a scripted launch that has to observe it
+                // needs a store that has never said it (T48).
+                voiceHints: InMemoryVoiceHints()
             )
             if environment["NANOBOT_SESSIONS"] != nil {
                 container.holder.seedSessionsForUITest(SessionSummary.samples)

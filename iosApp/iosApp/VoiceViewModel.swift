@@ -1,15 +1,24 @@
 import Foundation
 
-/// Hold-to-record and tap-to-dictate (plan.md I6, C6.5).
+/// Hold to talk (T48).
 ///
-/// Two gestures, one machine. A hold records until release and is refused under the gateway's
-/// own 650 ms floor; a tap starts dictating and the next tap stops it. Both end at the 120 s
-/// ceiling, and between release and the transcript the field says "Transcribing…", because that
-/// wait is a state the user has to see.
+/// The model is one machine with three states and one rule of thumb: the finger is the start. A
+/// press records the instant it lands — no threshold, no commit step — because the old 300 ms
+/// tap-mode wait read as lag on the owner's phone. What a release then means depends only on how
+/// long the press lasted: under `VoiceLimits.discardMs` it was a tap, the recording is thrown away
+/// with no request, and the first tap explains the gesture; at or above it the recording goes to
+/// the gateway and the transcript lands in the field. A drag up in between locks the recording so
+/// the finger may leave the screen: the button becomes Send, and a cancel target throws the
+/// recording away.
+///
+/// The clock is the caller's: the gesture passes `nowMs`, so the floor, the ceiling and the frame's
+/// duration are one number and no timer runs inside the model. That includes the transcribing arc —
+/// it advances on `tick`, never on an animation, because XCUITest waits for quiescence and an
+/// endless animation never gets there.
 @MainActor
 final class VoiceViewModel: ObservableObject {
 
-    enum Phase: Equatable {
+    enum Phase: Hashable {
         case idle
         case recording
         case transcribing
@@ -17,30 +26,37 @@ final class VoiceViewModel: ObservableObject {
 
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var elapsedMs: Int = 0
+    /// True once a drag up handed the recording to the button; the finger may leave the screen.
+    @Published private(set) var locked = false
     /// The one sentence a gesture can produce: why it stopped, or why it was refused.
     @Published private(set) var notice: String?
     @Published private(set) var lastTranscript: String?
-
-    /// True while the current recording came from a tap rather than a hold.
-    private(set) var tapMode = false
+    /// The transcribing arc's angle. It moves only on `tick`, one step per tick: a determinate
+    /// sweep, not an animation.
+    @Published private(set) var sweepDegrees: Double = 0
 
     private var recording: AudioRecording
     private var driver: VoiceDriving
+    private var hints: VoiceHints
     private var startedAtMs: Int = 0
 
-    init(recording: AudioRecording, driver: VoiceDriving) {
+    init(recording: AudioRecording, driver: VoiceDriving, hints: VoiceHints = InMemoryVoiceHints()) {
         self.recording = recording
         self.driver = driver
+        self.hints = hints
     }
 
     /// The screen swaps in the chat once a gateway is open, and a scripted recorder in a flow
     /// test — a simulator has no microphone, and the permission prompt would block the test.
-    func use(_ driver: VoiceDriving, recording: AudioRecording? = nil) {
+    func use(_ driver: VoiceDriving, recording: AudioRecording? = nil, hints: VoiceHints? = nil) {
         self.driver = driver
         if let recording { self.recording = recording }
+        if let hints { self.hints = hints }
     }
 
     var transcribing: Bool { phase == .transcribing }
+
+    var recordingNow: Bool { phase == .recording }
 
     /// `0:07`, which is the meter's clock.
     var elapsedLabel: String {
@@ -48,73 +64,22 @@ final class VoiceViewModel: ObservableObject {
         return "\(seconds / 60):" + String(format: "%02d", seconds % 60)
     }
 
-    /// The transcript is appended to whatever was typed, by the core (C6.5); the screen reads it
-    /// from here once it arrives.
+    /// The transcript the screen appends to the field once it arrives (the composer is never sent
+    /// on the reader's behalf).
     private(set) var pendingTranscript: String?
 
-    // MARK: - the hold gesture
-
-    func beginHold(nowMs: Int) {
-        guard phase == .idle else { return }
-        start(at: nowMs, tap: false)
-    }
-
-    func endHold(nowMs: Int) async {
-        // A hold that was actually a tap keeps dictating; that is what makes tap-to-dictate
-        // work on a short press without a second gesture.
-        guard phase == .recording, !tapMode else { return }
-        let held = nowMs - startedAtMs
-        if held < VoiceLimits.floorMs {
-            cancel(notice: "Hold a little longer to record voice.")
-            return
-        }
-        await finish(at: nowMs)
-    }
-
-    // MARK: - the tap gesture
-
-    func tap(nowMs: Int) async {
-        switch phase {
-        case .idle:
-            start(at: nowMs, tap: true)
-        case .recording:
-            if tapMode {
-                await finish(at: nowMs)
-            } else {
-                // A hold in progress that the user tapped at: the tap ends it like a release.
-                await endHold(nowMs: nowMs)
-            }
-        case .transcribing:
-            break
-        }
-    }
-
-    /// A press shorter than the tap threshold arms tap-to-dictate and keeps recording, which is
-    /// the artifact's rule (`if (Date.now() - holdStart < 300) { tapMode = true; return; }`).
-    func armTapMode() {
-        guard phase == .recording else { return }
-        tapMode = true
-    }
-
     /// A notice is the reader's to put away. It is a line on the composer, not an alert, so the
-    /// control that clears it is the reader's only way out (T31: the owner's was undismissable,
-    /// and a gateway with no speech provider produces one for everyone).
+    /// control that clears it is the reader's only way out (T31).
     func dismissNotice() {
         notice = nil
     }
 
-    /// Called by the meter's timer; the model owns no clock of its own, so the view passes time.
-    func tick(nowMs: Int) {
-        guard phase == .recording else { return }
-        elapsedMs = nowMs - startedAtMs
-        if elapsedMs > VoiceLimits.ceilingMs {
-            cancel(notice: "Recording is too long.")
-        }
-    }
+    // MARK: - the gesture
 
-    // MARK: - internals
-
-    private func start(at nowMs: Int, tap: Bool) {
+    /// The finger landed: record now. A second press while a recording is in flight is not a
+    /// gesture the machine has, so it is ignored rather than allowed to steal the first one.
+    func beginHold(nowMs: Int) {
+        guard phase == .idle else { return }
         notice = nil
         lastTranscript = nil
         do {
@@ -125,21 +90,85 @@ final class VoiceViewModel: ObservableObject {
         }
         startedAtMs = nowMs
         elapsedMs = 0
-        tapMode = tap
+        locked = false
         phase = .recording
     }
 
-    private func finish(at nowMs: Int) async {
-        guard let audio = recording.stop() else {
-            cancel(notice: "That recording did not reach the microphone.")
+    /// The finger lifted. Under the discard floor the press was a tap: the recording is thrown away
+    /// and the gateway is never asked. At or above it, the recording is the question.
+    func release(nowMs: Int) async {
+        guard phase == .recording else { return }
+        // A locked recording outlived its gesture: the button owns it now, and a lift is not a stop.
+        guard !locked else { return }
+        if nowMs - startedAtMs < VoiceLimits.discardMs {
+            discardAsTap()
             return
         }
+        await finish(at: nowMs)
+    }
+
+    /// A drag up: the recording carries on with no finger on it, and the button becomes Send.
+    func lock() {
+        guard phase == .recording else { return }
+        locked = true
+    }
+
+    /// The Send side of a locked recording: tap it to finish and transcribe.
+    func sendLocked(nowMs: Int) async {
+        guard phase == .recording, locked else { return }
+        await finish(at: nowMs)
+    }
+
+    /// The cancel target: the recording is thrown away without a request and without a sentence.
+    func cancelRecording() {
+        guard phase == .recording else { return }
+        recording.cancel()
+        reset()
+    }
+
+    /// Called by the screen's ticker; the model owns no clock of its own, so the view passes time.
+    func tick(nowMs: Int) {
+        switch phase {
+        case .recording:
+            elapsedMs = nowMs - startedAtMs
+            if elapsedMs > VoiceLimits.ceilingMs {
+                cancel(notice: "Recording is too long.")
+            }
+        case .transcribing:
+            sweepDegrees = (sweepDegrees + Self.sweepStepDegrees)
+                .truncatingRemainder(dividingBy: 360)
+        case .idle:
+            break
+        }
+    }
+
+    // MARK: - internals
+
+    /// A tap is discarded silently, and the first one explains the gesture — once ever, because a
+    /// hint that keeps coming back is a nag. Persisting the flag is `VoiceHints`'s job.
+    private func discardAsTap() {
+        recording.cancel()
+        reset()
+        if !hints.hasSeenHoldHint() {
+            hints.markHoldHintSeen()
+            notice = "Hold to talk"
+        }
+    }
+
+    private func finish(at nowMs: Int) async {
+        let audio = recording.stop()
         let durationMs = nowMs - startedAtMs
+        reset()
+        guard let audio, !audio.data.isEmpty else {
+            notice = "That recording did not reach the microphone."
+            return
+        }
         phase = .transcribing
+        // The transcript arrives on the frame's own request id, so the wait is a state the screen
+        // shows: the button is inactive and its arc circles while we ask.
         let outcome = await driver.transcribe(pcm: audio.data, durationMs: durationMs)
         phase = .idle
-        tapMode = false
-        elapsedMs = 0
+        sweepDegrees = 0
         switch outcome {
         case let .transcribed(text):
             pendingTranscript = text
@@ -154,9 +183,17 @@ final class VoiceViewModel: ObservableObject {
 
     private func cancel(notice message: String) {
         recording.cancel()
-        phase = .idle
-        tapMode = false
-        elapsedMs = 0
+        reset()
         notice = message
     }
+
+    private func reset() {
+        phase = .idle
+        locked = false
+        elapsedMs = 0
+        sweepDegrees = 0
+    }
+
+    /// 12° a tick at 100 ms is a light circle, not a spinner.
+    private static let sweepStepDegrees: Double = 12
 }

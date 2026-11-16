@@ -295,10 +295,12 @@ final class ScriptedRecorder: AudioRecording {
 }
 
 /// A transcriber that answers the way the gateway does, after a visible moment of "Transcribing…".
+/// Four seconds, because that wait is the state a flow test has to look at — the button inactive,
+/// its arc turning, and the composer still working — and a query takes about a second (T48).
 @MainActor
 final class ScriptedVoice: VoiceDriving {
     func transcribe(pcm: Data, durationMs: Int) async -> VoiceOutcome {
-        try? await Task.sleep(nanoseconds: 600_000_000)
+        try? await Task.sleep(nanoseconds: 4_000_000_000)
         return .transcribed("Check the attachment policy limits.")
     }
 }

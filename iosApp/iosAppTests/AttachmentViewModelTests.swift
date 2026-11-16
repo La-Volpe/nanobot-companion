@@ -146,8 +146,10 @@ struct AttachmentViewModelTests {
     }
 }
 
-/// The two voice gestures (plan.md I6): hold to record with the gateway's 650 ms floor, or tap
-/// to start dictating and tap again to stop. Both end at the gateway's 120 s ceiling.
+/// Hold to talk (T48, the iOS twin of `VoiceViewModelTest`): the press records the instant it
+/// lands, a release under 800 ms is a discard that asks the gateway nothing, a release at or above
+/// it transcribes, and a drag up locks the recording so Send and Cancel own it instead of the
+/// finger.
 @MainActor
 struct VoiceViewModelTests {
 
@@ -175,57 +177,153 @@ struct VoiceViewModelTests {
         }
     }
 
-    private func model(_ recorder: Recorder, _ transcriber: Transcriber) -> VoiceViewModel {
-        VoiceViewModel(recording: recorder, driver: transcriber)
+    private func model(
+        _ recorder: Recorder,
+        _ transcriber: VoiceDriving,
+        hints: VoiceHints = InMemoryVoiceHints()
+    ) -> VoiceViewModel {
+        VoiceViewModel(recording: recorder, driver: transcriber, hints: hints)
     }
 
-    /// The plan's red line: a release under the gateway's floor is not sent anywhere.
-    @Test func holdUnder650msCancels() async {
+    /// The owner's lag, pinned: nothing sits between the finger and the microphone.
+    @Test func recordingStartsOnTouchDown() {
+        let recorder = Recorder()
+        let model = model(recorder, Transcriber())
+
+        model.beginHold(nowMs: 1_000)
+
+        #expect(model.phase == .recording, "the finger is the start")
+        #expect(model.recordingNow)
+        #expect(recorder.starts == 1, "the microphone is open before the finger moves")
+        #expect(model.elapsedMs == 0)
+    }
+
+    /// T48's floor: 799 ms is a tap, so nothing at all goes to the gateway.
+    @Test func aReleaseUnder800msSendsNothing() async {
         let recorder = Recorder()
         let transcriber = Transcriber()
         let model = model(recorder, transcriber)
 
         model.beginHold(nowMs: 1_000)
-        await model.endHold(nowMs: 1_600)
+        await model.release(nowMs: 1_799)
 
-        #expect(recorder.cancelled == 1, "600 ms is under the gateway's 650 ms floor")
-        #expect(transcriber.requests.isEmpty, "nothing is sent for a tap that never became audio")
-        #expect(model.notice == "Hold a little longer to record voice.")
+        #expect(transcriber.requests.isEmpty, "799 ms is a tap, and a tap never reaches the gateway")
+        #expect(recorder.cancelled == 1, "the recording is thrown away, not stopped and kept")
+        #expect(recorder.stops == 0)
         #expect(model.phase == .idle)
     }
 
-    @Test func aHoldOverTheFloorIsTranscribed() async {
+    @Test func aReleaseOf800msIsTranscribed() async {
+        let recorder = Recorder()
+        let transcriber = Transcriber()
+        let model = model(recorder, transcriber)
+
+        model.beginHold(nowMs: 1_000)
+        await model.release(nowMs: 1_800)
+
+        #expect(transcriber.requests == [800], "the gesture's own clock is the duration asked about")
+        #expect(model.lastTranscript == "hello from the gateway")
+        #expect(model.phase == .idle)
+    }
+
+    /// The phone's floor is above the gateway's, so a recording it would refuse is never asked.
+    @Test func theDiscardFloorSitsAboveTheGateways() {
+        #expect(VoiceLimits.discardMs > VoiceLimits.floorMs)
+    }
+
+    /// A tap explains the gesture once and never again — Android's "tapping does nothing" answered
+    /// with a sentence instead of a second recording mode.
+    @Test func aTapSaysHoldToTalkOnce() async {
+        let hints = InMemoryVoiceHints()
+        let first = model(Recorder(), Transcriber(), hints: hints)
+
+        first.beginHold(nowMs: 0)
+        await first.release(nowMs: 100)
+        #expect(first.notice == "Hold to talk")
+
+        let second = model(Recorder(), Transcriber(), hints: hints)
+        second.beginHold(nowMs: 0)
+        await second.release(nowMs: 100)
+        #expect(second.notice == nil, "the hint is remembered, so the second tap gets no nagging")
+        #expect(second.phase == .idle)
+    }
+
+    /// Drag up: the finger may leave the screen, and a lift is not a stop.
+    @Test func aDragUpLocksAndSendFinishes() async {
         let recorder = Recorder()
         let transcriber = Transcriber()
         let model = model(recorder, transcriber)
 
         model.beginHold(nowMs: 0)
-        await model.endHold(nowMs: 1_400)
+        model.lock()
+        await model.release(nowMs: 3_000)
 
-        #expect(transcriber.requests == [1_400], "the duration the gateway validates")
+        #expect(model.locked)
+        #expect(model.phase == .recording, "a locked recording outlives its gesture")
+        #expect(transcriber.requests.isEmpty)
+
+        await model.sendLocked(nowMs: 3_000)
+
+        #expect(transcriber.requests == [3_000], "Send is what finishes a locked recording")
         #expect(model.lastTranscript == "hello from the gateway")
         #expect(model.phase == .idle)
+        #expect(model.locked == false)
     }
 
-    /// The plan's second red line: a tap starts dictating and the next tap stops it, once.
-    @Test func tapModeTogglesOnce() async {
+    /// The cancel target throws the recording away: no request, no sentence, nothing to dismiss.
+    @Test func theCancelTargetSendsNothing() async {
         let recorder = Recorder()
         let transcriber = Transcriber()
         let model = model(recorder, transcriber)
 
-        await model.tap(nowMs: 1_000)
-        #expect(model.phase == .recording)
-        #expect(recorder.starts == 1)
+        model.beginHold(nowMs: 0)
+        model.lock()
+        model.cancelRecording()
 
-        await model.tap(nowMs: 2_000)
-        #expect(model.phase == .idle, "the second tap stops the dictation")
-        #expect(recorder.stops == 1)
-        #expect(transcriber.requests == [1_000])
-        #expect(recorder.starts == 1, "one gesture, one recording")
+        #expect(model.phase == .idle)
+        #expect(recorder.cancelled == 1)
+        #expect(recorder.stops == 0)
+        #expect(transcriber.requests.isEmpty, "a cancel asks the gateway nothing")
+        #expect(model.notice == nil, "and it is not a failure, so it says nothing")
     }
 
-    /// A transcription that is still in flight is a visible state, not a silent wait: the field
-    /// says "Transcribing…" until the gateway answers.
+    /// The transcribing arc advances one step per tick of the screen's clock, never on an
+    /// animation of its own, and it stays a bounded angle.
+    @Test func theArcAdvancesOnTicksAndStaysBounded() async {
+        let transcriber = GatedTranscriber()
+        let model = model(Recorder(), transcriber)
+
+        model.beginHold(nowMs: 0)
+        let task = Task { await model.release(nowMs: 2_000) }
+        await waitUntil { model.phase == .transcribing }
+
+        model.tick(nowMs: 2_100)
+        let first = model.sweepDegrees
+        model.tick(nowMs: 2_200)
+        #expect(model.sweepDegrees != first, "the arc moves on a tick, not on a frame")
+        #expect(model.elapsedMs == 0, "and the meter's clock is not the arc's")
+
+        for _ in 0 ..< 40 { model.tick(nowMs: 3_000) }
+        #expect(model.sweepDegrees >= 0 && model.sweepDegrees < 360, "a bounded angle, not a runaway")
+
+        await transcriber.gate.open()
+        await task.value
+        #expect(model.phase == .idle)
+        #expect(model.sweepDegrees == 0, "the arc goes away with the wait")
+    }
+
+    /// A press while the machine is busy is not a second gesture: one press, one recording.
+    @Test func aSecondPressDoesNotOpenASecondRecording() {
+        let recorder = Recorder()
+        let model = model(recorder, Transcriber())
+
+        model.beginHold(nowMs: 0)
+        model.beginHold(nowMs: 500)
+
+        #expect(recorder.starts == 1, "the recorder answers the finger that started it")
+    }
+
+    /// A transcription that is still in flight is a visible state, not a silent wait.
     final class GatedTranscriber: VoiceDriving {
         let gate = AsyncGate()
         var outcome: VoiceOutcome = .transcribed("late text")
@@ -237,15 +335,13 @@ struct VoiceViewModelTests {
     }
 
     @Test func transcribingIsAVisibleStateBeforeTheTextArrives() async {
-        let recorder = Recorder()
         let transcriber = GatedTranscriber()
-        let model = VoiceViewModel(recording: recorder, driver: transcriber)
+        let model = model(Recorder(), transcriber)
 
         model.beginHold(nowMs: 0)
-        let task = Task { await model.endHold(nowMs: 900) }
+        let task = Task { await model.release(nowMs: 900) }
         await waitUntil { model.phase == .transcribing }
-        #expect(model.phase == .transcribing, "the field says Transcribing… while the gateway works")
-        #expect(model.transcribing)
+        #expect(model.transcribing, "the button's arc and Transcribing… are states, not gaps")
 
         await transcriber.gate.open()
         await task.value
@@ -254,20 +350,19 @@ struct VoiceViewModelTests {
     }
 
     @Test func aRefusedTranscriptionSaysWhy() async {
-        let recorder = Recorder()
         let transcriber = Transcriber()
-        transcriber.outcome = .refused("transcription_unavailable")
-        let model = model(recorder, transcriber)
+        transcriber.outcome = .refused("not_configured")
+        let model = model(Recorder(), transcriber)
 
         model.beginHold(nowMs: 0)
-        await model.endHold(nowMs: 900)
+        await model.release(nowMs: 900)
 
         #expect(model.notice == "The gateway could not transcribe that recording.")
         #expect(model.lastTranscript == nil)
         #expect(model.phase == .idle)
     }
 
-    @Test func aRecordingOverTwoMinutesIsRefused() async {
+    @Test func aRecordingOverTwoMinutesIsRefused() {
         let recorder = Recorder()
         let transcriber = Transcriber()
         let model = model(recorder, transcriber)
@@ -281,15 +376,13 @@ struct VoiceViewModelTests {
     }
 
     @Test func theElapsedClockCountsWhileRecording() {
-        let recorder = Recorder()
-        let transcriber = Transcriber()
-        let model = model(recorder, transcriber)
+        let model = model(Recorder(), Transcriber())
 
         model.beginHold(nowMs: 1_000)
         model.tick(nowMs: 3_500)
 
         #expect(model.elapsedMs == 2_500, "the meter's clock, from the injected times")
-        #expect(model.elapsedLabel == "0:02")
+        #expect(model.elapsedLabel == "0:02", "the timer the owner could not see")
     }
 }
 

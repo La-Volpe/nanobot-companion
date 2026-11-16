@@ -61,7 +61,13 @@ struct RootView: View {
             model.attach(attachments: attachmentModel)
             return model
         }())
-        _voice = StateObject(wrappedValue: VoiceViewModel(recording: MicrophoneRecorder(), driver: NoopVoice()))
+        _voice = StateObject(
+            wrappedValue: VoiceViewModel(
+                recording: MicrophoneRecorder(),
+                driver: NoopVoice(),
+                hints: container.voiceHints
+            )
+        )
         let credentials = container.credentials
         _states = StateObject(wrappedValue: StatesViewModel())
         self.recovery = ConnectionRecovery(reconnect: { await container.holder.reconnect() })

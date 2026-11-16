@@ -29,9 +29,10 @@ enum Design {
     /// The composer's bottom inset (`--status-h` plus the design's own padding on iOS).
     static let composerBottomPadding: CGFloat = 12
 
-    /// A press shorter than this arms tap-to-dictate instead of ending the recording
-    /// (artifact: 300 ms on the pointer, while the gateway's own floor is 650 ms).
-    static let tapThresholdMs: Int = 300
+    /// How far up a hold has to travel before it locks: past this the finger may leave the screen
+    /// and the button becomes Send (T48). A distance, not a delay — nothing about starting a
+    /// recording waits for a clock any more.
+    static let lockDragDistance: CGFloat = 64
 
     /// The attachment grid's thumbnail (artifact: `.img-thumb` is 124 px wide; the phone's
     /// 3-up grid with 6 pt gaps works out at 84).

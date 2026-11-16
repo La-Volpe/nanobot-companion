@@ -191,6 +191,9 @@ final class NoopAttachments: AttachmentDriving {
 
 /// The two bounds the gateway enforces (`transcription_ws.py`).
 enum VoiceLimits {
+    /// The phone's own floor: a release under this is a tap, so nothing is sent (T48). It sits
+    /// above `floorMs`, the gateway's own refusal, so a recording it would reject is never asked.
+    static let discardMs = 800
     static let floorMs = 650
     static let ceilingMs = 120_000
 }

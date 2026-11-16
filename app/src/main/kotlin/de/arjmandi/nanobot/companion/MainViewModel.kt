@@ -17,6 +17,8 @@ import de.arjmandi.nanobot.companion.drawer.DrawerViewModel
 import de.arjmandi.nanobot.companion.settings.SettingsViewModel
 import de.arjmandi.nanobot.companion.states.ConnectionStatus
 import de.arjmandi.nanobot.companion.states.ConnectionView
+import de.arjmandi.nanobot.companion.voice.InMemoryVoiceHints
+import de.arjmandi.nanobot.companion.voice.VoiceHints
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -27,6 +29,8 @@ import kotlinx.coroutines.flow.StateFlow
  */
 class MainViewModel(
     val holder: CoreHolder,
+    /** Where the voice hint's "shown once" lives: the phone's store in the app (T48). */
+    private val voiceHints: VoiceHints = InMemoryVoiceHints(),
     /** Both bridges for one chat: the real pair in the app, scripted ones in a test. */
     private val session: (chatId: String?) -> ChatSession,
 ) {
@@ -168,6 +172,7 @@ class MainViewModel(
                 snapshots = opened.snapshots,
                 attachmentDriver = opened.attachments,
                 voiceDriver = opened.voice,
+                voiceHints = voiceHints,
                 // The banner's button asks for a new socket through the one owner of that
                 // decision, so a tap cannot race a connect that is already running.
                 onRetryConnection = { recovery?.retry(connectionView.status) },

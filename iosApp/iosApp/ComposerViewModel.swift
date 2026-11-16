@@ -61,7 +61,10 @@ final class ComposerViewModel: ObservableObject {
         case stop
     }
 
-    func primaryState(recording: Bool) -> PrimaryState {
+    /// A *locked* recording has no finger on it any more, so the same button finishes it and
+    /// reads Send (T48).
+    func primaryState(recording: Bool, locked: Bool = false) -> PrimaryState {
+        if recording, locked { return .send }
         if recording { return .stop }
         if showsStop { return .stop }
         return canSend ? .send : .voice

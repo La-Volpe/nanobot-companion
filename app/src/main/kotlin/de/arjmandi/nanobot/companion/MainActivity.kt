@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import de.arjmandi.nanobot.companion.connect.ConnectViewModel
 import de.arjmandi.nanobot.companion.connect.CredentialsStoring
 import de.arjmandi.nanobot.companion.core.CoreHolder
+import de.arjmandi.nanobot.companion.voice.PreferencesVoiceHints
 import de.arjmandi.nanobot.companion.ui.NanobotTheme
 import de.arjmandi.nanobot.companion.ui.RootScreen
 import kotlinx.coroutines.CoroutineScope
@@ -95,7 +96,10 @@ class MainActivity : ComponentActivity() {
             prefillAddress = debugLaunch.address,
             prefillKey = debugLaunch.secret,
         )
-        main = MainViewModel(holder) { chatId ->
+        // The voice hint is remembered where the settings are: the same store, the same lifetime,
+        // one place a "forget this launch" already knows about (T48).
+        val voiceHints = PreferencesVoiceHints(getSharedPreferences(SETTINGS_PREFERENCES, MODE_PRIVATE))
+        main = MainViewModel(holder, voiceHints) { chatId ->
             // A chat the core cannot name yet (no gateway, no greeting) still gets a model: the
             // screen shows an empty thread and an idle composer rather than nothing.
             holder.chatSession(chatId) ?: ChatSession(
