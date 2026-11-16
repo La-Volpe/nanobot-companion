@@ -156,9 +156,10 @@
 
     <!-- Voice (A6): the two gestures, the wait, and the one sentence a gesture can produce. -->
     <string name="voice_transcribing">Transcribing…</string>
-    <string name="voice_tap_to_stop">Tap to stop</string>
     <string name="voice_release_to_send">Release to send</string>
-    <string name="voice_too_short">Hold a little longer to record voice.</string>
+    <string name="voice_send_to_finish">Tap Send to finish</string>
+    <string name="voice_cancel">Cancel recording</string>
+    <string name="voice_hold_to_talk">Hold to talk</string>
     <string name="voice_too_long">Recording is too long.</string>
     <string name="voice_microphone">The microphone is not available.</string>
     <string name="voice_nothing_recorded">That recording did not reach the microphone.</string>

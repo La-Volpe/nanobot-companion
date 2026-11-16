@@ -37,7 +37,20 @@ struct ComposerBar: View {
                 AttachmentStrip(model: attachments)
             }
             if voice.phase == .recording {
-                VoiceMeter(elapsed: voice.elapsedLabel)
+                VoiceMeter(
+                    elapsed: voice.elapsedLabel,
+                    locked: voice.locked,
+                    onCancel: voice.cancelRecording
+                )
+            }
+            // The wait is written as well as drawn: the button's arc says something is happening,
+            // and this says what (T48).
+            if voice.phase == .transcribing {
+                Text("Transcribing…")
+                    .font(.system(size: Design.Interface.microSize))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("voice.transcribing")
             }
             metaRow
             field
@@ -65,6 +78,27 @@ struct ComposerBar: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Dismiss")
                     .accessibilityIdentifier("voice.notice.dismiss")
+                }
+            }
+        }
+        // The meter counts and the transcribing arc turns on the screen's clock: the model takes
+        // times as arguments and owns no timer. Both loops end — the recording one with the
+        // gesture, the arc's after a fixed number of ticks — because XCUITest waits for the app to
+        // go quiet and an endless animation never gets there.
+        .task(id: voice.phase) {
+            switch voice.phase {
+            case .idle:
+                return
+            case .recording:
+                while voice.phase == .recording {
+                    voice.tick(nowMs: Self.nowMs())
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                }
+            case .transcribing:
+                for _ in 0 ..< Self.arcTicks {
+                    guard voice.phase == .transcribing else { return }
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                    voice.tick(nowMs: Self.nowMs())
                 }
             }
         }
@@ -133,7 +167,7 @@ struct ComposerBar: View {
     }
 
     private var primary: ComposerViewModel.PrimaryState {
-        model.primaryState(recording: voice.phase == .recording)
+        model.primaryState(recording: voice.recordingNow, locked: voice.locked)
     }
 
     /// The WebUI's own glyphs, not SF Symbols: the composer's stop and send are the buttons
@@ -182,56 +216,87 @@ struct ComposerBar: View {
         }
     }
 
-    /// One button, three jobs: hold it to record, tap it to send, tap it to stop. Which one it is
-    /// is `ComposerViewModel.primaryState`, not a branch here.
+    /// One button, three jobs: hold it to record, tap it to send, tap it to stop — and once a drag
+    /// up has locked a recording, the same button finishes it as Send. Which one it is is
+    /// `ComposerViewModel.primaryState`, not a branch here.
+    ///
+    /// While the gateway transcribes, the voice job is the one thing the button cannot do, so it
+    /// goes inactive and a light arc circles it (T48). The composer around it keeps working: the
+    /// field stays editable, and typed text can still be sent.
     private var primaryButton: some View {
-        Button {
-            if suppressClick {
-                suppressClick = false
-                return
+        let inactive = voice.transcribing && primary == .voice
+        return ZStack {
+            if inactive {
+                // The angle is the model's, moved by ticks: no `.repeatForever`, because a UI test
+                // waits for the app to go quiet and an endless animation never gets there.
+                Circle()
+                    .trim(from: 0, to: 0.25)
+                    .stroke(Palette.primary.opacity(0.4), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .frame(width: Design.minimumTarget + 8, height: Design.minimumTarget + 8)
+                    .rotationEffect(.degrees(voice.sweepDegrees))
+                    .accessibilityHidden(true)
             }
-            press.acted()
-            Task { await primaryAction() }
-        } label: {
-            WebUIIcon(name: primaryGlyph(primary), size: 19)
-                .frame(width: Design.minimumTarget, height: Design.minimumTarget)
-                .background(Palette.primary, in: Circle())
-                .foregroundStyle(Palette.onPrimary)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(identifier(primary))
-        .accessibilityLabel(label(primary))
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    // The state is read *through* the press, not from the button as it is now.
-                    guard press.down(primary), holdStartedAt == nil else { return }
-                    suppressClick = true
-                    let now = Self.nowMs()
-                    holdStartedAt = now
-                    voice.beginHold(nowMs: now)
+            Button {
+                if suppressClick {
+                    suppressClick = false
+                    return
                 }
-                .onEnded { _ in
-                    guard let started = holdStartedAt else {
-                        press.lifted()
-                        return
-                    }
-                    press.lifted()
-                    holdStartedAt = nil
-                    let now = Self.nowMs()
-                    Task {
-                        if now - started < Design.tapThresholdMs {
-                            // A short press arms tap-to-dictate and keeps recording.
-                            voice.armTapMode()
-                        } else {
-                            await voice.endHold(nowMs: now)
+                press.acted()
+                Task { await primaryAction() }
+            } label: {
+                WebUIIcon(name: primaryGlyph(primary), size: 19)
+                    .frame(width: Design.minimumTarget, height: Design.minimumTarget)
+                    .background(Palette.primary, in: Circle())
+                    .foregroundStyle(Palette.onPrimary)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(inactive)
+            .accessibilityIdentifier(identifier(primary))
+            .accessibilityLabel(label(primary))
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        // The state is read *through* the press, not from the button as it is now,
+                        // so a send that empties the field cannot hand its press to the microphone
+                        // (T31).
+                        if holdStartedAt == nil {
+                            guard press.down(primary), !voice.transcribing else { return }
+                            suppressClick = true
+                            let now = Self.nowMs()
+                            holdStartedAt = now
+                            // The finger is the start: the recording is open before it moves (T48).
+                            voice.beginHold(nowMs: now)
+                            return
                         }
-                        await applyTranscript()
-                        suppressClick = false
+                        // The drag is only the lock: past the threshold the finger may leave the
+                        // screen and the button becomes Send.
+                        if value.translation.height < -Design.lockDragDistance {
+                            voice.lock()
+                        }
                     }
-                }
-        )
+                    .onEnded { _ in
+                        guard holdStartedAt != nil else {
+                            press.lifted()
+                            return
+                        }
+                        press.lifted()
+                        holdStartedAt = nil
+                        let now = Self.nowMs()
+                        // A locked recording outlived its gesture: Send and the cancel target own
+                        // it now, and this lift is not a stop.
+                        guard !voice.locked else {
+                            suppressClick = false
+                            return
+                        }
+                        Task {
+                            await voice.release(nowMs: now)
+                            await applyTranscript()
+                            suppressClick = false
+                        }
+                    }
+            )
+        }
     }
 
     private func identifier(_ state: ComposerViewModel.PrimaryState) -> String {
@@ -251,8 +316,9 @@ struct ComposerBar: View {
     }
 
     private func primaryAction() async {
-        if primary == .stop, voice.phase == .recording {
-            await voice.tap(nowMs: Self.nowMs())
+        // A locked recording has no finger on it: this press is the finish.
+        if voice.recordingNow, voice.locked {
+            await voice.sendLocked(nowMs: Self.nowMs())
             await applyTranscript()
             return
         }
@@ -269,6 +335,9 @@ struct ComposerBar: View {
     private static func nowMs() -> Int {
         Int(Date().timeIntervalSince1970 * 1000)
     }
+
+    /// 12 s of a light circle: long enough for a gateway, short enough that quiet comes back.
+    private static let arcTicks = 120
 }
 
 /// The prompt waiting for the running turn: Send now steers, Delete drops it (design
@@ -477,17 +546,25 @@ struct SheetRow: View {
     }
 }
 
-/// The recording meter: the elapsed clock and the bars (artifact: `#voice-meter`). The bars are
-/// a level indicator over the real recorder, so they move while the microphone is open.
+/// The recording meter (artifact: `#voice-meter`): the elapsed clock and the bars, the words for
+/// what the finger still has to do, and — once a drag up has locked the recording — the one control
+/// that throws it away (T48).
+///
+/// The bars do not animate. A `repeatForever` on this row is what makes XCUITest wait for an app
+/// that never goes quiet; the timer beside them is the movement, and it is the model's clock.
+/// The identifiers sit on the clock and the cancel control rather than on the row, because a
+/// container identifier hides its children (gotcha 21).
 struct VoiceMeter: View {
     let elapsed: String
-    @State private var phase = false
+    let locked: Bool
+    let onCancel: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
             Text(elapsed)
                 .font(.system(size: Design.Interface.microSize, design: .monospaced))
-                .foregroundStyle(.red)
+                .foregroundStyle(Palette.destructive)
+                .accessibilityIdentifier("voice.timer")
             HStack(spacing: 2) {
                 ForEach(0..<20, id: \.self) { index in
                     Capsule()
@@ -495,19 +572,28 @@ struct VoiceMeter: View {
                         .frame(width: 2, height: barHeight(index))
                 }
             }
-            .animation(.easeInOut(duration: 0.35).repeatForever(autoreverses: true), value: phase)
-            .onAppear { phase = true }
             Spacer(minLength: 0)
-            Text("Tap to stop")
+            Text(locked ? "Tap Send to finish" : "Release to send")
                 .font(.system(size: Design.Interface.microSize))
                 .foregroundStyle(.secondary)
+            if locked {
+                // A locked recording has no finger on it, so the only way out is a control: the
+                // WebUI's own close glyph, not a character (gotcha 25).
+                Button(action: onCancel) {
+                    WebUIIcon(name: "Close", size: 12)
+                        .frame(width: Design.minimumTarget, height: Design.minimumTarget)
+                        .contentShape(Rectangle())
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Cancel recording")
+                .accessibilityIdentifier("voice.cancel")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityIdentifier("voice.meter")
     }
 
     private func barHeight(_ index: Int) -> CGFloat {
-        let base = CGFloat(4 + (index % 5) * 2)
-        return phase ? base + 10 : base
+        CGFloat(4 + (index % 5) * 2)
     }
 }

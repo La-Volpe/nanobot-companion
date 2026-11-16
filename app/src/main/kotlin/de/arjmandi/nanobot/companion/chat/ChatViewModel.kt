@@ -12,6 +12,8 @@ import de.arjmandi.nanobot.companion.attachment.EmptyAttachmentDriver
 import de.arjmandi.nanobot.companion.composer.ComposerViewModel
 import de.arjmandi.nanobot.companion.voice.AudioRecording
 import de.arjmandi.nanobot.companion.voice.EmptyVoiceDriver
+import de.arjmandi.nanobot.companion.voice.InMemoryVoiceHints
+import de.arjmandi.nanobot.companion.voice.VoiceHints
 import de.arjmandi.nanobot.companion.voice.VoiceDriving
 import de.arjmandi.nanobot.companion.voice.VoiceViewModel
 import de.arjmandi.nanobot.companion.states.StatesViewModel
@@ -43,6 +45,11 @@ class ChatViewModel(
     attachmentDriver: AttachmentDriving = EmptyAttachmentDriver(),
     voiceDriver: VoiceDriving = EmptyVoiceDriver(),
     recorder: () -> AudioRecording = { WavRecorder() },
+    /**
+     * The one hint that outlives a launch ("Hold to talk", T48). Injected because remembering it
+     * is the phone's job and the model only decides to say it once.
+     */
+    voiceHints: VoiceHints = InMemoryVoiceHints(),
     /**
      * The banner's "Try again" (A8). Injected rather than built here: the reconnect belongs to the
      * shell, which is the only place that knows the stack and the chat on screen.
@@ -77,8 +84,8 @@ class ChatViewModel(
     /** The cards, the lightbox and the upload's typed refusals (A6). */
     val attachments: AttachmentViewModel = AttachmentViewModel(attachmentDriver)
 
-    /** Hold-to-record, tap-to-dictate and the "Transcribing…" state (A6). */
-    val voice: VoiceViewModel = VoiceViewModel(recorder(), voiceDriver, scope)
+    /** Hold to talk and the transcribing state (A6, T48). */
+    val voice: VoiceViewModel = VoiceViewModel(recorder(), voiceDriver, voiceHints)
 
     /** The banner, the notices, the goal strip, the dock, the delivery retry and the snackbar (A8). */
     val states: StatesViewModel = StatesViewModel(

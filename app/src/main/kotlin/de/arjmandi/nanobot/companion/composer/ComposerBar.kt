@@ -1,9 +1,12 @@
 package de.arjmandi.nanobot.companion.composer
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -23,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
@@ -172,43 +177,72 @@ fun SessionActionsOverflow(composer: ComposerViewModel, expanded: Boolean, onDis
     }
 }
 
-/** The composer's one button: hold to record, tap to send, tap to stop — the model says which. */
+/**
+ * The composer's one button: hold to record, tap to send, tap to stop — the model says which.
+ *
+ * While the gateway is transcribing, the voice job is the one thing the button cannot do, so it
+ * goes inactive and a light arc circles it (T48: the owner asked for exactly that, and for the
+ * composer around it to keep working). The arc's angle comes from the model's ticks, not from an
+ * animation: an endless animation keeps the frame clock busy and hangs every test that waits for
+ * idle (`Skeleton` is static for the same reason).
+ */
 @Composable
 fun ComposerPrimaryButton(
     state: PrimaryState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    transcribing: Boolean = false,
+    sweepDegrees: Float = 0f,
 ) {
     val label = when (state) {
         PrimaryState.Voice -> "chat.voice"
         PrimaryState.Send -> "chat.send"
         PrimaryState.Stop -> "chat.stop"
     }
-    Button(
-        onClick = onClick,
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.surface,
-        ),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-        modifier = modifier
-            .size(Design.minimumTarget)
-            .testTag(label),
-    ) {
-        // The composer's own glyphs from the WebUI (`product-icons.tsx`): voice, send, stop.
-        Icon(
-            painter = painterResource(
-                when (state) {
-                    PrimaryState.Voice -> R.drawable.ic_webui_voice
-                    PrimaryState.Send -> R.drawable.ic_webui_send
-                    PrimaryState.Stop -> R.drawable.ic_webui_stop
-                }
+    val inactive = transcribing && state == PrimaryState.Voice
+    Box(modifier = modifier.size(Design.minimumTarget), contentAlignment = Alignment.Center) {
+        if (inactive) {
+            val arc = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+            Canvas(modifier = Modifier.fillMaxSize().testTag("chat.voice.arc")) {
+                val stroke = 2.dp.toPx()
+                drawArc(
+                    color = arc,
+                    startAngle = sweepDegrees,
+                    sweepAngle = 90f,
+                    useCenter = false,
+                    topLeft = Offset(stroke, stroke),
+                    size = Size(size.width - stroke * 2, size.height - stroke * 2),
+                    style = Stroke(width = stroke, cap = StrokeCap.Round),
+                )
+            }
+        }
+        Button(
+            onClick = onClick,
+            enabled = !inactive,
+            shape = CircleShape,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.surface,
             ),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.size(20.dp),
-        )
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+            modifier = Modifier
+                .size(Design.minimumTarget)
+                .testTag(label),
+        ) {
+            // The composer's own glyphs from the WebUI (`product-icons.tsx`): voice, send, stop.
+            Icon(
+                painter = painterResource(
+                    when (state) {
+                        PrimaryState.Voice -> R.drawable.ic_webui_voice
+                        PrimaryState.Send -> R.drawable.ic_webui_send
+                        PrimaryState.Stop -> R.drawable.ic_webui_stop
+                    }
+                ),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 

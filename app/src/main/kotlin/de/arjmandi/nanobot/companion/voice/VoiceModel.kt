@@ -30,11 +30,40 @@ class EmptyVoiceDriver : VoiceDriving {
     override suspend fun transcribe(pcm: ByteArray, durationMs: Long): VoiceOutcome = VoiceOutcome.Refused("not_connected")
 }
 
-/** The two bounds the gateway enforces (`transcription_ws.py`), in milliseconds. */
+/**
+ * The numbers a recording lives between, in milliseconds.
+ *
+ * [DISCARD_MS] is the phone's own floor and the one the gesture asks about: a press that short is
+ * a tap, so nothing is sent (T48). It sits *above* [FLOOR_MS], the gateway's own refusal threshold
+ * (`transcription_ws.py`), so a recording the gateway would reject is never asked about.
+ */
 object VoiceLimits {
+    const val DISCARD_MS: Long = 800
     const val FLOOR_MS: Long = 650
     const val CEILING_MS: Long = 120_000
 }
 
 /** The sentences a gesture can produce; the screen turns each into its string. */
-enum class VoiceNotice { TooShort, TooLong, MicrophoneUnavailable, NothingRecorded, TranscriptionFailed }
+enum class VoiceNotice { HoldToTalk, TooLong, MicrophoneUnavailable, NothingRecorded, TranscriptionFailed }
+
+/**
+ * The "Hold to talk" hint is shown once and remembered (T48 answers Android's "tapping does
+ * nothing" with an explanation, not with a second recording mode). The decision to show it is the
+ * model's; the remembering is the phone's.
+ */
+interface VoiceHints {
+    fun hasSeenHoldHint(): Boolean
+
+    fun markHoldHintSeen()
+}
+
+/** A store that forgets: what a model built in a test gets, and nothing on disk to clean up. */
+class InMemoryVoiceHints : VoiceHints {
+    private var seen = false
+
+    override fun hasSeenHoldHint(): Boolean = seen
+
+    override fun markHoldHintSeen() {
+        seen = true
+    }
+}

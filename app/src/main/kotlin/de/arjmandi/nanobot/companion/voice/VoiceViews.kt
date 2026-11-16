@@ -27,10 +27,15 @@ import de.arjmandi.nanobot.companion.ui.Design
 
 /**
  * The recording meter (artifact: `#voice-meter`): the elapsed clock and a level bar, plus the words
- * for the two gestures. It draws the model's numbers; the clock is the gesture's, not the meter's.
+ * for what the finger has to do, and — once a drag up has locked the recording — the one control
+ * that throws it away. It draws the model's numbers; the clock is the gesture's, not the meter's.
  */
 @Composable
-fun VoiceMeter(model: VoiceViewModel, modifier: Modifier = Modifier) {
+fun VoiceMeter(
+    model: VoiceViewModel,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     when (model.phase) {
         VoiceViewModel.Phase.Recording -> Row(
             modifier = modifier
@@ -41,11 +46,13 @@ fun VoiceMeter(model: VoiceViewModel, modifier: Modifier = Modifier) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            // The timer the owner could not see: it is the model's elapsed clock, drawn (T48).
             Text(
                 text = model.elapsedLabel,
                 fontSize = Design.Interface.microSize,
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.testTag("voice.timer"),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 repeat(12) { index ->
@@ -59,10 +66,27 @@ fun VoiceMeter(model: VoiceViewModel, modifier: Modifier = Modifier) {
             }
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = stringResource(if (model.tapMode) R.string.voice_tap_to_stop else R.string.voice_release_to_send),
+                text = stringResource(
+                    if (model.locked) R.string.voice_send_to_finish else R.string.voice_release_to_send,
+                ),
                 fontSize = Design.Interface.microSize,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (model.locked) {
+                // A locked recording has no finger on it, so the only way out is a control: the
+                // WebUI's own close glyph, at the design's 48 dp (gotcha 25).
+                IconButton(
+                    onClick = onCancel,
+                    modifier = Modifier.size(Design.minimumTarget).testTag("voice.cancel"),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_webui_close),
+                        contentDescription = stringResource(R.string.voice_cancel),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
         }
 
         VoiceViewModel.Phase.Transcribing -> Text(
@@ -88,7 +112,7 @@ fun VoiceNoticeRow(
     modifier: Modifier = Modifier,
 ) {
     val text = when (notice) {
-        VoiceNotice.TooShort -> stringResource(R.string.voice_too_short)
+        VoiceNotice.HoldToTalk -> stringResource(R.string.voice_hold_to_talk)
         VoiceNotice.TooLong -> stringResource(R.string.voice_too_long)
         VoiceNotice.MicrophoneUnavailable -> stringResource(R.string.voice_microphone)
         VoiceNotice.NothingRecorded -> stringResource(R.string.voice_nothing_recorded)

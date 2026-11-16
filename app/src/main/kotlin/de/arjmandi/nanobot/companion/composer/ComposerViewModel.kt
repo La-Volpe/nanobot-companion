@@ -87,9 +87,11 @@ class ComposerViewModel(
 
     /**
      * What the one button is. A recording outranks everything, then the stop rule, then text,
-     * then the microphone.
+     * then the microphone. A *locked* recording has no finger on it any more, so the same button
+     * finishes it and reads Send (T48).
      */
-    fun primaryState(recording: Boolean): PrimaryState = when {
+    fun primaryState(recording: Boolean, locked: Boolean = false): PrimaryState = when {
+        recording && locked -> PrimaryState.Send
         recording || showsStop -> PrimaryState.Stop
         canSend -> PrimaryState.Send
         else -> PrimaryState.Voice

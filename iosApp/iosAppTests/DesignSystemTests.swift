@@ -37,11 +37,12 @@ struct DesignSystemTests {
         #expect(Design.Activity.diffSize < Design.Interface.captionSize * 1.2, "the diff is the smallest mono type")
     }
 
-    /// The two voice numbers are both the platform's: the tap threshold the artifact draws and
-    /// the gateway's own floor, which the app must not cross.
+    /// The voice numbers are the platform's: the drag that locks a recording is a distance, and
+    /// the discard floor sits above the gateway's own refusal so it never asks about a recording
+    /// the gateway would reject (T48).
     @Test func theVoiceThresholdsAreBothTheDesigns() {
-        #expect(Design.tapThresholdMs == 300, "the artifact arms tap-to-dictate under 300 ms")
-        #expect(Design.tapThresholdMs < VoiceLimits.floorMs, "and the 650 ms floor is the gateway's, above it")
+        #expect(Design.lockDragDistance >= Design.minimumTarget, "the lock is a deliberate drag, not a wobble")
+        #expect(VoiceLimits.discardMs > VoiceLimits.floorMs, "800 ms is above the 650 ms the gateway refuses")
         #expect(VoiceLimits.ceilingMs == 120_000, "120 s is the gateway's own ceiling")
     }
 

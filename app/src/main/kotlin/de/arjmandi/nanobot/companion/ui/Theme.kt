@@ -42,10 +42,11 @@ object Design {
     val brand = Color(0xFFEF8E30)
 
     /**
-     * A press shorter than this arms tap-to-dictate instead of ending the recording (artifact:
-     * 300 ms on the pointer, while the gateway's own floor is 650 ms).
+     * How far up a hold has to travel before it locks: past this the finger may leave the screen
+     * and the button becomes Send (T48). A distance, not a delay — nothing about starting a
+     * recording waits for a clock any more.
      */
-    const val tapThresholdMs: Long = 300
+    val lockDragDistance = 64.dp
 
     /** The composer's bottom inset above the navigation bar. */
     val composerBottomPadding = 12.dp

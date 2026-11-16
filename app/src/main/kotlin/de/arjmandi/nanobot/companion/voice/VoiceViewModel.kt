@@ -3,28 +3,27 @@ package de.arjmandi.nanobot.companion.voice
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 /**
- * Hold-to-record and tap-to-dictate (plan.md A6, C6.5), the Android twin of iOS's
- * `VoiceViewModel`.
+ * Hold to talk, the Android twin of iOS's `VoiceViewModel`.
  *
- * Two gestures, one machine. A hold records until release and is refused under the gateway's own
- * 650 ms floor; a tap starts dictating and the next tap stops it. Both end at the 120 s ceiling,
- * and between release and the transcript the field says "Transcribing…", because that wait is a
- * state the user has to see.
+ * The model is one machine with three states and one rule of thumb: the finger is the start. A
+ * press records the instant it lands — no threshold, no commit step — because the old 300 ms
+ * tap-mode wait read as lag on the owner's phone (T48). What a release then means depends only on
+ * how long the press lasted: under [VoiceLimits.DISCARD_MS] it was a tap, the recording is thrown
+ * away with no request, and the first tap explains the gesture; at or above it the recording goes
+ * to the gateway and the transcript lands in the field. A drag up in between locks the recording so
+ * the finger may leave the screen: the button becomes Send, and a cancel target throws the
+ * recording away.
  *
  * The clock is the caller's: the gesture passes `nowMs`, so the floor, the ceiling and the frame's
- * duration are one number and no timer runs inside the model.
+ * duration are one number and no timer runs inside the model. That includes the transcribing arc —
+ * it advances on [tick], never on an animation, so a screen that waits for quiet still gets it.
  */
 class VoiceViewModel(
     private var recording: AudioRecording,
     private var driver: VoiceDriving,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + uiDispatcher()),
+    private val hints: VoiceHints = InMemoryVoiceHints(),
 ) {
 
     enum class Phase { Idle, Recording, Transcribing }
@@ -35,6 +34,10 @@ class VoiceViewModel(
     var elapsedMs: Long by mutableStateOf(0L)
         private set
 
+    /** True once a drag up handed the recording to the button; the finger may leave the screen. */
+    var locked: Boolean by mutableStateOf(false)
+        private set
+
     /** The one sentence a gesture produced: why it stopped, or why it was refused. */
     var notice: VoiceNotice? by mutableStateOf(null)
         private set
@@ -42,14 +45,19 @@ class VoiceViewModel(
     var lastTranscript: String? by mutableStateOf(null)
         private set
 
-    /** True while the current recording came from a tap rather than a hold. */
-    var tapMode: Boolean by mutableStateOf(false)
+    /**
+     * The transcribing arc's angle. It moves only on [tick], one step per tick: a determinate
+     * sweep, because an endless animation keeps the frame clock busy and every test that waits
+     * for idle waits forever (`Skeleton` is static for exactly this reason).
+     */
+    var sweepDegrees: Float by mutableStateOf(0f)
         private set
 
     private var startedAtMs: Long = 0
-    private var job: Job? = null
 
     val transcribing: Boolean get() = phase == Phase.Transcribing
+
+    val recordingNow: Boolean get() = phase == Phase.Recording
 
     /** `0:07`, which is the meter's clock. */
     val elapsedLabel: String
@@ -69,47 +77,12 @@ class VoiceViewModel(
         notice = null
     }
 
-    // The hold gesture.
-
+    /**
+     * The finger landed: record now. A second press while a recording is in flight is not a
+     * gesture the machine has, so it is ignored rather than allowed to steal the first one.
+     */
     fun beginHold(nowMs: Long) {
         if (phase != Phase.Idle) return
-        start(nowMs, tap = false)
-    }
-
-    suspend fun endHold(nowMs: Long) {
-        // A hold that was actually a tap keeps dictating; that is what makes tap-to-dictate work on
-        // a short press without a second gesture.
-        if (phase != Phase.Recording || tapMode) return
-        if (nowMs - startedAtMs < VoiceLimits.FLOOR_MS) {
-            cancel(VoiceNotice.TooShort)
-            return
-        }
-        finish(nowMs)
-    }
-
-    // The tap gesture.
-
-    suspend fun tap(nowMs: Long) {
-        when (phase) {
-            Phase.Idle -> start(nowMs, tap = true)
-            Phase.Recording -> if (tapMode) finish(nowMs) else endHold(nowMs)
-            Phase.Transcribing -> Unit
-        }
-    }
-
-    /** A press shorter than the tap threshold arms tap-to-dictate and keeps recording. */
-    fun armTapMode() {
-        if (phase == Phase.Recording) tapMode = true
-    }
-
-    /** Called by the meter; the model owns no clock of its own, so the screen passes time. */
-    fun tick(nowMs: Long) {
-        if (phase != Phase.Recording) return
-        elapsedMs = nowMs - startedAtMs
-        if (elapsedMs > VoiceLimits.CEILING_MS) cancel(VoiceNotice.TooLong)
-    }
-
-    private fun start(nowMs: Long, tap: Boolean) {
         notice = null
         lastTranscript = null
         try {
@@ -120,46 +93,109 @@ class VoiceViewModel(
         }
         startedAtMs = nowMs
         elapsedMs = 0
-        tapMode = tap
+        locked = false
         phase = Phase.Recording
     }
 
-    private fun finish(nowMs: Long) {
-        val audio = recording.stop()
-        if (audio == null || audio.isEmpty()) {
-            cancel(VoiceNotice.NothingRecorded)
+    /**
+     * The finger lifted. Under the discard floor the press was a tap: the recording is thrown away
+     * and the gateway is never asked. At or above it, the recording is the question.
+     */
+    suspend fun release(nowMs: Long) {
+        if (phase != Phase.Recording) return
+        // A locked recording outlived its gesture: the button owns it now, and a lift is not a stop.
+        if (locked) return
+        if (nowMs - startedAtMs < VoiceLimits.DISCARD_MS) {
+            discardAsTap()
             return
         }
-        val durationMs = nowMs - startedAtMs
-        phase = Phase.Transcribing
-        // The transcript arrives on the frame's own request id; the screen shows the wait until it
-        // does, which is the state the design asks for.
-        job = scope.launch {
-            val outcome = driver.transcribe(audio, durationMs)
-            phase = Phase.Idle
-            tapMode = false
-            elapsedMs = 0
-            when (outcome) {
-                is VoiceOutcome.Transcribed -> {
-                    lastTranscript = outcome.text
-                    notice = null
-                }
+        finish(nowMs)
+    }
 
-                // The gateway's own word for it is not a sentence; the screen says what happened.
-                is VoiceOutcome.Refused -> notice = VoiceNotice.TranscriptionFailed
+    /** A drag up: the recording carries on with no finger on it, and the button becomes Send. */
+    fun lock() {
+        if (phase == Phase.Recording) locked = true
+    }
+
+    /** The Send side of a locked recording: tap it to finish and transcribe. */
+    suspend fun sendLocked(nowMs: Long) {
+        if (phase != Phase.Recording || !locked) return
+        finish(nowMs)
+    }
+
+    /** The cancel target: the recording is thrown away without a request and without a sentence. */
+    fun cancelRecording() {
+        if (phase != Phase.Recording) return
+        recording.cancel()
+        reset()
+    }
+
+    /** Called by the meter; the model owns no clock of its own, so the screen passes time. */
+    fun tick(nowMs: Long) {
+        when (phase) {
+            Phase.Recording -> {
+                elapsedMs = nowMs - startedAtMs
+                if (elapsedMs > VoiceLimits.CEILING_MS) cancel(VoiceNotice.TooLong)
             }
+
+            Phase.Transcribing -> sweepDegrees = (sweepDegrees + SWEEP_STEP_DEGREES) % 360f
+            Phase.Idle -> Unit
+        }
+    }
+
+    /**
+     * A tap is discarded silently, and the first one explains the gesture — once ever, because a
+     * hint that keeps coming back is a nag. Persisting the "seen" flag is [VoiceHints]'s job.
+     */
+    private fun discardAsTap() {
+        recording.cancel()
+        reset()
+        if (!hints.hasSeenHoldHint()) {
+            hints.markHoldHintSeen()
+            notice = VoiceNotice.HoldToTalk
+        }
+    }
+
+    private suspend fun finish(nowMs: Long) {
+        val audio = recording.stop()
+        val durationMs = nowMs - startedAtMs
+        reset()
+        if (audio == null || audio.isEmpty()) {
+            notice = VoiceNotice.NothingRecorded
+            return
+        }
+        phase = Phase.Transcribing
+        // The transcript arrives on the frame's own request id, so the wait is a state the screen
+        // shows rather than a gap: the button is inactive and the arc turns while we ask.
+        val outcome = driver.transcribe(audio, durationMs)
+        phase = Phase.Idle
+        sweepDegrees = 0f
+        when (outcome) {
+            is VoiceOutcome.Transcribed -> {
+                lastTranscript = outcome.text
+                notice = null
+            }
+
+            // The gateway's own word for it is not a sentence; the screen says what happened.
+            is VoiceOutcome.Refused -> notice = VoiceNotice.TranscriptionFailed
         }
     }
 
     private fun cancel(notice: VoiceNotice) {
         recording.cancel()
-        phase = Phase.Idle
-        tapMode = false
-        elapsedMs = 0
+        reset()
         this.notice = notice
     }
 
+    private fun reset() {
+        phase = Phase.Idle
+        locked = false
+        elapsedMs = 0
+        sweepDegrees = 0f
+    }
+
     private companion object {
-        fun uiDispatcher() = runCatching { Dispatchers.Main.immediate }.getOrDefault(Dispatchers.Default)
+        /** 12° a tick at 100 ms is a light circle, not a spinner. */
+        const val SWEEP_STEP_DEGREES: Float = 12f
     }
 }

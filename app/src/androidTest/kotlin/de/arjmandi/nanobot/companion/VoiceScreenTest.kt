@@ -1,6 +1,10 @@
 package de.arjmandi.nanobot.companion
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -18,16 +22,19 @@ import de.arjmandi.nanobot.companion.composer.PaletteSheet
 import de.arjmandi.nanobot.companion.composer.WorkspaceAccess
 import de.arjmandi.nanobot.companion.ui.NanobotTheme
 import de.arjmandi.nanobot.companion.voice.AudioRecording
+import de.arjmandi.nanobot.companion.voice.InMemoryVoiceHints
 import de.arjmandi.nanobot.companion.voice.VoiceDriving
+import de.arjmandi.nanobot.companion.voice.VoiceHints
 import de.arjmandi.nanobot.companion.voice.VoiceMeter
+import de.arjmandi.nanobot.companion.voice.VoiceNotice
 import de.arjmandi.nanobot.companion.voice.VoiceOutcome
 import de.arjmandi.nanobot.companion.voice.VoiceViewModel
 import android.Manifest
 import androidx.test.platform.app.InstrumentationRegistry
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlin.test.assertTrue
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,9 +43,10 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * A6's voice drawing (the Compose half): the meter's clock while recording, "Transcribing…" while
- * the gateway works, and the one button following the two gestures from Voice to Stop. The gesture
- * machine itself is `VoiceViewModelTest`'s.
+ * T48's voice drawing, the Compose half: the timer on screen while a press records, the transcribing
+ * state that leaves the field usable while the button goes inactive, the drag-up lock with its Send
+ * and its cancel target, and the one-time "Hold to talk" hint. The gesture machine itself is
+ * `VoiceViewModelTest`'s.
  */
 @RunWith(AndroidJUnit4::class)
 class VoiceScreenTest {
@@ -60,15 +68,19 @@ class VoiceScreenTest {
         )
     }
 
-
     private class FakeRecorder : AudioRecording {
         override fun start() = Unit
         override fun stop(): ByteArray = byteArrayOf(1, 2, 3, 4)
         override fun cancel() = Unit
     }
 
-    private class FakeVoice(private val text: String = "check the write path first") : VoiceDriving {
-        override suspend fun transcribe(pcm: ByteArray, durationMs: Long): VoiceOutcome = VoiceOutcome.Transcribed(text)
+    /** Answers when the test opens the gate, so the transcribing state can be looked at. */
+    private class FakeVoice(
+        private val gate: CompletableDeferred<String>? = null,
+        private val text: String = "check the write path first",
+    ) : VoiceDriving {
+        override suspend fun transcribe(pcm: ByteArray, durationMs: Long): VoiceOutcome =
+            VoiceOutcome.Transcribed(gate?.await() ?: text)
     }
 
     private class SilentChat : ChatDriver {
@@ -90,58 +102,110 @@ class VoiceScreenTest {
         override suspend fun loadPalette(text: String, cursor: Int): PaletteSheet? = null
     }
 
+    private fun chat(
+        driver: VoiceDriving = FakeVoice(),
+        hints: VoiceHints = InMemoryVoiceHints(),
+    ) = ChatViewModel(
+        SilentChat(),
+        NoComposer,
+        MutableStateFlow(ComposerSnapshot()),
+        voiceDriver = driver,
+        recorder = { FakeRecorder() },
+        voiceHints = hints,
+    )
+
+    /** The timer the owner could not see: the meter draws the model's clock (T48). */
     @Test
-    fun theMeterCountsUpInMinutesAndSeconds() {
-        val model = VoiceViewModel(FakeRecorder(), FakeVoice(), CoroutineScope(Dispatchers.Unconfined))
+    fun theMeterDrawsTheClockAndTheWords() {
+        val model = VoiceViewModel(FakeRecorder(), FakeVoice())
         model.beginHold(nowMs = 0)
         model.tick(nowMs = 7_000)
 
-        compose.setContent { NanobotTheme { VoiceMeter(model = model) } }
+        compose.setContent { NanobotTheme { VoiceMeter(model = model, onCancel = {}) } }
 
         compose.onNodeWithTag("voice.meter").assertIsDisplayed()
-        compose.onNodeWithText("0:07").assertIsDisplayed()
+        compose.onNodeWithTag("voice.timer").assertTextEquals("0:07")
         compose.onNodeWithText("Release to send").assertIsDisplayed()
     }
 
+    /** A drag up hands the recording over: the meter says Send and offers the way out. */
     @Test
-    fun theMeterSaysTapToStopInTapMode() {
-        val model = VoiceViewModel(FakeRecorder(), FakeVoice(), CoroutineScope(Dispatchers.Unconfined))
+    fun aLockedRecordingOffersSendAndCancel() {
+        val model = VoiceViewModel(FakeRecorder(), FakeVoice())
         model.beginHold(nowMs = 0)
-        model.armTapMode()
+        model.lock()
 
-        compose.setContent { NanobotTheme { VoiceMeter(model = model) } }
+        compose.setContent { NanobotTheme { VoiceMeter(model = model, onCancel = { model.cancelRecording() }) } }
 
-        compose.onNodeWithText("Tap to stop").assertIsDisplayed()
+        compose.onNodeWithText("Tap Send to finish").assertIsDisplayed()
+        compose.onNodeWithTag("voice.cancel").performClick()
+        compose.waitForIdle()
+
+        assertEquals(VoiceViewModel.Phase.Idle, model.phase, "the cancel target throws the recording away")
+        compose.onNodeWithTag("voice.meter").assertDoesNotExist()
     }
 
     /**
-     * A notice is a line on the composer, so it needs a control that clears it (T31). The owner's
-     * gateway has no speech provider: every recording is refused, and the refusal is what a reader
-     * has to be able to put away.
+     * While the gateway transcribes, the button is the feedback and the composer keeps working:
+     * the field is still editable and still sends, which is the owner's correction to the brief.
      */
     @Test
-    fun theNoticeSaysWhyAndCanBePutAway() {
-        val model = ChatViewModel(
-            SilentChat(),
-            NoComposer,
-            MutableStateFlow(ComposerSnapshot()),
-            voiceDriver = FakeVoice("check the write path first"),
-            recorder = { FakeRecorder() },
-            scope = CoroutineScope(Dispatchers.Unconfined),
-        )
+    fun transcribingLeavesTheComposerUsable() {
+        val gate = CompletableDeferred<String>()
+        val model = chat(driver = FakeVoice(gate))
         compose.setContent { NanobotTheme { ChatScreen(model = model) } }
 
-        // A press under the gateway's floor is refused, and the refusal is a sentence above the field.
         compose.onNodeWithTag("chat.voice").performTouchInput { down(center) }
-        compose.waitForIdle()
+        Thread.sleep(900)
         compose.onNodeWithTag("chat.stop").performTouchInput { up() }
         compose.waitForIdle()
-        compose.onNodeWithText("Hold a little longer to record voice.").assertIsDisplayed()
 
+        assertTrue(model.voice.transcribing, "900 ms is speech, so the gateway is asked")
+        compose.onNodeWithTag("voice.transcribing").assertIsDisplayed()
+        compose.onNodeWithTag("chat.voice").assertIsNotEnabled()
+        compose.onNodeWithTag("chat.voice.arc").assertIsDisplayed()
+
+        // The composer is not locked: typing still works while the transcript is on its way.
+        compose.onNodeWithTag("chat.composer").performTextInput("typed while waiting")
+        compose.waitForIdle()
+        assertEquals("typed while waiting", model.composer.draft)
+
+        gate.complete("check the write path first")
+        compose.waitForIdle()
+        assertEquals(VoiceViewModel.Phase.Idle, model.voice.phase)
+        compose.onNodeWithTag("chat.send").assertIsEnabled()
+        assertTrue(model.draft.endsWith("check the write path first"), "the transcript lands after the typing")
+    }
+
+    /** A quick tap is a discard with one explanation, and it says nothing on the second tap (T48). */
+    @Test
+    fun aTapShowsHoldToTalkOnce() {
+        val hints = InMemoryVoiceHints()
+        val model = chat(hints = hints)
+        compose.setContent { NanobotTheme { ChatScreen(model = model) } }
+
+        // One injection block, so the down and the up are the same press and not two presses
+        // 800 ms apart — a real finger on this emulator can outlast the floor between two calls.
+        compose.onNodeWithTag("chat.voice").performTouchInput {
+            down(center)
+            up()
+        }
+        compose.waitForIdle()
+
+        compose.waitUntil(3_000) { model.voice.notice != null }
+        assertEquals(VoiceNotice.HoldToTalk, model.voice.notice, "a tap is discarded and explained")
+        compose.onNodeWithText("Hold to talk").assertIsDisplayed()
         compose.onNodeWithTag("voice.notice.dismiss").performClick()
         compose.waitForIdle()
 
-        compose.onNodeWithText("Hold a little longer to record voice.").assertDoesNotExist()
+        compose.onNodeWithTag("chat.voice").performTouchInput {
+            down(center)
+            up()
+        }
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Hold to talk").assertDoesNotExist()
+        assertEquals(VoiceViewModel.Phase.Idle, model.voice.phase, "a tap leaves nothing running")
     }
 
     /**
@@ -150,14 +214,7 @@ class VoiceScreenTest {
      */
     @Test
     fun aSendPressDoesNotStartARecording() {
-        val model = ChatViewModel(
-            SilentChat(),
-            NoComposer,
-            MutableStateFlow(ComposerSnapshot()),
-            voiceDriver = FakeVoice("check the write path first"),
-            recorder = { FakeRecorder() },
-            scope = CoroutineScope(Dispatchers.Unconfined),
-        )
+        val model = chat()
         compose.setContent { NanobotTheme { ChatScreen(model = model) } }
 
         compose.onNodeWithTag("chat.composer").performTextInput("a typed question")
@@ -169,29 +226,26 @@ class VoiceScreenTest {
         assertEquals(VoiceViewModel.Phase.Idle, model.voice.phase, "a send is not a recording")
     }
 
+    /** Drag up with a finger, then tap the button that is now Send: the transcript lands. */
     @Test
-    fun theTwoTapsDictateAndTheTranscriptLands() {
-        val model = ChatViewModel(
-            SilentChat(),
-            NoComposer,
-            MutableStateFlow(ComposerSnapshot()),
-            voiceDriver = FakeVoice("check the write path first"),
-            recorder = { FakeRecorder() },
-            scope = CoroutineScope(Dispatchers.Unconfined),
-        )
+    fun aDragUpLockThenSendLandsTheTranscript() {
+        val model = chat()
         compose.setContent { NanobotTheme { ChatScreen(model = model) } }
 
-        // An empty field offers the microphone; the first tap opens it and arms tap-to-dictate.
-        compose.onNodeWithTag("chat.voice").performClick()
-        compose.waitForIdle()
-        assertEquals(VoiceViewModel.Phase.Recording, model.voice.phase, "the first tap starts dictating")
-
-        // While a recording is in flight the same button is Stop.
-        compose.onNodeWithTag("chat.stop").assertIsDisplayed()
-        compose.onNodeWithTag("chat.stop").performClick()
+        compose.onNodeWithTag("chat.voice").performTouchInput {
+            down(center)
+            moveBy(Offset(0f, -240f))
+            up()
+        }
         compose.waitForIdle()
 
-        assertEquals(VoiceViewModel.Phase.Idle, model.voice.phase)
+        assertTrue(model.voice.locked, "the drag locked the recording")
+        assertEquals(VoiceViewModel.Phase.Recording, model.voice.phase, "and the lift did not stop it")
+
+        compose.onNodeWithTag("chat.send").performClick()
+        compose.waitForIdle()
+
         assertEquals("check the write path first", model.composer.draft, "the transcript lands in the field")
+        assertEquals(VoiceViewModel.Phase.Idle, model.voice.phase)
     }
 }

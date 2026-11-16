@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -85,6 +86,7 @@ import de.arjmandi.nanobot.companion.ui.SkeletonLine
 import de.arjmandi.nanobot.companion.ui.scaledReadingStyle
 import de.arjmandi.nanobot.companion.voice.VoiceMeter
 import de.arjmandi.nanobot.companion.voice.VoiceNoticeRow
+import kotlinx.coroutines.delay
 import de.arjmandi.nanobot.companion.voice.VoiceViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -300,7 +302,27 @@ private fun ComposerZone(
         if (attachments.attachments.isNotEmpty()) {
             AttachmentStrip(model = attachments)
         }
-        VoiceMeter(model = voice)
+        // The meter counts and the transcribing arc turns on the screen's clock: the model takes
+        // times as arguments and owns no timer. Both loops end — the recording one with the
+        // gesture, the arc's after a fixed number of ticks — so a test that waits for the frame
+        // clock to go quiet still gets it (`Skeleton` is static for the same reason).
+        LaunchedEffect(voice.phase) {
+            when (voice.phase) {
+                VoiceViewModel.Phase.Recording -> while (voice.phase == VoiceViewModel.Phase.Recording) {
+                    voice.tick(System.currentTimeMillis())
+                    delay(METER_TICK_MS)
+                }
+
+                VoiceViewModel.Phase.Transcribing -> repeat(ARC_TICKS) {
+                    if (voice.phase != VoiceViewModel.Phase.Transcribing) return@LaunchedEffect
+                    delay(METER_TICK_MS)
+                    voice.tick(System.currentTimeMillis())
+                }
+
+                VoiceViewModel.Phase.Idle -> Unit
+            }
+        }
+        VoiceMeter(model = voice, onCancel = { voice.cancelRecording() })
         VoiceNoticeRow(notice = voice.notice, onDismiss = { voice.dismissNotice() })
         composer.snapshot.queued?.takeIf { it.isNotEmpty() }?.let { queued ->
             QueueChip(
@@ -347,7 +369,10 @@ private fun ComposerZone(
                     .heightIn(min = Design.minimumTarget)
                     .testTag("chat.composer"),
             )
-            val primary = composer.primaryState(recording = voice.phase == VoiceViewModel.Phase.Recording)
+            val primary = composer.primaryState(
+                recording = voice.recordingNow,
+                locked = voice.locked,
+            )
             val now = { System.currentTimeMillis() }
             val beginRecording = {
                 if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
@@ -356,6 +381,7 @@ private fun ComposerZone(
                     microphone.launch(Manifest.permission.RECORD_AUDIO)
                 }
             }
+            val lockDistance = with(LocalDensity.current) { Design.lockDragDistance.toPx() }
             // One button, two readers of the same press, so one of them has to own it. The job
             // is the state the press *began* in: a send empties the field and turns the button
             // into the microphone while the finger is still down, and that press must not start
@@ -366,25 +392,32 @@ private fun ComposerZone(
                 modifier = Modifier.pointerInput(Unit) {
                     awaitEachGesture {
                         val press = awaitFirstDown(requireUnconsumed = false)
-                        if (pressState.value != de.arjmandi.nanobot.companion.composer.PrimaryState.Voice) {
+                        val owns = pressState.value == de.arjmandi.nanobot.companion.composer.PrimaryState.Voice &&
+                            !voice.transcribing
+                        if (!owns) {
                             // Send, stop or queue: the button's own onClick is the whole press.
                             waitForUpOrCancellation()
                             return@awaitEachGesture
                         }
                         press.consume()
-                        // A hold records; a press shorter than the design's 300 ms arms
-                        // tap-to-dictate and keeps recording, which is the artifact's own rule.
-                        val started = now()
+                        // The finger is the start: the recording is open before it moves at all
+                        // (T48 — the 300 ms commit step is what read as lag).
                         beginRecording()
-                        waitForUpOrCancellation()
-                        val released = now()
-                        if (released - started < Design.tapThresholdMs) {
-                            voice.armTapMode()
-                        } else {
-                            scope.launch {
-                                voice.endHold(released)
-                                model.appendTranscript()
-                            }
+                        // The drag is only the lock. Past the threshold the finger may leave the
+                        // screen and the button becomes Send; below it, a lift ends the press.
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == press.id } ?: break
+                            if (!change.pressed) break
+                            if (voice.locked) continue
+                            if (change.position.y - press.position.y < -lockDistance) voice.lock()
+                        }
+                        // A locked recording outlived its gesture: Send and the cancel target own
+                        // it now, and this lift is not a stop.
+                        if (voice.locked) return@awaitEachGesture
+                        scope.launch {
+                            voice.release(now())
+                            model.appendTranscript()
                         }
                     }
                 },
@@ -393,18 +426,17 @@ private fun ComposerZone(
                     state = primary,
                     onClick = {
                         scope.launch {
-                            if (primary == de.arjmandi.nanobot.companion.composer.PrimaryState.Stop) {
-                                if (voice.phase == VoiceViewModel.Phase.Recording) {
-                                    voice.tap(now())
-                                    model.appendTranscript()
-                                } else {
-                                    model.primaryAction()
-                                }
+                            // A locked recording has no finger on it: this press is the finish.
+                            if (voice.locked && voice.recordingNow) {
+                                voice.sendLocked(now())
+                                model.appendTranscript()
                             } else {
                                 model.primaryAction()
                             }
                         }
                     },
+                    transcribing = voice.transcribing,
+                    sweepDegrees = voice.sweepDegrees,
                 )
             }
         }
@@ -435,6 +467,12 @@ private fun ComposerZone(
         onClose = { attachments.closeLightbox() },
     )
 }
+
+/** 100 ms is finer than the meter's seconds and coarser than a frame: a clock, not an animation. */
+private const val METER_TICK_MS = 100L
+
+/** The transcribing arc turns for this many ticks (12 s) and then holds, so idle is reachable. */
+private const val ARC_TICKS = 120
 
 /** One turn: the prompt above, what nanobot did about it, then the answer. */
 @Composable
