@@ -311,15 +311,37 @@ final class CoreHolder: ObservableObject {
             commit: settings.version?.commit,
             os: settings.environment?.os,
             pythonVersion: settings.environment?.pythonVersion,
-            modelName: settings.modelName,
-            modelPreset: settings.modelPreset,
-            provider: settings.provider,
-            contextWindowTokens: settings.contextWindowTokens.map { Int($0.int32Value) },
-            contextWindowLabel: settings.contextWindowTokens.map { TokenCount.shared.modelWindow(tokens: $0.int32Value) },
             transcriptionProvider: settings.transcription?.provider,
             transcriptionModel: settings.transcription?.model,
-            presets: settings.modelPresets.map(\.name)
+            presets: settings.modelPresets.map(\.name),
+            usage: usage(from: settings.usage)
         )
+    }
+
+    /// The usage card's numbers (T44). The core owns the window, the gap-filling and the compact
+    /// copy; the one thing only the phone knows is what day it is where the reader is holding it.
+    private func usage(from usage: UsageTotals?) -> SettingsViewModel.Usage? {
+        guard let usage else { return nil }
+        let summary = UsageWindow.shared.last30(usage: usage, todayIso: CoreHolder.todayIso())
+        return SettingsViewModel.Usage(
+            headline: summary.headline,
+            totalTokens: summary.totalTokens,
+            requests: Int(summary.requests),
+            cacheHitPercent: summary.cacheHitPercent.map { Int($0.int32Value) },
+            bars: summary.days.map { SettingsViewModel.Usage.Bar(date: $0.date, height: $0.fraction) },
+            hasUsage: summary.hasUsage
+        )
+    }
+
+    /// The phone's own civil date, which is the one that ends the strip: `yyyy-MM-dd`, local, and
+    /// pinned to a Gregorian calendar so a device set to another calendar still names the same day.
+    static func todayIso(_ now: Date = Date()) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: now)
     }
 
     /// The settings read the model sheet and Settings → Overview both draw from (C6.2, C7.1).
@@ -818,6 +840,23 @@ extension ComposerSnapshot {
             contextPercent: state.contextPercent.map { Int($0.int32Value) },
             access: state.accessMode == WorkspaceScope.full ? .full : .default,
             queued: state.queued
+        )
+    }
+
+    /// Overview names the model in use, and the composer is the only thing that knows it (T45): the
+    /// same value the chip prints and the ring divides by. The core words the two lines
+    /// (`ModelInUse`), so neither phone invents its own reading of a window.
+    var currentModel: SettingsViewModel.CurrentModel {
+        let model = ModelInUse(
+            modelName: modelName,
+            preset: modelPreset,
+            windowTokens: contextWindowTokens.map { KotlinInt(int: Int32($0)) }
+        )
+        return SettingsViewModel.CurrentModel(
+            name: model.modelName,
+            preset: model.preset,
+            presetLabel: model.presetLabel,
+            windowLabel: model.windowLabel
         )
     }
 }

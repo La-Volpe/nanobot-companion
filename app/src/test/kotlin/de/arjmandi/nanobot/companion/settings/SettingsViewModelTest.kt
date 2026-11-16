@@ -1,5 +1,6 @@
 package de.arjmandi.nanobot.companion.settings
 
+import de.arjmandi.nanobot.companion.projection.NoticeCategory
 import de.arjmandi.nanobot.companion.projection.NotificationPermission
 
 import kotlin.test.Test
@@ -84,15 +85,17 @@ class SettingsViewModelTest {
         commit = "28d73b69",
         os = "Darwin",
         pythonVersion = "3.12.9",
-        modelName = "deepseek-v4.1-flash:cloud",
-        modelPreset = "primary",
-        provider = "ollama",
-        contextWindowTokens = 32_768,
-        contextWindowLabel = "32.8K",
         transcriptionProvider = "groq",
         transcriptionModel = "whisper-large-v3",
         presets = listOf("default", "primary"),
     )
+
+    /** The open chat's model as the shell hands it over: the core words the two lines (T45). */
+    private fun chat(
+        preset: String = "primary",
+        name: String = "glm-5.3-flash:cloud",
+        window: String? = "1M",
+    ) = ChatModelInUse(name = name, preset = preset, presetLabel = "Preset $preset", windowLabel = window)
 
     @Test
     fun overviewSaysWhetherItIsStillReadingAndEndsInASentenceWhenItCannot() = runTest {
@@ -122,25 +125,39 @@ class SettingsViewModelTest {
         assertEquals("0.4.1", rows.first { it.label == "nanobot Gateway" }.value)
         assertEquals("Commit 28d73b69", rows.first { it.label == "nanobot Gateway" }.detail)
         assertTrue(labels.none { it.lowercase().contains("uptime") }, "the payload has no uptime: $labels")
-        assertTrue(rows.contains(SettingsRow("Context window", detail = null, value = "32.8K tokens")))
         assertEquals("Whisper-large-v3", rows.first { it.label == "Transcription" }.value)
     }
 
     /**
-     * T36: the owner's gateway answers 1 000 000 and the row read "1000k tokens". The WebUI
-     * prints a million as `1M` (`model-context-format.ts`), so this row says `1M tokens` — the
-     * unit stays, because a bare `1M` next to a version string reads like one.
+     * T36 and T45 together: the window row is the *chat's* window, and a million is `1M` — the unit
+     * stays, because a bare `1M` next to a version string reads like one. The label itself is the
+     * core's (`ModelInUseTest` pins 1 000 000 -> 1M).
      */
     @Test
-    fun aMillionTokenWindowReadsOneM() {
+    fun theWindowRowIsTheChatsAndReadsOneM() {
         val model = model()
-        // The label is the core's (`TokenCountTest` pins 1 000 000 -> 1M); the row adds the unit.
-        model.update(snapshot().copy(contextWindowTokens = 1_000_000, contextWindowLabel = "1M"))
+        model.update(modelInUse = chat())
 
+        assertTrue(
+            model.overviewRows.contains(
+                SettingsRow("Current model", detail = "Preset primary", value = "glm-5.3-flash:cloud"),
+            ),
+            "the chat's model and preset, not the gateway's configuration: ${model.overviewRows}",
+        )
         assertTrue(
             model.overviewRows.contains(SettingsRow("Context window", detail = null, value = "1M tokens")),
             "a million is 1M, not 1000k: ${model.overviewRows}",
         )
+    }
+
+    /** A chat whose window nobody reported has no denominator: the row is absent rather than zero. */
+    @Test
+    fun noWindowIsNoRow() {
+        val model = model()
+        model.update(modelInUse = chat(window = null))
+
+        assertTrue(model.overviewRows.any { it.label == "Current model" })
+        assertTrue(model.overviewRows.none { it.label == "Context window" }, "${model.overviewRows}")
     }
 
     /** The plan's red line: notifications are local, and the model never pretends otherwise. */
@@ -247,17 +264,72 @@ class SettingsViewModelTest {
         model.update(snapshot())
 
         assertEquals(listOf("Gateway", "Overview", "Notifications", "Appearance"), model.sections)
-        assertEquals(listOf("Task finished", "Task failed", "Needs attention"), model.notificationToggles.map { it.title })
+        assertEquals(
+            listOf("Task finished", "Task failed or stopped", "Needs attention"),
+            model.notificationToggles.map { it.title },
+            "the middle row names what it gates: a stop is not a failure to announce",
+        )
         assertTrue(model.notificationToggles.first().isOn, "finished tasks are on by default, as drawn")
         assertFalse(model.notificationToggles.last().isOn, "needs-attention starts off")
     }
 
+    /**
+     * T45: the owner's rule — every name and size on screen describes the model in use, never the
+     * gateway's configured default. `/api/settings` `agent.model` is a configuration (the WebUI's
+     * own Overview row prints it, `OverviewSettings.tsx:78`); with no chat open there is no model
+     * in use, and the row says so instead of naming one that is not answering.
+     */
     @Test
-    fun aToggleIsRememberedAsLongAsTheScreenLives() {
+    fun overviewSaysThereIsNoChatOpenInsteadOfNamingTheGatewaysModel() {
         val model = model()
+        model.update(snapshot())
 
-        model.setToggle("Needs attention", on = true)
+        val current = model.overviewRows.firstOrNull { it.label == "Current model" }
+        assertEquals(
+            "No chat open",
+            current?.value,
+            "`agent.model` is what the gateway is configured for, not what answers here",
+        )
+        assertTrue(
+            model.overviewRows.none { it.label == "Context window" },
+            "with no chat open there is no window to give: ${model.overviewRows}",
+        )
+    }
+
+    /**
+     * T43: the switches used to be local state that persisted nowhere and gated nothing. Each one is
+     * stored under the core's own key (`NoticeCategory.preferenceKey`), which is the key the poster
+     * reads at post time.
+     */
+    @Test
+    fun everySwitchIsStoredUnderTheKeyThePosterReads() {
+        val preferences = FakePreferences()
+        val model = model(preferences = preferences)
+
+        model.setToggle(NoticeCategory.NeedsAttention, on = true)
 
         assertTrue(model.notificationToggles.last().isOn)
+        assertEquals(
+            true,
+            preferences.flags[NoticeCategory.NeedsAttention.preferenceKey],
+            "the row writes the key the poster reads: ${preferences.flags}",
+        )
+    }
+
+    @Test
+    fun theSwitchesOutliveTheApp() {
+        val preferences = FakePreferences()
+        model(preferences = preferences).setToggle(NoticeCategory.Finished, on = false)
+
+        val afterRelaunch = model(preferences = preferences)
+
+        assertFalse(
+            afterRelaunch.notificationToggles.first { it.title == "Task finished" }.isOn,
+            "a choice that does not survive a launch is not a preference: ${afterRelaunch.notificationToggles}",
+        )
+        assertTrue(
+            afterRelaunch.notificationToggles.first { it.title == "Needs attention" }.isOn == false,
+            "and a switch nobody touched keeps the design's default",
+        )
     }
 }

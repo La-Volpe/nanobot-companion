@@ -1,5 +1,6 @@
 package de.arjmandi.nanobot.companion.fixture
 
+import de.arjmandi.nanobot.companion.facade.UsageWindow
 import de.arjmandi.nanobot.companion.wire.SettingsPayloads
 import java.io.File
 import kotlin.test.Test
@@ -58,19 +59,21 @@ class SettingsFixtureTest {
         )
     }
 
+    /**
+     * T44: the card draws the recorded days in the WebUI's 30-day window. The window ends on a date
+     * the phone supplies; anchored on the recording's own last day, the strip is thirty slots and
+     * the headline is the day the gateway reported — the payload carries a year of days.
+     */
     @Test
-    fun usageSourcesAreTheGatewaysOwnNames() {
+    fun theRecordedUsageFillsTheCardsWindow() {
         val usage = SettingsPayloads.usage(read("settings-usage.json"))
-        val sources = usage.days.flatMap { it.sources.keys }.toSet()
+        assertTrue(usage.days.isNotEmpty(), "the recording has usage to show")
 
-        // `nanobot/llm_usage/context.py:8` names five; a recording may only have used some.
-        val known = setOf("user", "api", "cron", "dream", "system")
-        assertTrue(sources.isNotEmpty(), "the recording has usage to show")
-        assertTrue(sources.all { it in known }, "unknown usage source: ${sources - known}")
+        val summary = UsageWindow.last30(usage, todayIso = usage.days.maxOf { it.date })
 
-        val day = usage.days.first()
-        assertEquals(usage.totalTokens, usage.days.sumOf { it.totalTokens }, "the day sums are the total")
-        assertEquals(day.totalTokens, day.sources.values.sumOf { it.totalTokens }, "and each day's sources sum to the day")
+        assertEquals(UsageWindow.DAYS, summary.days.size, "a bar for every day of the window")
+        assertEquals(usage.days.sumOf { it.totalTokens }, summary.totalTokens, "the slots sum to the days that were in it")
+        assertTrue(summary.hasUsage, "the recording spent tokens")
     }
 
     /**

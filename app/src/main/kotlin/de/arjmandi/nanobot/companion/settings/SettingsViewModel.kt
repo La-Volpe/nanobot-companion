@@ -3,6 +3,10 @@ package de.arjmandi.nanobot.companion.settings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import de.arjmandi.nanobot.companion.projection.NoticeCategory
+
+/** The row's words and the category they gate; the key and the default come from the category. */
+private data class SwitchRow(val category: NoticeCategory, val title: String)
 
 /**
  * Settings (plan.md A7, the Android twin of iOS's `SettingsViewModel`): what Overview may say, the
@@ -17,6 +21,13 @@ class SettingsViewModel(
 ) {
 
     var snapshot: SettingsSnapshot by mutableStateOf(SettingsSnapshot())
+        private set
+
+    /**
+     * The open chat's model, the only model Overview may name (T45). Null is "no chat open": the
+     * section says so rather than printing the gateway's configured default.
+     */
+    var modelInUse: ChatModelInUse? by mutableStateOf(null)
         private set
 
     /** Whether Overview's read has answered: a skeleton, the rows, or the failure sentence. */
@@ -50,12 +61,19 @@ class SettingsViewModel(
         mutableStateOf(de.arjmandi.nanobot.companion.projection.NotificationPermission.NotAsked)
         private set
 
+    /**
+     * The three switches the design draws, in its order. Each is stored under the core's own key
+     * (T43), so the poster silences exactly what the reader turned off, and a choice outlives the
+     * screen that made it.
+     */
     var notificationToggles: List<SettingsToggle> by mutableStateOf(
-        listOf(
-            SettingsToggle("Task finished", isOn = true),
-            SettingsToggle("Task failed", isOn = true),
-            SettingsToggle("Needs attention", isOn = false),
-        ),
+        NOTICE_ROWS.map { row ->
+            SettingsToggle(
+                category = row.category,
+                title = row.title,
+                isOn = preferences.flag(row.category.preferenceKey) ?: row.category.onByDefault,
+            )
+        },
     )
         private set
 
@@ -77,9 +95,9 @@ class SettingsViewModel(
      */
     val notificationsCopy: String =
         "Alerts arrive while you are away: a local notification when a turn finishes, fails or " +
-            "stops, and when nanobot needs an answer. The chat you are looking at is never " +
-            "announced. The gateway has no push service and none is planned, so a closed app " +
-            "stays quiet instead of promising an alert it cannot deliver."
+            "stops, and when nanobot needs an answer — the switches above are which. The chat you " +
+            "are looking at is never announced. The gateway has no push service and none is " +
+            "planned, so a closed app stays quiet instead of promising an alert it cannot deliver."
 
     /** The state the screen names, and the one action it offers for it. */
     fun refreshPermission() {
@@ -98,6 +116,11 @@ class SettingsViewModel(
 
     fun update(snapshot: SettingsSnapshot) {
         this.snapshot = snapshot
+    }
+
+    /** The shell hands over the open chat's model when the screen opens, and on every change. */
+    fun update(modelInUse: ChatModelInUse?) {
+        this.modelInUse = modelInUse
     }
 
     /**
@@ -127,14 +150,18 @@ class SettingsViewModel(
             snapshot.os?.let { os ->
                 add(SettingsRow(label = "Server", detail = snapshot.pythonVersion?.let { "Python $it" }, value = os))
             }
+            // T45, deliberately unlike the WebUI (`overview/OverviewSettings.tsx:78` prints
+            // `settings.agent.model`): the model row describes the chat on screen, from the same
+            // composer the chip and the ring read. A gateway's configured model is not the model in
+            // use, and with no chat open there is no model in use to name.
             add(
                 SettingsRow(
                     label = "Current model",
-                    detail = snapshot.modelPreset?.let { "Preset $it" },
-                    value = snapshot.modelName,
+                    detail = modelInUse?.presetLabel,
+                    value = modelInUse?.name ?: "No chat open",
                 ),
             )
-            snapshot.contextWindowLabel?.let { label ->
+            modelInUse?.windowLabel?.let { label ->
                 add(SettingsRow(label = "Context window", detail = null, value = "$label tokens"))
             }
             add(
@@ -150,8 +177,10 @@ class SettingsViewModel(
             add(SettingsRow(label = "Address", detail = null, value = credentials.address ?: "—"))
         }
 
-    fun setToggle(title: String, on: Boolean) {
-        notificationToggles = notificationToggles.map { if (it.title == title) it.copy(isOn = on) else it }
+    fun setToggle(category: NoticeCategory, on: Boolean) {
+        notificationToggles = notificationToggles.map { if (it.category == category) it.copy(isOn = on) else it }
+        // The store is the poster's own source: written here, read at post time (T43).
+        preferences.set(category.preferenceKey, on)
     }
 
     /** The screen's proof that it can keep its promise: a real local notification (D8). */
@@ -192,6 +221,13 @@ class SettingsViewModel(
     }
 
     companion object {
+        /** The row's words; the key and the default behind it are the core's (`NoticeCategory`). */
+        private val NOTICE_ROWS: List<SwitchRow> = listOf(
+            SwitchRow(NoticeCategory.Finished, "Task finished"),
+            SwitchRow(NoticeCategory.FailedOrStopped, "Task failed or stopped"),
+            SwitchRow(NoticeCategory.NeedsAttention, "Needs attention"),
+        )
+
         const val KEY_THEME = "settings.theme"
         const val KEY_READING_SIZE = "settings.readingSize"
 

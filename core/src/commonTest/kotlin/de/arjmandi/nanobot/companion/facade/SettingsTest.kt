@@ -142,36 +142,32 @@ class SettingsTest {
         assertEquals("28d73b6942621ffedc0d7a9639e429595f34bd36", second.settings.value.version?.commit)
     }
 
+    /**
+     * T44: Overview draws a bar per day and a total over the window, so the parser keeps the day's
+     * date and its tokens. The rest of the payload — the cache split, the request counts, the
+     * per-source breakdown — has no reader, and a field parsed for nobody is one that silently rots.
+     */
     @Test
-    fun usageTotalsMap() = runTest {
+    fun theUsageReadKeepsTheDaysTheCardDraws() = runTest {
         val core = core(engine())
         core.refreshSettings()
 
         val totals = core.settings.value.usage ?: error("usage was not parsed")
-        assertEquals(498_711L, totals.totalTokens)
-        assertEquals(498_711L, totals.totalTokens30d)
-        assertEquals(139, totals.requests30d)
-        assertEquals(25, totals.failedRequests30d)
-
         val day = totals.days.single()
         assertEquals("2026-11-14", day.date)
         assertEquals(498_711L, day.totalTokens)
-        assertEquals(listOf("dream", "system", "user"), day.sources.keys.sorted())
-        assertEquals(305_329L, day.sources.getValue("user").totalTokens)
-        assertEquals(58, day.sources.getValue("user").requests)
     }
 
     @Test
-    fun anUnknownSourceIsKeptRatherThanDropped() = runTest {
-        val withNewSource = usage.replace(
-            "\"sources\":{",
-            "\"sources\":{\"mcp\":{\"input_tokens\":1,\"output_tokens\":2,\"total_tokens\":3,\"requests\":1,\"failed_requests\":0},",
-        )
-        val core = core(engine(onUsage = { HttpStatusCode.OK to withNewSource }))
+    fun aDayWithNoDateIsNotABar() = runTest {
+        val withoutDate = usage.replace("\"date\":\"2026-11-14\"", "\"date\":\"\"")
+        val core = core(engine(onUsage = { HttpStatusCode.OK to withoutDate }))
         core.refreshSettings()
 
-        val sources = core.settings.value.usage!!.days.single().sources
-        assertEquals(3L, sources.getValue("mcp").totalTokens, "a source the app has never seen still counts")
+        assertTrue(
+            core.settings.value.usage!!.days.isEmpty(),
+            "a day that cannot be placed on the strip is not a bar the chart can draw",
+        )
     }
 
     @Test

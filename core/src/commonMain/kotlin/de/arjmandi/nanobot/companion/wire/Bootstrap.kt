@@ -147,6 +147,14 @@ internal object BootstrapParser {
         )
     }
 
+    /**
+     * `runtime_capabilities`: what the *host* can be asked to do (AGENTS: not `terminal.webui`
+     * capabilities). `canRestartEngine` is read and deliberately unread-by-anything-else (T44): the
+     * owner's Overview scope is the usage totals and the version row, not a restart control, and a
+     * restart button nobody asked for is a way to bounce a gateway from a phone by accident. It
+     * stays parsed because `BootstrapParserTest` pins the host's own flags and a control added
+     * later must read this rather than assume it.
+     */
     private fun hostActionsOf(flags: JsonObject?): HostActions = HostActions(
         canRestartEngine = flags?.flag("can_restart_engine") ?: false,
         canOpenLogs = flags?.flag("can_open_logs") ?: false,

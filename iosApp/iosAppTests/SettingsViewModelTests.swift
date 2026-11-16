@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import core
 @testable import iosApp
 
 /// Settings (plan.md I7): Overview says what the gateway is and never invents an uptime line,
@@ -67,21 +68,21 @@ struct SettingsViewModelTests {
         )
     }
 
-    private func snapshot(contextWindowTokens: Int? = 32_768, contextWindowLabel: String? = "32.8K") -> SettingsViewModel.Snapshot {
+    private func snapshot() -> SettingsViewModel.Snapshot {
         SettingsViewModel.Snapshot(
             version: "0.4.1",
             commit: "28d73b69",
             os: "Darwin",
             pythonVersion: "3.12.9",
-            modelName: "deepseek-v4.1-flash:cloud",
-            modelPreset: "primary",
-            provider: "ollama",
-            contextWindowTokens: contextWindowTokens,
-            contextWindowLabel: contextWindowLabel,
             transcriptionProvider: "groq",
             transcriptionModel: "whisper-large-v3",
             presets: ["default", "primary"]
         )
+    }
+
+    /// The open chat's model as the shell hands it over: the core words the two lines (T45).
+    private func chat(preset: String = "primary", name: String = "glm-5.3-flash:cloud", window: String? = "1M") -> SettingsViewModel.CurrentModel {
+        SettingsViewModel.CurrentModel(name: name, preset: preset, presetLabel: "Preset \(preset)", windowLabel: window)
     }
 
     /// T34: the notification sound is a preference of the reader's, on until they say otherwise,
@@ -129,22 +130,33 @@ struct SettingsViewModelTests {
         #expect(rows.first { $0.label == "nanobot Gateway" }?.value == "0.4.1")
         #expect(rows.first { $0.label == "nanobot Gateway" }?.detail == "Commit 28d73b69")
         #expect(labels.allSatisfy { !$0.lowercased().contains("uptime") }, "the payload has no uptime: \(labels)")
-        #expect(rows.contains { $0.label == "Context window" && $0.value == "32.8K tokens" })
         #expect(rows.contains { $0.label == "Transcription" && $0.value == "Whisper-large-v3" })
     }
 
-    /// T36: the owner's gateway answers 1 000 000 and the row read "1000k tokens". The WebUI
-    /// prints a million as `1M` (`model-context-format.ts`), so this row says `1M tokens` — the
-    /// unit stays, because a bare `1M` next to a version string reads like one.
-    @Test func aMillionTokenWindowReadsOneM() {
+    /// T36 and T45 together: the window row is the *chat's* window, and a million is `1M` — the
+    /// unit stays, because a bare `1M` next to a version string reads like one. The label itself
+    /// is the core's (`ModelInUseTest` pins 1 000 000 -> 1M).
+    @Test func theWindowRowIsTheChatsAndReadsOneM() {
         let model = model()
-        // The label is the core's (`TokenCountTest` pins 1 000 000 -> 1M); the row adds the unit.
-        model.update(snapshot: snapshot(contextWindowTokens: 1_000_000, contextWindowLabel: "1M"))
+        model.update(modelInUse: chat())
 
+        #expect(
+            model.overviewRows.contains { $0.label == "Current model" && $0.value == "glm-5.3-flash:cloud" && $0.detail == "Preset primary" },
+            "the chat's model and preset: \(model.overviewRows)"
+        )
         #expect(
             model.overviewRows.contains { $0.label == "Context window" && $0.value == "1M tokens" },
             "a million is 1M, not 1000k: \(model.overviewRows)"
         )
+    }
+
+    /// A chat whose window nobody reported has no denominator: the row is absent rather than zero.
+    @Test func noWindowIsNoRow() {
+        let model = model()
+        model.update(modelInUse: chat(window: nil))
+
+        #expect(model.overviewRows.contains { $0.label == "Current model" })
+        #expect(!model.overviewRows.contains { $0.label == "Context window" }, "\(model.overviewRows)")
     }
 
     /// The plan's red line: notifications are local, and the model never pretends otherwise.
@@ -218,12 +230,76 @@ struct SettingsViewModelTests {
         #expect(ReadingScale.size(for: .medium) == 16)
     }
 
+    /// T45: the owner's rule — every name and size on screen describes the model *in use*, never
+    /// the gateway's configured default. `/api/settings` `agent.model` is a configuration (the
+    /// WebUI's own Overview row prints it, `OverviewSettings.tsx:78`); with no chat open there is
+    /// no model in use, and the row says so instead of naming one that is not answering.
+    @Test func overviewSaysThereIsNoChatOpenInsteadOfNamingTheGatewaysModel() {
+        let model = model()
+        model.update(snapshot: snapshot())
+
+        let current = model.overviewRows.first { $0.label == "Current model" }
+        #expect(
+            current?.value == "No chat open",
+            "`agent.model` is what the gateway is configured for, not what answers here: \(String(describing: current))"
+        )
+        #expect(
+            !model.overviewRows.contains { $0.label == "Context window" },
+            "with no chat open there is no window to give: \(model.overviewRows)"
+        )
+    }
+
+    /// T43: the switches used to be local state that persisted nowhere and gated nothing. Each one
+    /// is stored under the core's own key (`NoticeCategory.preferenceKey`), which is the key the
+    /// poster reads at post time.
+    @Test func everySwitchIsStoredUnderTheKeyThePosterReads() {
+        let defaults = FakeDefaults()
+        let model = model(defaults: defaults)
+        let needsAttention = model.notificationToggles[2]
+
+        model.setToggle(needsAttention.id, on: true)
+
+        #expect(model.notificationToggles[2].isOn)
+        #expect(
+            defaults.flags[needsAttention.id] == true,
+            "the row writes the key the poster reads: \(defaults.flags)"
+        )
+    }
+
+    @Test func theSwitchesOutliveTheApp() {
+        let defaults = FakeDefaults()
+        let first = model(defaults: defaults)
+        first.setToggle(first.notificationToggles[0].id, on: false)
+
+        let afterRelaunch = model(defaults: defaults)
+
+        #expect(
+            afterRelaunch.notificationToggles[0].isOn == false,
+            "a choice that does not survive a launch is not a preference: \(afterRelaunch.notificationToggles)"
+        )
+        #expect(afterRelaunch.notificationToggles[2].isOn == false, "and an untouched switch keeps the design's default")
+    }
+
+    /// T43: the switch the screen draws and the switch the poster checks are one list. The rows'
+    /// keys are the core's own strings, so a rename on either side is a test, not a silent switch.
+    @Test func everyDrawnSwitchNamesACoreCategory() {
+        let drawn = model().notificationToggles.map(\.id)
+
+        #expect(
+            drawn == core.NoticeCategory.entries.map(\.preferenceKey),
+            "the Notifications rows must name the categories the poster checks: \(drawn)"
+        )
+    }
+
     @Test func theSectionsAreTheDesignsFour() {
         let model = model()
         model.update(snapshot: snapshot())
 
         #expect(model.sections == ["Gateway", "Overview", "Notifications", "Appearance"])
-        #expect(model.notificationToggles.map(\.title) == ["Task finished", "Task failed", "Needs attention"])
+        #expect(
+            model.notificationToggles.map(\.title) == ["Task finished", "Task failed or stopped", "Needs attention"],
+            "the middle row names what it gates: a stop is not a failure to announce"
+        )
         #expect(model.notificationToggles.first?.isOn == true, "finished tasks are on by default, as drawn")
         #expect(model.notificationToggles.last?.isOn == false, "needs-attention starts off")
     }

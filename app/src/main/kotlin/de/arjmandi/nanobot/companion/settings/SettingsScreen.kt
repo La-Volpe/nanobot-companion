@@ -4,6 +4,13 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,6 +58,8 @@ fun SettingsScreen(
     model: SettingsViewModel,
     loadSnapshot: suspend () -> SettingsSnapshot?,
     onClose: () -> Unit,
+    /** The open chat's model (T45); null is "no chat open", which Overview says in words. */
+    modelInUse: ChatModelInUse? = null,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -59,6 +68,10 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         model.refresh(loadSnapshot)
         model.refreshPermission()
+    }
+    // A `/model` switch behind the screen changes the model in use, and the row follows it.
+    LaunchedEffect(modelInUse) {
+        model.update(modelInUse)
     }
 
     // On API 33 an app has to be granted the notification permission before it may post; the
@@ -128,6 +141,12 @@ fun SettingsScreen(
                 )
                 OverviewState.Loaded -> Unit
             }
+            // The card the design puts first (design of record, `.usage-card`): the total, the
+            // gateway's own request count and cache rate, then one bar per day (T44). It used to be
+            // fetched and parsed into nothing.
+            if (model.overview == OverviewState.Loaded) model.snapshot.usage?.let { usage ->
+                TokenUsageCard(usage)
+            }
             // The rows exist only once the read answered: a skeleton with the gateway's blank
             // values underneath it is neither one state nor the other.
             if (model.overview == OverviewState.Loaded) model.overviewRows.forEach { row ->
@@ -165,7 +184,7 @@ fun SettingsScreen(
                     Text(text = toggle.title, fontSize = Design.Interface.bodySize, modifier = Modifier.weight(1f))
                     Switch(
                         checked = toggle.isOn,
-                        onCheckedChange = { model.setToggle(toggle.title, it) },
+                        onCheckedChange = { model.setToggle(toggle.category, it) },
                         modifier = Modifier.testTag("settings.toggle.${toggle.title}"),
                     )
                 }
@@ -292,6 +311,81 @@ fun SettingsScreen(
                 }
             },
         )
+    }
+}
+
+/**
+ * Overview's token card (T44), drawn as the design draws it: the 30-day total and its unit, the
+ * gateway's own request count and cache hit rate, then a bar per day scaled to the window's peak
+ * with the biggest day solid (design of record, `.spark i.hi`). Every number arrives computed and
+ * worded by the core; this draws them and invents nothing.
+ */
+@Composable
+private fun TokenUsageCard(usage: UsageSnapshot) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = usage.headline,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.semantics { contentDescription = "${usage.totalTokens} tokens" }.testTag("settings.usage.headline"),
+            )
+            Text(
+                text = "tokens · 30 days",
+                fontSize = Design.Interface.microSize,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp, bottom = 4.dp),
+            )
+        }
+        if (usage.hasUsage) {
+            val detail = buildList {
+                add("${usage.requests} requests")
+                usage.cacheHitPercent?.let { add("$it% cache hit rate") }
+            }.joinToString(" · ")
+            Text(
+                text = detail,
+                fontSize = Design.Interface.microSize,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 3.dp).testTag("settings.usage.detail"),
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(38.dp)
+                    .padding(top = 10.dp)
+                    .testTag("settings.usage.strip")
+                    .semantics { contentDescription = "Daily token usage, last 30 days" },
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                usage.bars.forEach { bar ->
+                    // A day with no usage is the design's 2 dp stub, not a missing column: the strip
+                    // is a calendar, and a gap in it would read as a gap in the data.
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 2.dp)
+                            .height((bar.height * 38).dp.coerceAtLeast(2.dp))
+                            .background(
+                                color = if (bar.height >= 1f) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.26f)
+                                },
+                                shape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp),
+                            ),
+                    )
+                }
+            }
+        } else {
+            Text(
+                text = stringResource(R.string.settings_usage_empty),
+                fontSize = Design.Interface.microSize,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 3.dp).testTag("settings.usage.empty"),
+            )
+        }
     }
 }
 

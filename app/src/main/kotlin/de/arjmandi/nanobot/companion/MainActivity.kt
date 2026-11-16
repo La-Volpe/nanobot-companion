@@ -21,6 +21,7 @@ import de.arjmandi.nanobot.companion.projection.TaskNotice
 import de.arjmandi.nanobot.companion.settings.AndroidNotifier
 import de.arjmandi.nanobot.companion.settings.SettingsViewModel
 import de.arjmandi.nanobot.companion.settings.SharedPreferencesSettings
+import de.arjmandi.nanobot.companion.settings.noticeSwitches
 import kotlinx.coroutines.flow.MutableStateFlow
 import de.arjmandi.nanobot.companion.connect.ConnectViewModel
 import de.arjmandi.nanobot.companion.connect.CredentialsStoring
@@ -104,8 +105,11 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        val preferences = SharedPreferencesSettings(getSharedPreferences(SETTINGS_PREFERENCES, MODE_PRIVATE))
         notifier = AndroidNotifier(applicationContext)
-        delivery = TaskNoticeDelivery(notifier)
+        // The switches are the reader's, read at post time from the same store Settings writes:
+        // a switch turned off silences the notices it names (T43).
+        delivery = TaskNoticeDelivery(notifier) { preferences.noticeSwitches() }
 
         // One launch decision, made before a screen is drawn: onboarding, or the shell with the
         // stored gateway reopening inside it. The store is the reason a second launch is not a
@@ -123,7 +127,7 @@ class MainActivity : ComponentActivity() {
         val settings = SettingsViewModel(
             credentials = credentials,
             notifier = notifier,
-            preferences = SharedPreferencesSettings(getSharedPreferences(SETTINGS_PREFERENCES, MODE_PRIVATE)),
+            preferences = preferences,
             // Forgetting the gateway is the owner's decision, so the questions come back — empty,
             // and staying asked: the launch's second look never walks them back in behind their
             // back, and the connect model's `Connected` phase cannot either.

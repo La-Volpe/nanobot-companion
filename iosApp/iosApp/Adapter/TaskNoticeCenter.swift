@@ -52,14 +52,20 @@ final class TaskNoticeCenter {
 
     private let posting: BannerPosting
 
+    /// The reader's three switches, read at post time (T43) so a change applies to the next banner
+    /// rather than to the next launch. Passed in rather than defaulted: a centre nobody wired to
+    /// the reader's choices is the switch that gated nothing.
+    private let switches: () -> core.NoticeSwitches
+
     /// The last key posted or refused, so a repeated notice is not a second banner.
     private var announced: String?
 
     /// A banner went missing: the next time the app is in front of the user is when to ask.
     private(set) var missedNotice = false
 
-    init(posting: BannerPosting) {
+    init(posting: BannerPosting, switches: @escaping () -> core.NoticeSwitches) {
         self.posting = posting
+        self.switches = switches
     }
 
     /// The core's rule, given the permission this phone reports.
@@ -73,6 +79,9 @@ final class TaskNoticeCenter {
 
     @discardableResult
     func deliver(_ notice: core.TaskNotice) async -> Bool {
+        // T43: a switch the reader turned off is not a permission problem and not a memory of this
+        // notice — turning it back on lets the next one through.
+        guard switches().allows(outcome: notice.outcome) else { return false }
         guard notice.key != announced else { return false }
         announced = notice.key
         let posted = await posting.post(notice: notice)
@@ -100,6 +109,22 @@ final class TaskNoticeCenter {
 
     func openSystemSettings() {
         posting.openSystemSettings()
+    }
+}
+
+/// The three switches as the poster reads them (T43): the categories, keys and defaults are the
+/// core's, the store is the phone's. One read for the three flags, so a notice cannot be checked
+/// against a category whose key nobody wrote.
+enum NoticeSwitchStore {
+    static func switches(in store: SettingsStoring) -> core.NoticeSwitches {
+        func isOn(_ category: core.NoticeCategory) -> Bool {
+            store.flag(category.preferenceKey) ?? category.onByDefault
+        }
+        return core.NoticeSwitches(
+            finished: isOn(core.NoticeCategory.finished),
+            failedOrStopped: isOn(core.NoticeCategory.failedorstopped),
+            needsAttention: isOn(core.NoticeCategory.needsattention)
+        )
     }
 }
 

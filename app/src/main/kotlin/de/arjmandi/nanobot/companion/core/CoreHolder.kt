@@ -9,7 +9,8 @@ import de.arjmandi.nanobot.companion.facade.ConnectResult
 import de.arjmandi.nanobot.companion.facade.ConnectionFailure
 import de.arjmandi.nanobot.companion.facade.ConnectionState
 import de.arjmandi.nanobot.companion.facade.ModelPresets
-import de.arjmandi.nanobot.companion.facade.TokenCount
+import de.arjmandi.nanobot.companion.facade.UsageWindow
+import de.arjmandi.nanobot.companion.wire.UsageTotals
 import de.arjmandi.nanobot.companion.projection.TaskNotice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -176,14 +177,31 @@ class CoreHolder(
             commit = state.version?.commit,
             os = state.environment?.os,
             pythonVersion = state.environment?.pythonVersion,
-            modelName = state.modelName,
-            modelPreset = state.modelPreset,
-            provider = state.provider,
-            contextWindowTokens = state.contextWindowTokens,
-            contextWindowLabel = state.contextWindowTokens?.let(TokenCount::modelWindow),
             transcriptionProvider = state.transcription?.provider,
             transcriptionModel = state.transcription?.model,
             presets = state.modelPresets.map { it.name },
+            usage = state.usage?.let(::usageSnapshot),
+        )
+    }
+
+    /**
+     * The usage card's numbers (T44). The core owns the window, the gap-filling and the compact
+     * copy; the one thing only the phone knows is what day it is where the reader is holding it.
+     */
+    private fun usageSnapshot(usage: UsageTotals): de.arjmandi.nanobot.companion.settings.UsageSnapshot {
+        val summary = UsageWindow.last30(usage, todayIso = java.time.LocalDate.now().toString())
+        return de.arjmandi.nanobot.companion.settings.UsageSnapshot(
+            headline = summary.headline,
+            totalTokens = summary.totalTokens,
+            requests = summary.requests,
+            cacheHitPercent = summary.cacheHitPercent,
+            bars = summary.days.map {
+                de.arjmandi.nanobot.companion.settings.UsageSnapshot.UsageBarView(
+                    date = it.date,
+                    height = it.fraction.toFloat(),
+                )
+            },
+            hasUsage = summary.hasUsage,
         )
     }
 

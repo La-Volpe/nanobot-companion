@@ -6,21 +6,55 @@ import UserNotifications
 @MainActor
 final class SettingsViewModel: ObservableObject {
 
-    /// The gateway facts Overview shows. Deliberately no uptime: the payload has none.
+    /// The gateway facts Overview shows. Deliberately no uptime: the payload has none, and
+    /// deliberately no model either: `agent.model` is what the gateway is configured for, so
+    /// Overview names the model in use instead — the open chat's composer (`modelInUse`, T45).
     struct Snapshot: Equatable {
         var version: String?
         var commit: String?
         var os: String?
         var pythonVersion: String?
-        var modelName: String?
-        var modelPreset: String?
-        var provider: String?
-        var contextWindowTokens: Int?
-        /// The window as the core's token copy prints it (`1M`, `200K`, `32.8K`): T36.
-        var contextWindowLabel: String? = nil
         var transcriptionProvider: String?
         var transcriptionModel: String?
         var presets: [String] = []
+        /// The `/api/settings/usage` the client already fetched, drawn as the card's own numbers
+        /// (T44). Nil is "the read did not answer", which the section already says.
+        var usage: Usage? = nil
+    }
+
+    /// Overview's token card (T44): the headline, the gateway's own 30-day counts, and the daily
+    /// strip. The window, the gap-filling and the compact copy are the core's (`UsageWindow`);
+    /// this is the Swift shape the card draws.
+    struct Usage: Equatable {
+        /// `505K`, `1.5M` — `formatCompactTokenCount`, the WebUI's own headline.
+        var headline: String
+        var totalTokens: Int64
+        var requests: Int
+        /// `62` for 62%; nil when the gateway had no denominator, which is not "0%".
+        var cacheHitPercent: Int?
+        /// Oldest first, always 30: a day the gateway did not report is a zero bar.
+        var bars: [Bar]
+        var hasUsage: Bool
+
+        struct Bar: Equatable, Identifiable {
+            var date: String
+            /// 0…1 of the window's peak, which the core computed so both phones draw one chart.
+            var height: Double
+
+            var id: String { date }
+        }
+    }
+
+    /// The model the open chat is running (T45), as the composer row knows it: the chip's name and
+    /// preset and the ring's denominator. The core resolves and words it (`ModelInUse`); this is
+    /// the Swift value the row draws. Nil, not empty, is "no chat open".
+    struct CurrentModel: Equatable {
+        var name: String?
+        var preset: String?
+        /// The row's second line, already worded by the core: `Preset primary`.
+        var presetLabel: String?
+        /// `1M`, `200K`, `32.8K`: the core's token copy (T36), without the unit the row adds.
+        var windowLabel: String?
     }
 
     struct Row: Identifiable, Equatable {
@@ -31,10 +65,37 @@ final class SettingsViewModel: ObservableObject {
         var id: String { label }
     }
 
+    /// One switch: the store key it writes and the poster reads, the words on the row, and the
+    /// reader's answer. The key is the core's own (`NoticeCategory.preferenceKey`) — one flag, so
+    /// the row and the poster cannot disagree about what was turned off (T43).
     struct Toggle: Identifiable, Equatable {
+        let key: String
         let title: String
         var isOn: Bool
-        var id: String { title }
+
+        var id: String { key }
+    }
+
+    /// The three switches the design draws, in its order. The key is the core's, its default is the
+    /// design's, and the words are the screen's: a switch that names less than it gates is a switch
+    /// that lies, which is why the middle row says "or stopped" (T43).
+    enum NoticeSwitch: String, CaseIterable, Equatable {
+        case finished
+        case failedOrStopped
+        case needsAttention
+
+        var key: String { "settings.notify.\(rawValue)" }
+
+        var title: String {
+            switch self {
+            case .finished: "Task finished"
+            case .failedOrStopped: "Task failed or stopped"
+            case .needsAttention: "Needs attention"
+            }
+        }
+
+        /// The design's default: finished and failed on, needs-attention off.
+        var onByDefault: Bool { self != .needsAttention }
     }
 
     enum Theme: String, CaseIterable, Equatable {
@@ -70,16 +131,18 @@ final class SettingsViewModel: ObservableObject {
     }
 
     @Published private(set) var snapshot = Snapshot()
+    /// The open chat's model, the only model Overview may name (T45). Nil is "no chat open": the
+    /// section says so rather than printing the gateway's configured default.
+    @Published private(set) var modelInUse: CurrentModel?
     /// Whether Overview's read has answered: a skeleton, the rows, or the failure sentence.
     @Published private(set) var overview: OverviewState = .loading
     @Published private(set) var notice: String?
     @Published private(set) var theme: Theme
     @Published private(set) var readingSize: ReadingSize
-    @Published private(set) var notificationToggles: [Toggle] = [
-        Toggle(title: "Task finished", isOn: true),
-        Toggle(title: "Task failed", isOn: true),
-        Toggle(title: "Needs attention", isOn: false),
-    ]
+
+    /// The three switches, read from the store at launch (T43): a switch that forgets its answer
+    /// gates nothing after the next app start.
+    @Published private(set) var notificationToggles: [Toggle]
 
     /// Whether a banner may make a sound (T34). The reader's choice, read at post time by the
     /// same object that draws Settings, so a change applies to the next banner and not the next launch.
@@ -95,15 +158,26 @@ final class SettingsViewModel: ObservableObject {
         credentials: CredentialsStoring,
         notifier: Notifying,
         defaults: SettingsStoring,
+        modelInUse: CurrentModel? = nil,
         disconnect: @escaping () -> Void
     ) {
         self.credentials = credentials
         self.notifier = notifier
         self.defaults = defaults
+        self.modelInUse = modelInUse
         self.disconnectGateway = disconnect
         self.theme = Theme(rawValue: defaults.string("settings.theme") ?? "") ?? .system
         self.readingSize = ReadingSize(rawValue: defaults.string("settings.readingSize") ?? "") ?? .medium
         self.notificationSound = defaults.flag(SettingsViewModel.notificationSoundKey) ?? true
+        self.notificationToggles = NoticeSwitch.allCases.map { notice in
+            Toggle(
+                key: notice.key,
+                title: notice.title,
+                // A switch nobody touched keeps the design's default, which the poster falls back
+                // to on the same key.
+                isOn: defaults.flag(notice.key) ?? notice.onByDefault
+            )
+        }
     }
 
     // MARK: - the list
@@ -121,12 +195,13 @@ final class SettingsViewModel: ObservableObject {
     }
     var disconnectActions: [String] { ["Cancel", "Disconnect"] }
 
-    /// The one promise the Notifications screen can keep, permanently (design README).
+    /// The one promise the Notifications screen can keep, permanently (design README) — and now
+    /// conditional, because the switches above it really do silence what they name (T43).
     var notificationsCopy: String {
         "Alerts arrive while you are away: a local notification when a turn finishes, fails or "
-            + "stops, and when nanobot needs an answer. The chat you are looking at is never "
-            + "announced. The gateway has no push service and none is planned, so a closed app "
-            + "stays quiet instead of promising an alert it cannot deliver."
+            + "stops, and when nanobot needs an answer — the switches above are which. The chat you "
+            + "are looking at is never announced. The gateway has no push service and none is "
+            + "planned, so a closed app stays quiet instead of promising an alert it cannot deliver."
     }
 
     /// What the phone says about this app's notifications, and the one action that can change it.
@@ -167,6 +242,12 @@ final class SettingsViewModel: ObservableObject {
         self.snapshot = snapshot
     }
 
+    /// The shell hands over the open chat's model when the sheet opens and whenever it changes, so
+    /// Overview follows a `/model` switch made behind it (T45).
+    func update(modelInUse: CurrentModel?) {
+        self.modelInUse = modelInUse
+    }
+
     /// The Overview read. Nil is "did not answer", which the section draws as a sentence rather
     /// than as rows with blanks where the gateway's answers belong.
     func refresh(from load: () async -> Snapshot?) async {
@@ -191,8 +272,18 @@ final class SettingsViewModel: ObservableObject {
         if let os = snapshot.os {
             rows.append(Row(label: "Server", detail: snapshot.pythonVersion.map { "Python \($0)" }, value: os))
         }
-        rows.append(Row(label: "Current model", detail: snapshot.modelPreset.map { "Preset \($0)" }, value: snapshot.modelName))
-        if let label = snapshot.contextWindowLabel {
+        // T45, deliberately unlike the WebUI (`overview/OverviewSettings.tsx:78` prints
+        // `settings.agent.model`): the model row describes the chat on screen, from the same
+        // composer the chip and the ring read. A gateway's configured model is not the model in
+        // use, and with no chat open there is no model in use to name.
+        rows.append(
+            Row(
+                label: "Current model",
+                detail: modelInUse?.presetLabel,
+                value: modelInUse?.name ?? "No chat open"
+            )
+        )
+        if let label = modelInUse?.windowLabel {
             rows.append(Row(label: "Context window", detail: nil, value: "\(label) tokens"))
         }
         rows.append(
@@ -217,9 +308,11 @@ final class SettingsViewModel: ObservableObject {
         defaults.set(on, for: SettingsViewModel.notificationSoundKey)
     }
 
+    /// An answer the poster honours on the next notice: written to the store, not only to the row.
     func setToggle(_ id: String, on: Bool) {
         guard let index = notificationToggles.firstIndex(where: { $0.id == id }) else { return }
         notificationToggles[index].isOn = on
+        defaults.set(on, for: notificationToggles[index].key)
     }
 
     /// The screen's proof that it can keep its promise: a real local notification.
