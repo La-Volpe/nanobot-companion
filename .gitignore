@@ -20,6 +20,17 @@ captures/
 # Local dev gateway (tools/nanobot-dev.sh)
 .dev/
 
+# Secrets and signing material: a net, not a fence. Nothing of this kind is
+# committed today; the patterns are here so the day one of them lands in the
+# worktree, `git add -A` cannot take it to a public repository (T56).
+.env*
+credentials.json
+*.p12
+*.jks
+*.keystore
+*.pem
+*.mobileprovision
+
 # macOS
 .DS_Store
 

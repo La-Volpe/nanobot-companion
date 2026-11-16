@@ -147,6 +147,52 @@ class FixtureManifestTest {
         }
     }
 
+    /**
+     * T55: a committed recording must not carry the machine it was made on. The manifest used to
+     * name the gateway outright, `api_key` was not in the redactor's vocabulary, and every session
+     * row kept the gateway's title and preview of somebody's conversation.
+     */
+    @Test
+    fun aRecordingNamesNoRealHostAndCarriesNoSecretShapedField() {
+        val example = "http://gateway.example:8787"
+        val manifest = Fixtures.manifest()
+        assertEquals(
+            example,
+            manifest["provenance"].obj().str("gateway_url"),
+            "the manifest names the fixed example, not the address it was recorded from (RFC 2606)",
+        )
+
+        // A field *name* ending in `_key`, whose value is a string that was not redacted.
+        val secretShaped = Regex("""["']([A-Za-z0-9_.-]+(?:[_-]key|_secret|_token))["']\s*:\s*"([^"]*)"""")
+        // RFC 1918, link-local or a `.local`/`.lan` name: a machine on somebody's network.
+        val privateHost = Regex(
+            """\b(?:192\.168|10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b|\b[a-z0-9-]+\.(?:local|lan|internal)\b""",
+        )
+        // `key` (a session row's id) and `session_key` are the gateway's own identifiers (D15.6).
+        val notSecrets = setOf("key", "session_key")
+
+        for (set in Fixtures.sets) {
+            for (file in set.walkTopDown().filter { it.isFile && it.extension == "json" }) {
+                val text = file.readText()
+
+                secretShaped.findAll(text).forEach { match ->
+                    val name = match.groupValues[1]
+                    val value = match.groupValues[2]
+                    if (name !in notSecrets && value != "REDACTED") {
+                        error("${set.name}/${file.name}: field $name still carries a value")
+                    }
+                }
+                privateHost.find(text)?.let { match ->
+                    error("${set.name}/${file.name}: a real host survives: ${match.value}")
+                }
+            }
+        }
+
+        val rowKeys = (Fixtures.readJson(File(Fixtures.latest, "sessions.json"))["sessions"] as JsonArray)
+            .mapNotNull { it.obj().str("session_key") }
+        assertTrue(rowKeys.all { it.startsWith("websocket:UUID-") }, "the row id is an alias: $rowKeys")
+    }
+
     @Test
     fun historyPageReplaysTheRecordedTurn() {
         val history = Fixtures.readJson(File(Fixtures.latest, "history.json"))

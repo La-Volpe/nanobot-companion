@@ -93,6 +93,7 @@ internal class Recorder(
             val redactor = Redactor(
                 homeDir = homeDir,
                 workspaceDir = workspaceDirIn(rawSessions, "websocket:$plainChat").orEmpty(),
+                gatewayUrl = profile.url,
             )
             write(redactor, recorded, rawSessions, paletteReads)
         } finally {
@@ -115,6 +116,7 @@ internal class Recorder(
             val redactor = Redactor(
                 homeDir = homeDir,
                 workspaceDir = workspaceDirOf(rawSessions).orEmpty(),
+                gatewayUrl = profile.url,
             )
             val reads = reads(client, apiToken)
             writeReads(set, redactor, reads)
@@ -234,7 +236,10 @@ internal class Recorder(
                 put("recorded_at", recordedAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z")
                 put("gateway_version", webui["version"]!!.jsonText())
                 put("gateway_commit", gatewayCommit)
-                put("gateway_url", profile.url)
+                // Not `profile.url` (T55): a fixture is committed, and the address a person
+                // records from is theirs. The host still reaches the manifests that mention it,
+                // where the redactor replaces it.
+                put("gateway_url", EXAMPLE_GATEWAY_URL)
                 put("model", plain.bootstrap["model_name"]!!.jsonText())
                 put("protocol", buildJsonObject {
                     put("min", (webui["min_protocol"] as JsonPrimitive).content.toInt())

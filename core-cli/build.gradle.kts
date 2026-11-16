@@ -17,6 +17,18 @@ application {
     mainClass.set("de.arjmandi.nanobot.companion.cli.MainKt")
 }
 
+// A distribution is a distribution (T59): `installDist` and `distZip` are what a reviewer runs,
+// so the MIT licence and the consolidated notices travel beside the script rather than only
+// living in the repository.
+distributions {
+    main {
+        contents {
+            from(rootProject.file("LICENSE"))
+            from(rootProject.file("THIRD_PARTY_NOTICES.txt"))
+        }
+    }
+}
+
 dependencies {
     implementation(project(":core"))
     implementation(libs.kotlinx.coroutines.core)

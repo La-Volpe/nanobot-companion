@@ -46,7 +46,7 @@ struct ConnectView: View {
             Text("Connect nanobot")
                 .font(.system(size: 24, weight: .semibold))
                 .tracking(-0.5)
-            Text("Point the app at the gateway on your Mac or server. Nothing leaves your network.")
+            Text(ConnectCopy.body)
                 .font(ReadingType.body)
                 .lineSpacing(ReadingType.lineSpacing)
                 .foregroundStyle(.secondary)
@@ -201,10 +201,14 @@ struct ConnectView: View {
     }
 
     private var footer: some View {
-        Text("The key stays in the keychain and renews the session token, which expires in minutes.")
-            .font(.system(size: 11))
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            .padding(.top, 20)
+        VStack(spacing: 6) {
+            Text("The key stays in the keychain and renews the session token, which expires in minutes.")
+            Text(ConnectCopy.disclaimer)
+                .accessibilityIdentifier("onboarding.disclaimer")
+        }
+        .font(.system(size: 11))
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+        .padding(.top, 20)
     }
 }

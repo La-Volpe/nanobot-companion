@@ -8,6 +8,12 @@ instead of by reading two files:
   iosApp/iosApp/ConnectionCopy.swift                     -> connection.<key> -> sentence
   app/src/main/res/values/strings.xml                     -> connection_<key>   -> sentence
 
+The onboarding sentences that make a claim about the world — where a message goes, and who wrote
+this app — are compared the same way, through `ConnectCopy.swift` on the iOS side:
+
+  iosApp/iosApp/ConnectCopy.swift                        -> connect.<key>     -> sentence
+  app/src/main/res/values/strings.xml                     -> connect_<key>     -> sentence
+
 Exit code 0 when both sides agree on every key, 1 otherwise.
 """
 import re
@@ -16,6 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 IOS = ROOT / "iosApp/iosApp/ConnectionCopy.swift"
+IOS_ONBOARDING = ROOT / "iosApp/iosApp/ConnectCopy.swift"
 ANDROID = ROOT / "app/src/main/res/values/strings.xml"
 
 KEYS = [
@@ -27,6 +34,14 @@ KEYS = [
     "missingCapability",
     "missingField",
     "serverError",
+]
+
+# Sentences a user reads as a claim about the product, not as layout. T57 rewrote the first after
+# it turned out to be false for a remote gateway; T52 added the second. Both have to read the same
+# on the two platforms, so both are checked here rather than in two view bodies.
+ONBOARDING_KEYS = [
+    "body",
+    "disclaimer",
 ]
 
 
@@ -58,6 +73,33 @@ def ios_copies() -> dict:
     return found
 
 
+def ios_onboarding() -> dict:
+    if not IOS_ONBOARDING.exists():
+        print(f"copy: FAIL — {IOS_ONBOARDING.relative_to(ROOT)} does not exist")
+        sys.exit(1)
+    source = IOS_ONBOARDING.read_text()
+    found = {}
+    for key in ONBOARDING_KEYS:
+        match = re.search(rf'static let {key} = "(.*?)"', source, re.S)
+        if not match:
+            print(f"copy: FAIL — iOS has no onboarding sentence for {key}")
+            sys.exit(1)
+        found[key] = match.group(1).strip()
+    return found
+
+
+def android_onboarding() -> dict:
+    source = ANDROID.read_text()
+    found = {}
+    for key in ONBOARDING_KEYS:
+        match = re.search(rf'<string name="connect_{key}">(.*?)</string>', source, re.S)
+        if not match:
+            print(f"copy: FAIL — Android has no string for connect_{key}")
+            sys.exit(1)
+        found[key] = unescape(match.group(1))
+    return found
+
+
 def android_copies() -> dict:
     source = ANDROID.read_text()
     found = {}
@@ -74,8 +116,8 @@ def android_copies() -> dict:
 
 
 def main() -> int:
-    ios = ios_copies()
-    android = android_copies()
+    ios = ios_copies() | ios_onboarding()
+    android = android_copies() | android_onboarding()
     failures = 0
     for key in sorted(set(ios) | set(android)):
         left, right = ios.get(key), android.get(key)

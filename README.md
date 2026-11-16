@@ -5,6 +5,10 @@ gateway. One Kotlin Multiplatform module holds everything that is not UI. iOS
 renders it with SwiftUI, Android with Jetpack Compose, both against the
 gateway's own WebSocket protocol — the same one the browser WebUI speaks.
 
+**Not affiliated with HKUDS/nanobot.** This is an independent client for the
+gateway that project publishes; the credits and licences for the artwork it
+borrows are in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
+
 The gateway is the product here, not the app's backend. There is no companion
 server: the app authenticates to your nanobot with the WebUI secret, opens the
 same socket the browser opens, and reduces the same frames. If the WebUI can
@@ -167,6 +171,17 @@ with red-then-green tests.
 changed and, where a red was weak, saying so. The plan, the checklists, the
 decision log and the list of open questions were working files and are not
 shipped.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE). The work of the projects this app is built on or
+copies from is in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt): nanobot's
+MIT notice for the day/night mark and the product glyphs, Lucide's ISC plus the
+Feather attribution for the seventeen WebUI icons the generator reads, Open
+Sans' OFL, pele's MIT with the Lucide icon bundled inside it, the Apache-2.0
+runtime set (Kotlin, kotlinx, Ktor, OkHttp/Okio, AndroidX and what Ktor pulls
+in) and SLF4J's MIT. Both apps bundle those two files, so the text travels with
+the binary rather than only with the repository.
 
 ## Notes for agents (and the curious)
 
