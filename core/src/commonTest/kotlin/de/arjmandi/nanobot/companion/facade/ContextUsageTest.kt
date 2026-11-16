@@ -39,6 +39,13 @@ class ContextUsageTest {
         assertNull(ContextUsage.percent(usedTokens = 10, windowTokens = 0), "a window of zero is no window")
     }
 
+    /**
+     * T37 then T46: the frame's window wins while it is answering for the preset being named, the
+     * preset's own window is next, and the gateway's configured window only when nothing names a
+     * preset at all. What it may never do is hand one preset another's number — a chat on a preset
+     * the gateway does not list has no denominator here, which is a chip with no ring rather than a
+     * ring of the wrong size.
+     */
     @Test
     fun theThreadsOwnWindowWinsThenThePresetThenTheGateway() {
         val own = ThreadState(chatId = "websocket:a", contextWindowTokens = 32_768)
@@ -49,7 +56,27 @@ class ContextUsageTest {
         assertEquals(200_000, ContextUsage.window(ThreadState(chatId = "websocket:a"), settings, preset = "default"), "the preset the client picked, when the thread has not said")
 
         val unknown = ThreadState(chatId = "websocket:a")
-        assertEquals(1_000_000, ContextUsage.window(unknown, settings, preset = "nope"), "a preset the gateway does not list falls to the gateway's window")
+        assertEquals(
+            1_000_000,
+            ContextUsage.window(unknown, settings, preset = null),
+            "nothing names a preset, so the gateway's configured window is the only answer there is",
+        )
+        assertNull(
+            ContextUsage.window(unknown, settings, preset = "nope"),
+            "a preset the gateway does not list has no window to show, and the configured one is not it (T46)",
+        )
         assertNull(ContextUsage.window(unknown, SettingsState(), preset = null), "and a gateway that said nothing leaves no denominator to invent")
+    }
+
+    /**
+     * The half of the pairing the incident turned on: a pick on `Vision and OCR` while the chat's
+     * last turn reported `primary` must not divide by `primary`'s window (T46).
+     */
+    @Test
+    fun aWindowFromAnotherPresetsTurnIsNotReused() {
+        val ranPrimary = ThreadState(chatId = "websocket:a", modelPreset = "primary", contextWindowTokens = 1_000_000)
+
+        assertEquals(200_000, ContextUsage.window(ranPrimary, settings, preset = "default"), "the picked preset's window, not the frame's")
+        assertEquals(1_000_000, ContextUsage.window(ranPrimary, settings, preset = "primary"), "and the frame's own while it is that preset")
     }
 }

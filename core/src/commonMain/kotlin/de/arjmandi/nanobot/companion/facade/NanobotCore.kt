@@ -49,6 +49,7 @@ import de.arjmandi.nanobot.companion.wire.RecoveryStateFrame
 import de.arjmandi.nanobot.companion.wire.TranscriptionErrorFrame
 import de.arjmandi.nanobot.companion.wire.TranscriptionResultFrame
 import de.arjmandi.nanobot.companion.wire.SessionUpdatedFrame
+import de.arjmandi.nanobot.companion.wire.SessionRow
 import de.arjmandi.nanobot.companion.wire.TurnEndFrame
 import de.arjmandi.nanobot.companion.wire.TurnModelUpdatedFrame
 import de.arjmandi.nanobot.companion.wire.SettingsState
@@ -111,8 +112,12 @@ public class NanobotCore internal constructor(
         override suspend fun effect(effect: Effect) = onEffect(effect)
     }
 
-    /** What the chip names: a preset, and the model it runs when there is one (I5). */
-    private data class ModelOnChip(val preset: String?, val name: String?)
+    /**
+     * What the chip names: a preset, and the model and window that preset runs (I5). One value,
+     * because they are one answer — the name from one preset beside another's window is how a
+     * brand-new chat read `GLM` over a 256 K ring (T46).
+     */
+    private data class ModelOnChip(val preset: String?, val name: String?, val window: Int?)
 
     private val engine: TurnEngine = TurnEngine(scope, attempt, host)
 
@@ -299,6 +304,7 @@ public class NanobotCore internal constructor(
             failed = outcome is SessionListOutcome.Failed,
         )
         // The rows carry each chat's own `model_preset`, which outranks the gateway's current one.
+        settlePicks(rows)
         republishComposerModels()
         // The mention sheet names chats by the same rows, so it is refreshed with them (C6.4).
         _palette.value = _palette.value.copy(sessions = PaletteCatalog.sessionsIn(rows))
@@ -429,6 +435,16 @@ public class NanobotCore internal constructor(
         // id: a brand-new chat has none, and it named nothing until a turn ran (T28).
         readModelsLater()
         readAutomationsLater()
+        // A pick belongs to one chat on one socket: `/model` answers with a turn and no frame, so
+        // nothing ever cleared it, and the next socket's chats wore the last one's preset (T46).
+        // The greeting's drawer read puts back the preset each chat really is on, from the gateway.
+        registry.value.values.forEach { session ->
+            session.pickedPreset = null
+            session.pickAnswered = false
+        }
+        // The greeting chat was minted by the socket that is gone; a "new chat" asked for on a
+        // fresh socket must not reopen it while the new greeting is still on its way.
+        greetingChatId = null
         // A new socket was told nothing: the gateway subscribes per connection (`runtime.py`
         // `_attach`, `_conn_chats`), so an `attached` from the socket before it says nothing about
         // this one. Without this, `open()` after a reconnect asks for nothing and an answer that
@@ -487,7 +503,19 @@ public class NanobotCore internal constructor(
 
         // A settled turn releases the prompt that was waiting for it (C5.5, I5), now that the
         // thread it belongs to has taken its answer.
-        if (frame is TurnEndFrame) releaseQueued(frame.chatId, frame.turnId)
+        if (frame is TurnEndFrame) {
+            releaseQueued(frame.chatId, frame.turnId)
+            // `/model` is answered by a turn and nothing else, so the settled turn is the first
+            // moment the chat's session row can confirm a pick or contradict it (T46):
+            // `set_session_model_preset` committed the metadata before the reply went out.
+            frame.chatId?.let { chatId ->
+                val session = registry.value[chatId]
+                if (session?.pickedPreset != null) {
+                    session.pickAnswered = true
+                    refreshDrawerLater()
+                }
+            }
+        }
 
         // The frame that ends a turn or stops a recovery is the only thing the gateway sends
         // that a user away from the app is waiting on, so it is also the only thing that may
@@ -843,12 +871,15 @@ public class NanobotCore internal constructor(
         val model = composerModel(chatId, session.pickedPreset)
         session.composer.update { composer ->
             val thread = session.thread.value
-            val preset = model.preset ?: composer.modelPreset
-            val window = ContextUsage.window(thread, _settings.value, preset)
+            // A new preset drops the old name and the old window together: they described the
+            // preset the chat was on, and keeping half of the pair is the lie this fixes (T46).
+            val kept = composer.modelPreset == model.preset
+            val name = model.name ?: composer.modelName.takeIf { kept }
+            val window = model.window ?: composer.contextWindowTokens.takeIf { kept }
             val usage = thread.usage ?: composer.usage
             composer.copy(
                 modelPreset = model.preset,
-                modelName = model.name ?: composer.modelName,
+                modelName = name,
                 contextWindowTokens = window,
                 usage = usage,
                 contextPercent = ContextUsage.percent(usage?.contextTokens, window),
@@ -857,27 +888,73 @@ public class NanobotCore internal constructor(
     }
 
     /**
+     * A pick is the client's guess; the chat's session row is the gateway's answer to it. `/model
+     * <preset>` writes the session's own metadata and publishes nothing (`loop.py:587
+     * set_session_model_preset`), and a settings re-read does not change either — measured
+     * 2026-11-16: `GET /api/settings` still said `agent.model_preset: primary` after a switch to a
+     * real `broken` while `GET /api/sessions` answered the chat's row with `model_preset: broken`.
+     * So a row either confirms the pick and takes over from it, or names something else and the
+     * pick goes: both are the gateway refusing the client the last word, which is the point.
+     *
+     * Only a pick whose own turn has ended is settled: before that the gateway may not have
+     * committed anything, and a read that answers early — a title arriving mid-switch — is not an
+     * answer about the pick. A chat with no row says nothing either, so a pick with nothing against
+     * it stands.
+     */
+    private fun settlePicks(rows: List<SessionRow>) {
+        registry.value.forEach { (chatId, session) ->
+            if (session.pickedPreset == null || !session.pickAnswered) return@forEach
+            if (rows.none { row -> row.chatId == chatId }) return@forEach
+            session.pickedPreset = null
+            session.pickAnswered = false
+        }
+    }
+
+    /**
      * What the composer's chip should name (I5), in the WebUI's order (`ThreadShell.tsx`
-     * `activeModelPreset`): the preset this chat's own turn reported, then the one the gateway
-     * stored for the chat, then the one the gateway is on. A chat that overrides the global
-     * preset must not be labelled with the global one, which is why the chat's own answer leads.
+     * `activeModelPreset`): the chat's own pick, the preset this chat's own turn reported, then
+     * the one the gateway stored for the chat, then the one the gateway is on. A chat that
+     * overrides the global preset must not be labelled with the global one, which is why the
+     * chat's own answer leads.
+     *
+     * Whichever wins names its own model and its own window; [modelName] and
+     * [ContextUsage.window] both answer for that preset and no other.
      */
     private fun composerModel(chatId: String?, picked: String? = null): ModelOnChip {
         val thread = chatId?.let { chatSet.thread(it) }
         val row = chatId?.let { id -> _sessions.value.rows.firstOrNull { it.chatId == id } }
         val settings = _settings.value
+        val preset = picked?.takeIf(String::isNotBlank)
+            ?: thread?.modelPreset?.takeIf(String::isNotBlank)
+            ?: row?.modelPreset?.takeIf(String::isNotBlank)
+            // `agent.model_preset` is the configured one; `active` is the gateway's own mark
+            // for the same question, and one of the two is present on every real payload.
+            ?: settings.modelPreset?.takeIf(String::isNotBlank)
+            ?: settings.modelPresets.firstOrNull { it.active }?.name
         return ModelOnChip(
-            // The chat's own pick leads: `/model` answers with a turn and no `turn_model_updated`,
-            // so until a frame names the model this is the only thing that knows (T39).
-            preset = picked?.takeIf(String::isNotBlank)
-                ?: thread?.modelPreset?.takeIf(String::isNotBlank)
-                ?: row?.modelPreset?.takeIf(String::isNotBlank)
-                // `agent.model_preset` is the configured one; `active` is the gateway's own mark
-                // for the same question, and one of the two is present on every real payload.
-                ?: settings.modelPreset?.takeIf(String::isNotBlank)
-                ?: settings.modelPresets.firstOrNull { it.active }?.name,
-            name = thread?.modelName?.takeIf(String::isNotBlank) ?: settings.modelName,
+            preset = preset,
+            name = modelName(thread, settings, preset),
+            window = ContextUsage.window(thread ?: ThreadState(chatId = chatId.orEmpty()), settings, preset),
         )
+    }
+
+    /**
+     * The model [preset] runs. A frame's `model_name` arrived with the preset that frame named
+     * (`turn_model_updated`), so it answers for that preset and no other; the gateway's configured
+     * `agent.model` is the name of the preset it configured, and nothing else's — the owner's chip
+     * said `GLM` (the configured `primary`) over `Vision and OCR`'s window (T46).
+     */
+    private fun modelName(thread: ThreadState?, settings: SettingsState, preset: String?): String? {
+        val reported = thread?.modelName?.takeIf(String::isNotBlank)?.takeIf {
+            preset == null || thread.modelPreset == null || thread.modelPreset == preset
+        }
+        val entry = settings.modelPresets.firstOrNull { it.name == preset }?.model?.takeIf(String::isNotBlank)
+        val configured = settings.modelName?.takeIf(String::isNotBlank)?.takeIf {
+            preset == null ||
+                preset == settings.modelPreset ||
+                settings.modelPresets.any { row -> row.active && row.name == preset }
+        }
+        return reported ?: entry ?: configured
     }
 
     /** A settings or drawer read can answer for a chat that has had no turn yet. */
