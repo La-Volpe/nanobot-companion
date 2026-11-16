@@ -9,9 +9,9 @@ import UniformTypeIdentifiers
 
 struct AttachSheet: View {
     let model: AttachmentViewModel
-    let onPickPhotos: () -> Void
-    let onTakePhoto: () -> Void
-    let onPickFiles: () -> Void
+    /// The row that was tapped. It is a request, not a presentation: the picker opens when this
+    /// sheet is gone (T50).
+    let onPick: (AttachRow) -> Void
 
     /// The lens *and* the permission: a camera that is off in Settings is not an option.
     private var cameraAvailable: Bool {
@@ -36,8 +36,7 @@ struct AttachSheet: View {
                 checked: false,
                 identifier: "attach.photos"
             ) {
-                model.closeSheet()
-                onPickPhotos()
+                onPick(.photos)
             }
             SheetRow(
                 title: "Camera",
@@ -45,8 +44,7 @@ struct AttachSheet: View {
                 checked: false,
                 identifier: "attach.camera"
             ) {
-                model.closeSheet()
-                onTakePhoto()
+                onPick(.camera)
             }
             .disabled(!cameraAvailable)
             .opacity(cameraAvailable ? 1 : 0.5)
@@ -56,8 +54,7 @@ struct AttachSheet: View {
                 checked: false,
                 identifier: "attach.files"
             ) {
-                model.closeSheet()
-                onPickFiles()
+                onPick(.files)
             }
             if let notice = model.notice {
                 AttachmentNoticeRow(notice: notice, onDismiss: model.dismissNotice)

@@ -56,6 +56,24 @@ struct SentAttachment: Equatable {
     let name: String?
 }
 
+/// The attach sheet's three doors, as the row that was tapped (T50).
+enum AttachRow: Equatable {
+    case photos
+    case camera
+    case files
+}
+
+/// What the attach sheet hands on once it has actually gone: the picker to present, or the reason
+/// the camera must not be presented at all.
+enum AttachHandoff: Equatable {
+    case photos
+    case camera
+    case files
+    /// A camera that is off in Settings opens to a black screen, so the sentence goes on the
+    /// composer instead of a dead cover.
+    case refused(String)
+}
+
 /// One attachment in the composer, as a card. Its state is what the card says: a spinner while
 /// the bytes go up, the gateway's reference once they have, the reason when they did not.
 struct PendingAttachment: Identifiable, Equatable {

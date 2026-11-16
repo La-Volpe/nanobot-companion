@@ -10,9 +10,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import de.arjmandi.nanobot.companion.chat.ChatDriver
 import de.arjmandi.nanobot.companion.chat.ChatScreen
 import de.arjmandi.nanobot.companion.chat.ChatThreadView
+import de.arjmandi.nanobot.companion.attachment.AttachSheetContent
 import de.arjmandi.nanobot.companion.chat.ChatViewModel
 import de.arjmandi.nanobot.companion.composer.ChatModelPreset
 import de.arjmandi.nanobot.companion.composer.ComposerDriving
+import de.arjmandi.nanobot.companion.composer.ComposerSheetHost
 import de.arjmandi.nanobot.companion.composer.ComposerSnapshot
 import de.arjmandi.nanobot.companion.composer.ComposerViewModel
 import de.arjmandi.nanobot.companion.composer.SessionAction
@@ -170,6 +172,45 @@ class ComposerScreenTest {
         screen(snapshot = ComposerSnapshot(contextWindowTokens = 200_000, usedTokens = 84_000, contextPercent = 42))
 
         compose.onNodeWithText("42%").assertIsDisplayed()
+    }
+
+    /// T50's Android half. The owner's iPhone row did nothing until the overlay was closed; the
+    /// Android row has no such constraint because `ActivityResultContracts` start an activity, not
+    /// a second sheet, so the tap reaches the launcher with the sheet still on screen. What a
+    /// composition can prove is that the row fires; the picker it starts is the platform's own.
+    @Test
+    fun theAttachRowFiresWhileItsSheetIsStillUp() {
+        val model = ChatViewModel(ScriptedChat(), ScriptedComposer(), MutableStateFlow(ComposerSnapshot()))
+        var photos = 0
+        var files = 0
+        compose.setContent {
+            NanobotTheme {
+                ComposerSheetHost(
+                    composer = model.composer,
+                    turns = emptyList(),
+                    sessionTitle = "Exact Word Pong Response",
+                    sessionChatId = null,
+                    loadPresets = { presets },
+                    onJumpToTurn = {},
+                    onAttachContent = {
+                        AttachSheetContent(
+                            model = model.attachments,
+                            onPickPhotos = { photos += 1 },
+                            onPickFiles = { files += 1 },
+                        )
+                    },
+                )
+            }
+        }
+
+        model.composer.openAttachSheet()
+        compose.waitForIdle()
+
+        compose.onNodeWithTag("attach.photos").performClick()
+        compose.onNodeWithTag("attach.files").performClick()
+
+        assertEquals(1, photos, "Photo or video asks its launcher on the tap")
+        assertEquals(1, files, "Files asks its launcher on the tap")
     }
 
     @Test

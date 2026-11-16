@@ -398,9 +398,9 @@ struct ComposerSheets: View {
     @ObservedObject var model: ComposerViewModel
     @ObservedObject var attachments: AttachmentViewModel
     let loadPresets: () async -> [ChatModelPreset]?
-    let onPickPhotos: () -> Void
-    let onTakePhoto: () -> Void
-    let onPickFiles: () -> Void
+    /// The attach sheet's rows hand their picker over instead of presenting it: the sheet has to be
+    /// gone first (T50).
+    let onAttachRow: (AttachRow) -> Void
 
     var body: some View {
         switch model.sheet {
@@ -468,12 +468,7 @@ struct ComposerSheets: View {
         case .palette:
             paletteSheet
         case .attach:
-            AttachSheet(
-                model: attachments,
-                onPickPhotos: onPickPhotos,
-                onTakePhoto: onTakePhoto,
-                onPickFiles: onPickFiles
-            )
+            AttachSheet(model: attachments, onPick: onAttachRow)
         case nil:
             EmptyView()
         }
