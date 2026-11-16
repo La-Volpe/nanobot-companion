@@ -190,6 +190,18 @@ fun ConnectScreen(
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 20.dp),
         )
+
+        // The name and the mark stay, so the app says plainly what it is not (T52) — worded
+        // identically on iOS, and compared by tools/parity_copy.py.
+        Text(
+            text = stringResource(R.string.connect_disclaimer),
+            fontSize = Design.Interface.microSize,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .testTag("connect.disclaimer"),
+        )
     }
 }
 

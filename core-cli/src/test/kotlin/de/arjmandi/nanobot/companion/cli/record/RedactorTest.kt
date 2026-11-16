@@ -18,8 +18,16 @@ class RedactorTest {
 
     private val home = "/Users/someone"
 
+    // A host that is not this project's own: the test proves a real-looking authority is replaced,
+    // and the repository must not carry the owner's gateway again after the history scrub.
+    private val gatewayUrl = "https://my-private-gateway.example:8787"
+
     private fun redact(vararg documents: String): List<JsonElement> {
-        val redactor = Redactor(homeDir = home, workspaceDir = "$home/Dev/repo/.dev/workspace")
+        val redactor = Redactor(
+            homeDir = home,
+            workspaceDir = "$home/Dev/repo/.dev/workspace",
+            gatewayUrl = gatewayUrl,
+        )
         return documents.map { redactor.redact(Json.parseToJsonElement(it)) }
     }
 
@@ -153,9 +161,101 @@ class RedactorTest {
         )
     }
 
+    /**
+     * T55: the vocabulary was `token, api_token, secret, password`, which misses the names a
+     * gateway actually uses for a provider key and the headers a proxy logs.
+     */
+    @Test
+    fun redactsTheWiderCredentialVocabulary() {
+        val out = redact(
+            """{"api_key":"sk-live-1","access_token":"at-2","refresh_token":"rt-3",
+                "authorization":"Bearer abc","x-api-key":"xk-4","X-Api-Key":"xk-5",
+                "client_secret":"cs-6","upload_key":"uk-7","provider":{"apiKey":"ak-8"}}""",
+        ).single()
+
+        for (name in listOf("api_key", "access_token", "refresh_token", "authorization", "client_secret", "upload_key")) {
+            assertEquals("REDACTED", out.at(name).content, "$name is a credential the recorder must not commit")
+        }
+        assertEquals("REDACTED", out.at("x-api-key").content)
+        assertEquals("REDACTED", out.at("X-Api-Key").content)
+        assertEquals("REDACTED", out.at("provider", "apiKey").content, "camelCase is the same credential")
+        assertTrue(out.toString().contains("sk-live-1").not(), "no key value survives: $out")
+    }
+
+    /** The row id is the one `key`-shaped name that is not a secret, so it must survive (D15.6). */
+    @Test
+    fun aSessionKeyIsNotACredential() {
+        val out = redact(
+            """{"sessions":[{"key":"websocket:290bed80-cb7e-405c-8d20-4900347b55fc","session_key":"websocket:290bed80-cb7e-405c-8d20-4900347b55fc","has_api_key":false}]}""",
+        ).single()
+
+        val row = (out.jsonObject["sessions"] as kotlinx.serialization.json.JsonArray).first().jsonObject
+        assertTrue(row["key"]!!.jsonPrimitive.content.startsWith("websocket:UUID-"), "the row key is an alias, not REDACTED")
+        assertTrue(row["session_key"]!!.jsonPrimitive.content.startsWith("websocket:UUID-"))
+        assertEquals("false", row["has_api_key"]!!.jsonPrimitive.content, "a boolean is not a secret to redact")
+    }
+
+    /**
+     * T55: the session listing is somebody's reading history. The recorder's own chats carry the
+     * prompts it sent, but every other row belongs to whoever recorded — so all of them become
+     * stable placeholders, and the drawer still has distinct rows to draw.
+     */
+    @Test
+    fun sessionTitlesAndPreviewsBecomePlaceholders() {
+        val out = redact(
+            """{"sessions":[
+                {"key":"websocket:a","title":"Deploy notes for the client","preview":"can you check"},
+                {"key":"websocket:b","title":"Deploy notes for the client","preview":"second session"},
+                {"key":"websocket:c","title":"","preview":"untitled prompt"},
+                {"key":"websocket:d","title":"","preview":""}
+            ]}""",
+        ).single()
+
+        val rows = (out.jsonObject["sessions"] as kotlinx.serialization.json.JsonArray).map { it.jsonObject }
+        val titles = rows.map { it["title"]!!.jsonPrimitive.content }
+        val previews = rows.map { it["preview"]!!.jsonPrimitive.content }
+
+        assertTrue(titles.none { it.contains("Deploy notes") }, "a real title must not survive: $titles")
+        assertEquals(titles[1], titles[0], "two rows with one title keep one placeholder")
+        assertTrue(Regex("""^title-\d+$""").matches(titles[0]), "a placeholder, not a redaction: $titles")
+        assertTrue(Regex("""^preview-\d+$""").matches(previews[1]) && previews[1] != previews[0], "distinct previews stay distinct")
+        assertEquals("", titles[2], "a blank title stays blank, because the drawer falls back to the preview then")
+        assertEquals("", previews[3])
+    }
+
+    /** `/api/palette` also has `title` keys — command names, not anybody's history. */
+    @Test
+    fun theCommandPaletteKeepsItsTitles() {
+        val out = redact(
+            """{"commands":[{"command":"/model","title":"New chat","description":"Start a session"}]}""",
+        ).single()
+
+        val command = (out.jsonObject["commands"] as kotlinx.serialization.json.JsonArray).first().jsonObject
+        assertEquals("New chat", command["title"]!!.jsonPrimitive.content)
+    }
+
+    /** T55: the manifest used to name the gateway it was recorded from — a host, in a commit. */
+    @Test
+    fun replacesTheRecordedGatewaysOwnAddress() {
+        val out = redact(
+            """{"provenance":{"gateway_url":"$gatewayUrl"},
+                "readme":"open $gatewayUrl/#/chat on my-private-gateway.example or at $gatewayUrl",
+                "other":"http://127.0.0.1:11434 stays, it is another loopback service"}""",
+        ).single()
+
+        assertEquals("http://gateway.example:8787", out.at("provenance", "gateway_url").content)
+        val readme = out.at("readme").content
+        assertTrue(readme.contains("gateway.example:8787"), "the full url and the bare host are both gone: $readme")
+        assertTrue(
+            out.at("other").content.startsWith("http://127.0.0.1:11434"),
+            "a loopback provider endpoint identifies nobody",
+        )
+        assertTrue(out.toString().contains("arjmandi").not(), "no real host survives anywhere: $out")
+    }
+
     @Test
     fun documentsEveryRuleItApplied() {
-        val redactor = Redactor(homeDir = home, workspaceDir = "$home/ws")
+        val redactor = Redactor(homeDir = home, workspaceDir = "$home/ws", gatewayUrl = gatewayUrl)
         redactor.redact(Json.parseToJsonElement("""{"token":"nbwt_x","chat_id":"290bed80-cb7e-405c-8d20-4900347b55fc"}"""))
 
         val rules = redactor.rules

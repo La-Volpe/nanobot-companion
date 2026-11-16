@@ -23,7 +23,7 @@
     <!-- Onboarding (design artifact data-view="onboarding"). -->
     <string name="connect_kicker">nanobot Companion</string>
     <string name="connect_title">Connect nanobot</string>
-    <string name="connect_body">Point the app at the gateway on your Mac or server. Nothing leaves your network.</string>
+    <string name="connect_body">Point the app at the gateway on your Mac or server. There is no companion server: your messages and the files you attach go to that gateway, and what it does with them from there is its own configuration.</string>
     <string name="connect_address_label">Gateway address</string>
     <string name="connect_address_hint">http://192.168.1.10:8787</string>
     <string name="connect_key_label">API key</string>
@@ -35,6 +35,9 @@
     <string name="connect_submit">Connect</string>
     <string name="connect_connecting">Connecting</string>
     <string name="connect_footer">The key is encrypted on this device and renews the session token, which expires in minutes.</string>
+    <!-- The name and the day/night mark are nanobot's, kept on purpose (T52): the app says plainly
+         what it is not, where a reader would look for provenance. Worded identically on iOS. -->
+    <string name="connect_disclaimer">Not affiliated with HKUDS/nanobot.</string>
     <string name="connect_connected_to">Connected to %1$s</string>
     <string name="connect_connected">Connected</string>
 

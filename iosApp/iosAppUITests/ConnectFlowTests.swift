@@ -31,6 +31,17 @@ final class ConnectFlowTests: XCTestCase {
         XCTAssertTrue(app.textFields["chat.composer"].waitForExistence(timeout: 10), "a successful connect leaves onboarding for the chat")
     }
 
+    /// T52: the name and the day/night mark stay, so the screen says plainly what the app is not.
+    /// The sentence is the same one `res/values/strings.xml` carries, and `tools/parity_copy.py`
+    /// compares the two tables — this proves the line is on the screen, not just in the table.
+    func testOnboardingSaysPlainlyWhoThisAppIsNot() {
+        let app = launch("connected")
+
+        let disclaimer = app.staticTexts["onboarding.disclaimer"]
+        XCTAssertTrue(disclaimer.waitForExistence(timeout: 5), "onboarding carries the provenance line")
+        XCTAssertEqual(disclaimer.label, "Not affiliated with HKUDS/nanobot.")
+    }
+
     func testARefusedKeyShowsTheSecretCopy() {
         let app = launch("authFailed")
         fillIn(app)

@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -96,6 +97,16 @@ class ConnectScreenTest {
         assert(model.messageRes == R.string.refusal_addressNeedsScheme) {
             "the screen shows the scheme refusal, not a socket failure"
         }
+    }
+
+    /** T52: the name and the day/night mark stay, so the screen says plainly what the app is not. */
+    @Test
+    fun theScreenSaysPlainlyWhoThisAppIsNot() {
+        screen()
+
+        compose.onNodeWithTag("connect.disclaimer")
+            .assertIsDisplayed()
+            .assertTextEquals("Not affiliated with HKUDS/nanobot.")
     }
 
     @Test

@@ -13,7 +13,8 @@ looking at something else, settings that tell the truth about what a phone can
 actually do. Two native apps — SwiftUI and Compose — over one shared Kotlin
 core that contains no UI at all.
 
-No account, no companion server, nothing leaves your network.
+No account and no companion server: what you write and attach goes to the gateway you point
+it at, and what that gateway does with it from there is its own configuration.
 
 ## The shape
 
