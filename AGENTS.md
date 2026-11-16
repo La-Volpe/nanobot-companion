@@ -240,14 +240,18 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
     no icon and SpringBoard draws a grey grid; `BrandTests` fails on exactly
     that, which is how the setting was proved necessary.
 
-28. **The simulator can stop raising a software keyboard.** With no Simulator GUI,
-   iOS reports a hardware keyboard attached (`HardwareKeyboardLastSeen=1`) and draws
-   no software keyboard: the composer never moves and the keyboard element sits
-   off-screen with a plausible frame. A dismissal test that fails there is
-   describing the host, not the app. `KeyboardTests`
-   measures both — did the composer move up, is the keyboard's frame inside the
-   window — and skips with the numbers when the answer is no, so a real inset
-   regression still fails and an absent keyboard says what it is.
+28. **A simulator or emulator can stop raising a software keyboard, and both do.**
+   With no Simulator GUI, iOS reports a hardware keyboard attached
+   (`HardwareKeyboardLastSeen=1`) and draws no software keyboard: the composer never
+   moves and the keyboard element sits off-screen with a plausible frame. Android's
+   emulator does the same — `mInputShown=false` after a tap that should raise it,
+   with the IME listed and enabled, and neither `show_ime_with_hard_keyboard=1` nor
+   an IME disable/enable cycle nor `adb reboot` bringing it back; a cold boot of the
+   AVD does. A dismissal test failing there is describing the host, not the app:
+   iOS `KeyboardTests` measures both facts (composer moved? keyboard frame inside the
+   window?) and skips with the numbers, and Android's five keyboard cases fail as a
+   class on the same tree that passed 80/0 an hour earlier — check that before
+   believing a regression.
 
 ## Conventions
 
