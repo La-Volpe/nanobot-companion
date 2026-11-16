@@ -1,15 +1,18 @@
 package de.arjmandi.nanobot.companion
 
+import de.arjmandi.nanobot.companion.projection.NoticeCategory
 import de.arjmandi.nanobot.companion.projection.NotificationPermission
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import de.arjmandi.nanobot.companion.settings.ChatModelInUse
 import de.arjmandi.nanobot.companion.settings.Notifying
 import de.arjmandi.nanobot.companion.settings.ReadingSize
 import de.arjmandi.nanobot.companion.settings.SettingsCredentials
@@ -18,6 +21,7 @@ import de.arjmandi.nanobot.companion.settings.SettingsSnapshot
 import de.arjmandi.nanobot.companion.settings.SettingsStoring
 import de.arjmandi.nanobot.companion.settings.SettingsTheme
 import de.arjmandi.nanobot.companion.settings.SettingsViewModel
+import de.arjmandi.nanobot.companion.settings.UsageSnapshot
 import de.arjmandi.nanobot.companion.ui.NanobotTheme
 import android.Manifest
 import android.os.Build
@@ -96,6 +100,18 @@ class SettingsScreenTest {
     private fun model(credentials: Credentials = Credentials(), notifier: Notifier = Notifier()) =
         SettingsViewModel(credentials, notifier, Memory, disconnectGateway = {})
 
+    /** The card's numbers as the bridge builds them from a read: one full day, 29 stubs (T44). */
+    private fun usage(hasUsage: Boolean = true) = UsageSnapshot(
+        headline = if (hasUsage) "505K" else "0",
+        totalTokens = if (hasUsage) 505_134 else 0,
+        requests = if (hasUsage) 140 else 0,
+        cacheHitPercent = if (hasUsage) 89 else null,
+        bars = (1..30).map { day ->
+            UsageSnapshot.UsageBarView(date = "2026-11-%02d".format(day), height = if (hasUsage && day == 14) 1f else 0f)
+        },
+        hasUsage = hasUsage,
+    )
+
     private fun screen(
         model: SettingsViewModel,
         snapshot: SettingsSnapshot = SettingsSnapshot(
@@ -103,15 +119,20 @@ class SettingsScreenTest {
             commit = "28d73b69",
             os = "Darwin",
             pythonVersion = "3.12.9",
-            modelName = "deepseek-v4.1-flash:cloud",
-            modelPreset = "primary",
-            contextWindowTokens = 32_768,
-            contextWindowLabel = "32.8K",
             presets = listOf("default", "primary"),
+            usage = usage(),
+        ),
+        modelInUse: ChatModelInUse? = ChatModelInUse(
+            name = "glm-5.3-flash:cloud",
+            preset = "primary",
+            presetLabel = "Preset primary",
+            windowLabel = "1M",
         ),
     ) {
         compose.setContent {
-            NanobotTheme { SettingsScreen(model = model, loadSnapshot = { snapshot }, onClose = {}) }
+            NanobotTheme {
+                SettingsScreen(model = model, loadSnapshot = { snapshot }, onClose = {}, modelInUse = modelInUse)
+            }
         }
     }
 
@@ -121,7 +142,7 @@ class SettingsScreenTest {
 
         compose.onNodeWithTag("settings.overview.nanobot Gateway").assertIsDisplayed()
         compose.onNodeWithText("Commit 28d73b69").assertIsDisplayed()
-        compose.onNodeWithText("32.8K tokens").assertIsDisplayed()
+        compose.onNodeWithText("1M tokens").assertIsDisplayed()
         assertEquals(
             0,
             compose.onAllNodesWithText("Uptime", substring = true, ignoreCase = true).fetchSemanticsNodes().size,
@@ -129,9 +150,56 @@ class SettingsScreenTest {
         )
     }
 
+    /**
+     * T45: with no chat open there is no model in use, and the row says so instead of printing the
+     * gateway's `agent.model`, which is a configuration and not the model answering.
+     */
     @Test
-    fun theNotificationsCopyIsHonestAndTheSwitchesMove() {
-        val model = model()
+    fun withNoChatOpenTheModelRowSaysSoAndThereIsNoWindow() {
+        screen(model(), modelInUse = null)
+
+        compose.onNodeWithText("No chat open").performScrollTo().assertIsDisplayed()
+        assertEquals(
+            0,
+            compose.onAllNodesWithTag("settings.overview.Context window").fetchSemanticsNodes().size,
+            "no chat open, so no window to give",
+        )
+    }
+
+    /**
+     * T43: the switches gate the notices they name, so a tap has to write the key the poster reads
+     * — not only move a switch on screen.
+     */
+    /**
+     * T44: `/api/settings/usage` was fetched and parsed into nothing. It is now the card the design
+     * puts first: the headline, the gateway's own counts, and a bar per day.
+     */
+    @Test
+    fun theUsageCardDrawsTheHeadlineTheCountsAndTheStrip() {
+        screen(model())
+
+        compose.onNodeWithTag("settings.usage.headline").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("505K").assertIsDisplayed()
+        compose.onNodeWithText("140 requests · 89% cache hit rate").assertIsDisplayed()
+        compose.onNodeWithTag("settings.usage.strip").assertIsDisplayed()
+    }
+
+    @Test
+    fun aWindowWithNoUsageSaysSoInsteadOfDrawingAFlatLine() {
+        screen(model(), snapshot = SettingsSnapshot(usage = usage(hasUsage = false)))
+
+        compose.onNodeWithTag("settings.usage.empty").performScrollTo().assertIsDisplayed()
+        assertEquals(
+            0,
+            compose.onAllNodesWithTag("settings.usage.strip").fetchSemanticsNodes().size,
+            "no usage is no chart, not a row of zero bars",
+        )
+    }
+
+    @Test
+    fun theNotificationsCopyIsHonestAndTheSwitchesWriteTheKeyThePosterReads() {
+        val store = RecordingPreferences()
+        val model = SettingsViewModel(Credentials(), Notifier(), store, disconnectGateway = {})
         screen(model)
 
         compose.onNodeWithTag("settings.notificationsCopy").assertIsDisplayed()
@@ -139,7 +207,13 @@ class SettingsScreenTest {
 
         compose.onNodeWithTag("settings.toggle.Needs attention").performScrollTo().performClick()
         compose.waitForIdle()
+
         assertEquals(true, model.notificationToggles.last().isOn)
+        assertEquals(
+            true,
+            store.flags[NoticeCategory.NeedsAttention.preferenceKey],
+            "the row writes the key the poster reads: ${store.flags}",
+        )
     }
 
     /**

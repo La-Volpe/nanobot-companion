@@ -181,6 +181,7 @@
     <string name="settings_notifications_off">Notifications are turned off for this app in Settings.</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_reading_size">Reading size</string>
+    <string name="settings_usage_empty">No token usage in the last 30 days.</string>
     <string name="notice_completed">Task completed</string>
     <string name="notice_failed">Task failed</string>
     <string name="notice_interrupted">Task stopped</string>
@@ -192,7 +193,6 @@
     <string name="settings_notifications_unasked">Alerts not asked yet</string>
     <string name="settings_notifications_allow">Allow alerts</string>
     <string name="settings_notifications_system">Open system settings</string>
-    <string name="settings_notifications_copy">Alerts arrive while the app is open, plus a local notification if a task ends while it is foregrounded. The gateway has no push service and none is planned, so a closed app stays quiet instead of promising an alert it cannot deliver.</string>
 
     <!-- States (A8): the banner's lines, the notice rows, the goal strip, the dock and the one
          snackbar above the composer for the transient ones. The sandbox sentences are named after

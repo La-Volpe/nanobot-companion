@@ -112,6 +112,61 @@ public object TaskNoticeRule {
     }
 }
 
+/**
+ * The three switches Notifications draws (design README) and the outcome each one gates (T43).
+ *
+ * The gateway settles four outcomes and the screen has three rows, so the middle row is "failed or
+ * stopped": a switch that names less than it gates would silence a turn the user watched stop, and
+ * a control that lies is worse than one that is missing. The keys and the defaults live here
+ * because both phones store the same three flags — a key that drifted between the row and the
+ * poster would be a switch that quietly gates nothing.
+ */
+public enum class NoticeCategory(
+    /** The store key the row writes and the poster reads. */
+    public val preferenceKey: String,
+    /** The design's default: finished and failed on, needs-attention off. */
+    public val onByDefault: Boolean,
+) {
+    Finished("settings.notify.finished", onByDefault = true),
+    FailedOrStopped("settings.notify.failedOrStopped", onByDefault = true),
+    NeedsAttention("settings.notify.needsAttention", onByDefault = false),
+    ;
+
+    public companion object {
+
+        /**
+         * The switch a notice falls under. Every [TaskOutcome] has one, because a notice no switch
+         * gates is a switch that does nothing.
+         */
+        public fun of(outcome: TaskOutcome): NoticeCategory = when (outcome) {
+            TaskOutcome.Completed -> Finished
+            // A stop is a turn that did not finish: it is not "needs attention", which is a
+            // recovery waiting on a person.
+            TaskOutcome.Failed, TaskOutcome.Interrupted -> FailedOrStopped
+            TaskOutcome.NeedsAttention -> NeedsAttention
+        }
+    }
+}
+
+/**
+ * The reader's three switches, read at post time (T43) so a change applies to the next notice and
+ * not to the next launch. The defaults are [NoticeCategory]'s, so a fresh install posts exactly what
+ * its switches say.
+ */
+public data class NoticeSwitches(
+    public val finished: Boolean = NoticeCategory.Finished.onByDefault,
+    public val failedOrStopped: Boolean = NoticeCategory.FailedOrStopped.onByDefault,
+    public val needsAttention: Boolean = NoticeCategory.NeedsAttention.onByDefault,
+) {
+
+    /** Whether the reader asked to be told about this outcome. */
+    public fun allows(outcome: TaskOutcome): Boolean = when (NoticeCategory.of(outcome)) {
+        NoticeCategory.Finished -> finished
+        NoticeCategory.FailedOrStopped -> failedOrStopped
+        NoticeCategory.NeedsAttention -> needsAttention
+    }
+}
+
 /** The system permission as both platforms can describe it (`UNUserNotificationCenter`, `POST_NOTIFICATIONS`). */
 public enum class NotificationPermission { NotAsked, Granted, Denied }
 

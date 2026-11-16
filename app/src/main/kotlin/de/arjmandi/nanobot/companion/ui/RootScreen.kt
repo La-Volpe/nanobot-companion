@@ -49,6 +49,7 @@ import de.arjmandi.nanobot.companion.connect.ConnectScreen
 import de.arjmandi.nanobot.companion.connect.ConnectViewModel
 import de.arjmandi.nanobot.companion.core.ConnectionStatus
 import de.arjmandi.nanobot.companion.core.CoreHolder
+import de.arjmandi.nanobot.companion.core.toChatModelInUse
 import de.arjmandi.nanobot.companion.debug.DebugStatesMenu
 import de.arjmandi.nanobot.companion.drawer.DrawerContent
 import de.arjmandi.nanobot.companion.settings.SettingsScreen
@@ -111,6 +112,10 @@ fun RootScreen(
                 model = settings,
                 loadSnapshot = { holder.settingsSnapshot() },
                 onClose = { main.closeSettings() },
+                // The model in use is the open chat's composer, the same value the chip and the
+                // ring read; with no chat open Overview says so instead of naming `agent.model`
+                // (T45).
+                modelInUse = main.chat?.composer?.snapshot?.toChatModelInUse(),
                 modifier = modifier,
             )
             return

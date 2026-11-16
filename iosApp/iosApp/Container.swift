@@ -54,7 +54,12 @@ final class Container {
         self.holder = holder
         let centre = SystemNotificationCentre()
         self.notifications = centre
-        self.notices = TaskNoticeCenter(posting: centre)
+        // The switches the Notifications screen writes are the ones the poster checks, read at post
+        // time from the same store the screen writes (T43).
+        self.notices = TaskNoticeCenter(
+            posting: centre,
+            switches: { NoticeSwitchStore.switches(in: UserDefaults.standard) }
+        )
         holder.notices = self.notices
         // A tap is the shell's business: it is who can put a chat on screen.
         centre.onOpenChat = { [weak holder] chatId in holder?.requestChatFromNotification(chatId) }

@@ -6,6 +6,9 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var model: SettingsViewModel
     @ObservedObject var holder: CoreHolder
+    /// The open chat's model, handed down by the shell (T45): Overview names this, never the
+    /// gateway's configured default. Nil is "no chat open".
+    let modelInUse: SettingsViewModel.CurrentModel?
     @Environment(\.dismiss) private var dismiss
 
     @State private var screen: Screen = .list
@@ -54,7 +57,15 @@ struct SettingsView: View {
                 Text(model.disconnectMessage)
             }
         }
-        .task { await refresh() }
+        .task {
+            model.update(modelInUse: modelInUse)
+            await refresh()
+        }
+        // A `/model` switch behind the sheet changes the model in use, and the row follows it
+        // rather than describing the one the sheet was opened with (T45).
+        .onChange(of: modelInUse) { _, current in
+            model.update(modelInUse: current)
+        }
     }
 
     private var title: String {
@@ -100,16 +111,6 @@ struct SettingsView: View {
             }
             .accessibilityIdentifier("settings.appearance")
         }
-        Section {
-            SettingsRow(
-                title: "nanobot Gateway",
-                detail: model.snapshot.commit.map { "Commit \($0)" },
-                value: model.snapshot.version,
-                tint: nil
-            )
-        } header: {
-            Text("About")
-        }
         if let notice = model.notice {
             Section {
                 Text(notice)
@@ -136,6 +137,14 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings.overview.failed")
             }
         case .loaded:
+            // The card the design puts first (design of record, `.usage-card`): the total, the
+            // gateway's own request count and cache rate, then one bar per day (T44). It used to be
+            // fetched and parsed into nothing.
+            if let usage = model.snapshot.usage {
+                Section {
+                    TokenUsageCard(usage: usage)
+                }
+            }
             ForEach(model.overviewRows) { row in
                 SettingsRow(title: row.label, detail: row.detail, value: row.value, tint: nil)
             }
@@ -258,15 +267,101 @@ extension SettingsViewModel.Snapshot {
         commit: "28d73b69",
         os: "Darwin",
         pythonVersion: "3.12.9",
-        modelName: "deepseek-v4.1-flash:cloud",
-        modelPreset: "primary",
-        provider: "ollama",
-        contextWindowTokens: 32_768,
-        contextWindowLabel: "32.8K",
         transcriptionProvider: "groq",
         transcriptionModel: "whisper-large-v3",
-        presets: ["default", "primary"]
+        presets: ["default", "primary"],
+        usage: .scripted
     )
+}
+
+extension SettingsViewModel.Usage {
+    /// A scripted launch has no usage read, so the card is seeded with the dev gateway's own day
+    /// (505 134 tokens). One full bar and 29 stubs is what that recording is: a tap proves the
+    /// strip and the headline draw, which an all-zero window would not (T44).
+    static let scripted = SettingsViewModel.Usage(
+        headline: "505K",
+        totalTokens: 505_134,
+        requests: 140,
+        cacheHitPercent: 89,
+        bars: (1...30).map { day in
+            SettingsViewModel.Usage.Bar(
+                date: String(format: "2026-11-%02d", day),
+                height: day == 14 ? 1 : 0
+            )
+        },
+        hasUsage: true
+    )
+}
+
+extension SettingsViewModel.CurrentModel {
+    /// A scripted launch has no composer flow, so Overview's model row is seeded: the chat's own
+    /// preset and window, which is what the row must name (T45).
+    static let scriptedChat = SettingsViewModel.CurrentModel(
+        name: "deepseek-v4.1-flash:cloud",
+        preset: "primary",
+        presetLabel: "Preset primary",
+        windowLabel: "32.8K"
+    )
+}
+
+/// Overview's token card (T44), drawn as the design draws it: the 30-day total and its unit, the
+/// gateway's own request count and cache hit rate, then a bar per day scaled to the window's peak
+/// with the biggest day solid (design of record, `.spark i.hi`). Every number arrives computed and
+/// worded by the core; this draws them and invents nothing.
+struct TokenUsageCard: View {
+    let usage: SettingsViewModel.Usage
+
+    /// The exact number for a screen reader, which the WebUI also labels its headline with. Built
+    /// as a `String` on purpose: an interpolated literal would reach `accessibilityLabel` as a
+    /// `LocalizedStringKey`, and 505 134 would read "505.134" on a phone with a dot-grouping locale.
+    private var exactLabel: String { "\(usage.totalTokens) tokens" }
+
+    private var detail: String {
+        var parts = ["\(usage.requests) requests"]
+        if let percent = usage.cacheHitPercent { parts.append("\(percent)% cache hit rate") }
+        return parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(usage.headline)
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(Palette.foreground)
+                    .accessibilityLabel(exactLabel)
+                    .accessibilityIdentifier("settings.usage.headline")
+                Text("tokens · 30 days")
+                    .font(.system(size: Design.Interface.captionSize))
+                    .foregroundStyle(Palette.mutedForeground)
+            }
+            if usage.hasUsage {
+                Text(detail)
+                    .font(.system(size: Design.Interface.microSize))
+                    .foregroundStyle(Palette.mutedForeground)
+                    .accessibilityIdentifier("settings.usage.detail")
+                HStack(alignment: .bottom, spacing: 2) {
+                    ForEach(usage.bars) { bar in
+                        // A day with no usage is the design's 2 pt stub, not a missing column: the
+                        // strip is a calendar, and a gap in it would read as a gap in the data.
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(bar.height >= 1 ? Palette.foreground : Palette.foreground.opacity(0.26))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: max(2, CGFloat(bar.height) * 38))
+                    }
+                }
+                .frame(height: 38, alignment: .bottom)
+                .accessibilityIdentifier("settings.usage.strip")
+                .accessibilityLabel("Daily token usage, last 30 days")
+            } else {
+                Text("No token usage in the last 30 days.")
+                    .font(.system(size: Design.Interface.microSize))
+                    .foregroundStyle(Palette.mutedForeground)
+                    .accessibilityIdentifier("settings.usage.empty")
+            }
+        }
+        .padding(.vertical, 6)
+        .frame(minHeight: Design.minimumTarget)
+    }
 }
 
 /// One settings row: a title, a second line and a trailing value, at the 44 pt target.

@@ -42,6 +42,12 @@ final class SettingsTests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.overview"].exists, "Overview")
         XCTAssertTrue(app.buttons["settings.notifications"].exists, "Notifications")
         XCTAssertTrue(app.buttons["settings.appearance"].exists, "Appearance")
+        // T44: the version appears once, on Overview, beside the commit and the server it belongs
+        // with. The list used to carry a second copy under "About".
+        XCTAssertFalse(
+            app.staticTexts["0.4.1"].exists,
+            "the version is drawn once, not twice. Tree:\n\(app.debugDescription)"
+        )
         // The row names the address and its state, or says there is none — never nothing.
         let connected = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "connected")).count
         XCTAssertTrue(
@@ -55,11 +61,33 @@ final class SettingsTests: XCTestCase {
 
         app.buttons["settings.overview"].tap()
 
-        XCTAssertTrue(app.staticTexts["nanobot Gateway"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Uptime"].exists, "the payload has no uptime field")
+        // T44: the usage the client already fetched is drawn, first, above the version it belongs
+        // with. The headline's accessibility label is the exact number, the way the WebUI labels it.
         XCTAssertTrue(
-            app.staticTexts["settings.noUptime"].exists,
-            "and the screen says so rather than leaving the gap unexplained"
+            app.staticTexts["settings.usage.headline"].waitForExistence(timeout: 5),
+            "the card's headline. Tree:\n\(app.debugDescription)"
+        )
+        XCTAssertEqual(app.staticTexts["settings.usage.headline"].label, "505134 tokens")
+        XCTAssertTrue(app.staticTexts["140 requests · 89% cache hit rate"].exists, "the gateway's own counts")
+        XCTAssertTrue(app.otherElements["settings.usage.strip"].exists, "and a bar per day of the window")
+
+        XCTAssertTrue(app.staticTexts["nanobot Gateway"].exists)
+        XCTAssertFalse(app.staticTexts["Uptime"].exists, "the payload has no uptime field")
+        // T45: the model rows describe the open chat, not `agent.model` from `/api/settings`.
+        // A scripted launch has no composer, so the chat's model is seeded by the shell.
+        XCTAssertTrue(app.staticTexts["Current model"].exists, "the model row is drawn")
+        XCTAssertTrue(
+            app.staticTexts["deepseek-v4.1-flash:cloud"].exists,
+            "the chat's model, not the gateway's configured default. Tree:\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(app.staticTexts["Preset primary"].exists, "and the preset it is on")
+        XCTAssertTrue(app.staticTexts["32.8K tokens"].exists, "and the window the ring divides by")
+
+        // The design's own footnote sits under the rows, so a phone-sized screen has to scroll to it.
+        app.swipeUp()
+        XCTAssertTrue(
+            app.staticTexts["settings.noUptime"].waitForExistence(timeout: 5),
+            "and the screen says why there is no uptime rather than leaving the gap unexplained"
         )
 
         app.buttons["settings.back"].tap()
@@ -72,7 +100,10 @@ final class SettingsTests: XCTestCase {
         app.buttons["settings.notifications"].tap()
 
         XCTAssertTrue(app.switches["settings.toggle.Task finished"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.switches["settings.toggle.Task failed"].exists)
+        XCTAssertTrue(
+            app.switches["settings.toggle.Task failed or stopped"].exists,
+            "the middle row names what it gates: a stop is not a failure to announce"
+        )
         XCTAssertTrue(app.switches["settings.toggle.Needs attention"].exists)
 
         let copy = app.staticTexts["settings.notificationsCopy"]
@@ -117,6 +148,33 @@ final class SettingsTests: XCTestCase {
         let afterRelaunch = again.switches["settings.notificationSound"]
         XCTAssertTrue(afterRelaunch.waitForExistence(timeout: 5))
         XCTAssertEqual(afterRelaunch.value as? String, "0", "the phone remembered the choice")
+        switchControl(afterRelaunch).tap()
+        expectation(for: NSPredicate(format: "value == '1'"), evaluatedWith: afterRelaunch)
+        waitForExpectations(timeout: 5)
+    }
+
+    /// T43: a switch is a preference, not a drawing of one. Flipping it outlives the app, and it is
+    /// the key the poster reads at post time, so the row and the banner cannot disagree.
+    func testTheNoticeSwitchesOutliveTheApp() {
+        let app = openSettings()
+        app.buttons["settings.notifications"].tap()
+
+        let finished = app.switches["settings.toggle.Task finished"]
+        XCTAssertTrue(finished.waitForExistence(timeout: 5), "the row the design draws. Tree:\n\(app.debugDescription)")
+        XCTAssertEqual(finished.value as? String, "1", "finished tasks are announced until the reader says otherwise")
+
+        switchControl(finished).tap()
+        expectation(for: NSPredicate(format: "value == '0'"), evaluatedWith: finished)
+        waitForExpectations(timeout: 5)
+
+        app.terminate()
+        let again = openSettings()
+        again.buttons["settings.notifications"].tap()
+        let afterRelaunch = again.switches["settings.toggle.Task finished"]
+        XCTAssertTrue(afterRelaunch.waitForExistence(timeout: 5))
+        XCTAssertEqual(afterRelaunch.value as? String, "0", "the phone remembered the choice")
+
+        // Put the switch back, so the next launch of this simulator starts where the design does.
         switchControl(afterRelaunch).tap()
         expectation(for: NSPredicate(format: "value == '1'"), evaluatedWith: afterRelaunch)
         waitForExpectations(timeout: 5)

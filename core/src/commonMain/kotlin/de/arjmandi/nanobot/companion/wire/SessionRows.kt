@@ -87,18 +87,7 @@ internal object Iso8601 {
         val millis = fraction.take(3).padEnd(3, '0').toIntOrNull() ?: 0
         if (month !in 1..12 || day !in 1..31 || hour !in 0..23 || minute !in 0..59 || second !in 0..60) return null
 
-        val days = daysFromCivil(year, month, day)
+        val days = CivilDate.daysFromCivil(year, month, day)
         return ((days * 86_400L) + hour * 3_600L + minute * 60L + second) * 1_000L + millis
-    }
-
-    /** Howard Hinnant's days-from-civil; the civil calendar since 1970-01-01. */
-    private fun daysFromCivil(year: Int, month: Int, day: Int): Long {
-        val y = if (month <= 2) year - 1 else year
-        val era = (if (y >= 0) y else y - 399) / 400
-        val yearOfEra = y - era * 400
-        val monthPrime = (month + 9) % 12
-        val dayOfYear = (153 * monthPrime + 2) / 5 + day - 1
-        val dayOfEra = yearOfEra * 365 + yearOfEra / 4 - yearOfEra / 100 + dayOfYear
-        return era * 146_097L + dayOfEra - 719_468L
     }
 }

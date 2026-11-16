@@ -228,7 +228,7 @@ struct RootView: View {
                         #endif
                     }
                     .sheet(isPresented: $settingsOpen) {
-                        SettingsView(model: settings, holder: holder)
+                        SettingsView(model: settings, holder: holder, modelInUse: modelInUse)
                     }
                     // The composer's sheets are one value, so a sheet is either open or not.
                     .sheet(isPresented: Binding(
@@ -315,6 +315,17 @@ struct RootView: View {
                 }
             }
         }
+    }
+
+    /// The model Overview may name (T45): the open chat's composer, which is the same value the
+    /// chip prints and the ring divides by. Nil is "no chat open" — the sheet says so in words
+    /// rather than printing the gateway's configured default.
+    private var modelInUse: SettingsViewModel.CurrentModel? {
+        #if DEBUG
+        if container.scripted { return .scriptedChat }
+        #endif
+        guard chatDriver != nil else { return nil }
+        return composer.snapshot.currentModel
     }
 
     /// A banner's tap opens the chat it came from on the shell that is already running: the row

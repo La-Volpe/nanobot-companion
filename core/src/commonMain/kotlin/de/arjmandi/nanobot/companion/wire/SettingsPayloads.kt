@@ -24,42 +24,26 @@ public data class TranscriptionSettings(
 )
 
 /**
- * One source's share of a day's spend (C7.1). The gateway's sources are its own names —
- * `user`, `api`, `cron`, `dream`, `system` (`nanobot/llm_usage/context.py:8`) — so this is a
- * map keyed by what the gateway said rather than an enum this client would have to grow.
+ * One day of `/api/settings/usage`, as far as Overview draws it (T44). The payload carries a dozen
+ * more fields per day — the cache split, the request counts, the per-source breakdown — and the
+ * card draws one bar per day from the day's total, so those are not parsed: a field nobody reads
+ * is a field that can silently rot. The card's own window is `UsageWindow`, which needs no more
+ * than a date and a number.
  */
-public data class UsageSourceTotals(
-    public val inputTokens: Long = 0,
-    public val outputTokens: Long = 0,
-    public val totalTokens: Long = 0,
-    public val requests: Int = 0,
-    public val failedRequests: Int = 0,
-)
+public data class UsageDay(public val date: String, public val totalTokens: Long = 0)
 
-public data class UsageDay(
-    public val date: String,
-    public val inputTokens: Long = 0,
-    public val outputTokens: Long = 0,
-    public val totalTokens: Long = 0,
-    public val requests: Int = 0,
-    public val failedRequests: Int = 0,
-    public val sources: Map<String, UsageSourceTotals> = emptyMap(),
-)
-
-/** `/api/settings/usage`: the totals beside the day list, which is what Overview sums. */
+/**
+ * `/api/settings/usage`, as far as Overview's card draws it (T44): the days behind the strip, the
+ * requests under the headline, and the cache hit rate beside them — the three the design's card
+ * shows (design README, `index.html` `.usage-card`). Nothing else from the payload is parsed:
+ * `providers_30d` (the card's per-model legend) has no reader here, and neither does the year of
+ * totals, the streaks or the per-source split.
+ */
 public data class UsageTotals(
-    public val totalTokens: Long = 0,
-    public val totalTokens30d: Long = 0,
-    public val totalTokens365d: Long = 0,
-    public val requests30d: Int = 0,
-    public val failedRequests30d: Int = 0,
-    public val activeDays30d: Int = 0,
-    public val currentStreakDays: Int = 0,
-    public val longestStreakDays: Int = 0,
-    public val peakDayTokens: Long = 0,
-    public val cacheReadTokens30d: Long = 0,
-    public val updatedAt: String? = null,
     public val days: List<UsageDay> = emptyList(),
+    public val requests30d: Int = 0,
+    /** 0..1; null when the gateway had no denominator to divide by, which is not "0%". */
+    public val cacheHitRate: Double? = null,
 )
 
 /**
@@ -154,40 +138,19 @@ public object SettingsPayloads {
     public fun usage(text: String): UsageTotals {
         val root = root(text) ?: return UsageTotals()
         return UsageTotals(
-            totalTokens = root.long("total_tokens") ?: 0,
-            totalTokens30d = root.long("total_tokens_30d") ?: 0,
-            totalTokens365d = root.long("total_tokens_365d") ?: 0,
+            days = root.items("days").mapNotNull(::day),
             requests30d = root.integer("requests_30d") ?: 0,
-            failedRequests30d = root.integer("failed_requests_30d") ?: 0,
-            activeDays30d = root.integer("active_days_30d") ?: 0,
-            currentStreakDays = root.integer("current_streak_days") ?: 0,
-            longestStreakDays = root.integer("longest_streak_days") ?: 0,
-            peakDayTokens = root.long("peak_day_tokens") ?: 0,
-            cacheReadTokens30d = root.long("cache_read_tokens_30d") ?: 0,
-            updatedAt = root.text("updated_at"),
-            days = root.items("days").map(::day),
+            // A rate is a number on the gateway; `decimal` reads a numeric string too, and a value
+            // redacted to something unreadable is no rate rather than a wrong percentage.
+            cacheHitRate = root.decimal("cache_read_rate_30d"),
         )
     }
 
-    private fun day(json: JsonObject): UsageDay = UsageDay(
-        date = json.text("date").orEmpty(),
-        inputTokens = json.long("input_tokens") ?: 0,
-        outputTokens = json.long("output_tokens") ?: 0,
-        totalTokens = json.long("total_tokens") ?: 0,
-        requests = json.integer("requests") ?: 0,
-        failedRequests = json.integer("failed_requests") ?: 0,
-        sources = json.child("sources")?.entries.orEmpty().mapNotNull { (name, value) ->
-            (value as? JsonObject)?.let { source ->
-                name to UsageSourceTotals(
-                    inputTokens = source.long("input_tokens") ?: 0,
-                    outputTokens = source.long("output_tokens") ?: 0,
-                    totalTokens = source.long("total_tokens") ?: 0,
-                    requests = source.integer("requests") ?: 0,
-                    failedRequests = source.integer("failed_requests") ?: 0,
-                )
-            }
-        }.toMap(),
-    )
+    /** A day with no date cannot be placed on the strip, so it is not a bar. */
+    private fun day(json: JsonObject): UsageDay? {
+        val date = json.text("date")?.takeIf(String::isNotBlank) ?: return null
+        return UsageDay(date = date, totalTokens = json.long("total_tokens") ?: 0)
+    }
 
     private fun root(text: String): JsonObject? =
         runCatching { json.parseToJsonElement(text) as? JsonObject }.getOrNull()

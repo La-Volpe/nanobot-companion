@@ -1,5 +1,6 @@
 package de.arjmandi.nanobot.companion.notifications
 
+import de.arjmandi.nanobot.companion.projection.NoticeSwitches
 import de.arjmandi.nanobot.companion.projection.NotificationPermission
 import de.arjmandi.nanobot.companion.projection.NotificationPrompt
 import de.arjmandi.nanobot.companion.projection.TaskNotice
@@ -18,7 +19,15 @@ interface BannerPosting {
  * banner the system would not show is remembered so the permission is asked once, at the first
  * moment it is justified rather than at launch.
  */
-class TaskNoticeDelivery(private val posting: BannerPosting) {
+class TaskNoticeDelivery(
+    private val posting: BannerPosting,
+    /**
+     * The reader's three switches, read at post time (T43) so a change applies to the next notice
+     * rather than to the next launch. Passed in rather than defaulted: a delivery nobody wired to
+     * the reader's choices is the switch that gated nothing, and the compiler should say so.
+     */
+    private val switches: () -> NoticeSwitches,
+) {
 
     /** The last key posted or refused, so a repeated notice is not a second banner. */
     private var announced: String? = null
@@ -33,7 +42,11 @@ class TaskNoticeDelivery(private val posting: BannerPosting) {
 
     /** Returns whether a banner was posted; a null notice is the core saying "nothing happened". */
     fun deliver(notice: TaskNotice?): Boolean {
-        if (notice == null || notice.key == announced) return false
+        if (notice == null) return false
+        // T43: a switch the reader turned off is not a permission problem and not a memory of this
+        // notice — turning it back on lets the next one through.
+        if (!switches().allows(notice.outcome)) return false
+        if (notice.key == announced) return false
         announced = notice.key
         val posted = posting.post(notice)
         missedNotice = !posted

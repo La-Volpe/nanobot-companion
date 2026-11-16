@@ -109,6 +109,24 @@ internal fun ComposerState.toSnapshot(): ComposerSnapshot = ComposerSnapshot(
     limits = limits?.attachments?.toUploadLimits() ?: de.arjmandi.nanobot.companion.attachment.UploadLimits(),
 )
 
+/**
+ * The chat's model as Settings → Overview names it (T45): the chip's model, preset and the ring's
+ * denominator, worded by the core (`ModelInUse`) so the two phones' rows cannot drift.
+ */
+internal fun ComposerSnapshot.toChatModelInUse(): de.arjmandi.nanobot.companion.settings.ChatModelInUse {
+    val model = de.arjmandi.nanobot.companion.facade.ModelInUse(
+        modelName = modelName,
+        preset = modelPreset,
+        windowTokens = contextWindowTokens,
+    )
+    return de.arjmandi.nanobot.companion.settings.ChatModelInUse(
+        name = model.modelName,
+        preset = model.preset,
+        presetLabel = model.presetLabel,
+        windowLabel = model.windowLabel,
+    )
+}
+
 internal fun ModelPreset.toPreset(): ChatModelPreset = ChatModelPreset(
     name = name,
     model = model,
