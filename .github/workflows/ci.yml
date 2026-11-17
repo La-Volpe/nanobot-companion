@@ -202,12 +202,11 @@ jobs:
             # No ANDROID_SERIAL: on a runner there is exactly one device and the action owns the adb
             # server, so pinning it here only fights the action ("Unable to connect to adb daemon on
             # port: 5037"). The pin belongs to a developer's machine, where a phone may also be attached.
-            # One retry, written without a line continuation: the action hands this script to a shell that
-            # keeps the backslash, and Gradle then looks for a task named "\" ("Selection failed — Task '\'
-            # not found"), which is how the first real execution died before the suite was selected.
-            if ! ./gradlew --stacktrace :app:connectedDebugAndroidTest; then
-              ./gradlew --stacktrace :app:connectedDebugAndroidTest
-            fi
+            # One retry, on ONE line: the action runs this script a line at a time, so a multi-line \`if\`
+            # reaches the shell as an unclosed statement ("Syntax error: end of file unexpected (expecting
+            # \"fi\")") and a line continuation reaches Gradle as a task named backslash. Both were learned
+            # from failed runs of this job, not guessed.
+            ./gradlew --stacktrace :app:connectedDebugAndroidTest || ./gradlew --stacktrace :app:connectedDebugAndroidTest
 
       - name: the results, whatever they say
         if: always()
