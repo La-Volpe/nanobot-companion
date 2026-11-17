@@ -1,3 +1,4 @@
+import com.android.build.api.component.analytics.AnalyticsEnabledVariantBuilder
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -44,6 +45,23 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Compose Preview's per-variant runfiles task is created by AGP and refuses to build unless
+        // unit tests compile Android resources: `./gradlew :app:tasks` died on
+        // `generateDebugComposePreviewRunfiles` with "Compose Preview requires compiled Android
+        // resources to resolve layout XML and theme attributes" (T68).
+        unitTests.isIncludeAndroidResources = true
+    }
+}
+
+androidComponents {
+    beforeVariants { variant ->
+        // AGP 9 enables unit tests for debug only, and Compose Preview's per-variant runfiles task
+        // refuses to be created for a variant that has none: `./gradlew :app:tasks` died with
+        // "Unit tests are disabled for this variant (enableUnitTest = false in beforeVariants)"
+        // (T68). The property is not on the public VariantBuilder interface in AGP 9, but it is on the
+        // type the DSL hands us at runtime, which is what this cast names. Release unit tests are never
+        // run by CI, so the cost is a configuration entry, not minutes.
+        (variant as AnalyticsEnabledVariantBuilder).enableUnitTest = true
     }
 }
 
