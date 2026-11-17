@@ -182,10 +182,6 @@ jobs:
 
       - name: instrumented suite on an emulator
         uses: reactivecircus/android-emulator-runner@v2
-        env:
-          # Pinned: unpinned, Gradle takes whichever device it finds first, and a run that reached a
-          # plugged-in phone failed wholesale with "No compose hierarchies found".
-          ANDROID_SERIAL: emulator-5554
         with:
           api-level: 36
           target: default
@@ -193,6 +189,9 @@ jobs:
           disable-animations: true
           script: |
             adb shell settings put secure show_ime_with_hard_keyboard 1 || true
+            # No ANDROID_SERIAL: on a runner there is exactly one device and the action owns the adb
+            # server, so pinning it here only fights the action ("Unable to connect to adb daemon on
+            # port: 5037"). The pin belongs to a developer's machine, where a phone may also be attached.
             ./gradlew --stacktrace :app:connectedDebugAndroidTest
 
       - name: the results, whatever they say
