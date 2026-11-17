@@ -34,11 +34,15 @@ jobs:
           java-version: "21"
       - name: gradle
         run: ./gradlew --version
-      - uses: android-actions/setup-android@v3
       - name: is the SDK platform installable
+        # `android-actions/setup-android@v3` failed on this image (sdkmanager exit 1), so the SDK that
+        # is already on the runner is used directly: the image ships cmdline-tools and the emulator
+        # action installs build-tools 37 happily, so the only open question is platform 37 itself.
         run: |
+          echo "SDK=$ANDROID_SDK_ROOT"
           sdkmanager --list 2>/dev/null | grep -E "platforms;android-3[5-9]|build-tools;3[5-9]" | head -20 || true
-          yes | sdkmanager "platforms;android-37" >/dev/null 2>&1 && echo "ANDROID-37 INSTALLED" || echo "ANDROID-37 NOT INSTALLABLE"
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-37" "build-tools;37.0.0" 2>&1 | tail -5 && echo "ANDROID-37 INSTALLED" || echo "ANDROID-37 NOT INSTALLABLE"
 
   macos:
     name: macos
