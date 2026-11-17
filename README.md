@@ -130,7 +130,7 @@ Counts are what the suites reported on 2026-11-17, read from `core/build/test-re
 know whether they are still true.
 
 ```bash
-./gradlew :core:allTests                    # 439 jvm · 321 iOS sim · 307 android host
+./gradlew :core:allTests                    # 444 jvm · 326 iOS sim · 312 android host
 ./gradlew :core:jvmTest -Pcontract          # against a live gateway (10 tests across three suites)
 ./gradlew :core:koverVerify                 # 85% floor on wire/projection/engine
 ./gradlew :app:testDebugUnitTest            # 173
