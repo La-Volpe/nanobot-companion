@@ -40,9 +40,14 @@ jobs:
         # action installs build-tools 37 happily, so the only open question is platform 37 itself.
         run: |
           echo "SDK=$ANDROID_SDK_ROOT"
-          sdkmanager --list 2>/dev/null | grep -E "platforms;android-3[5-9]|build-tools;3[5-9]" | head -20 || true
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platforms;android-37" "build-tools;37.0.0" 2>&1 | tail -5 && echo "ANDROID-37 INSTALLED" || echo "ANDROID-37 NOT INSTALLABLE"
+          set -o pipefail
+          SDKMANAGER=$(ls -d "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin 2>/dev/null | head -1)/sdkmanager
+          echo "sdkmanager: $SDKMANAGER ($("$SDKMANAGER" --version 2>/dev/null | head -1))"
+          # The image's cmdline-tools were too old to know about platform 37 — it exists in Google's
+          # repository (this machine lists it) and the same manager finds it once updated.
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" --update >/dev/null 2>&1 || true
+          if "$SDKMANAGER" "platforms;android-37.0" "build-tools;37.0.0"; then echo "ANDROID-37 INSTALLED"; else echo "ANDROID-37 NOT INSTALLABLE"; exit 1; fi
 
   macos:
     name: macos
