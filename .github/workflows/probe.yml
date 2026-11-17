@@ -1,0 +1,95 @@
+# T62: the questions only a runner can answer.
+#
+# Everything in ci.yml pins a version or an image label, and none of those can be read from a
+# developer's Mac: which macOS image is current, which Xcode and iOS simulator runtime it carries,
+# whether the SDK platform this repo compiles against is installable, and which system image the
+# emulator action can actually boot. This workflow asks, prints, and gates nothing. Run it with
+# `gh workflow run probe.yml`, read the log, and put the answers in tasks.md.
+name: probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      emulator_api:
+        description: "Android API level to try booting"
+        required: false
+        default: "36"
+
+jobs:
+  linux:
+    name: linux (ubuntu)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: image and toolchain
+        run: |
+          echo "ImageOS=$ImageOS ImageVersion=$ImageVersion runner=$RUNNER_OS/$RUNNER_ARCH"
+          uname -a
+          java -version 2>&1 | head -2
+          python3 --version
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: gradle
+        run: ./gradlew --version
+      - uses: android-actions/setup-android@v3
+      - name: is the SDK platform installable
+        run: |
+          sdkmanager --list 2>/dev/null | grep -E "platforms;android-3[5-9]|build-tools;3[5-9]" | head -20 || true
+          yes | sdkmanager "platforms;android-37" >/dev/null 2>&1 && echo "ANDROID-37 INSTALLED" || echo "ANDROID-37 NOT INSTALLABLE"
+
+  macos:
+    name: macos
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: image and Xcode
+        run: |
+          echo "ImageOS=$ImageOS ImageVersion=$ImageVersion runner=$RUNNER_OS/$RUNNER_ARCH"
+          ls /Applications | grep -i xcode || true
+          xcodebuild -version
+          xcodebuild -showsdks | head -20
+      - name: simulator runtimes
+        run: |
+          xcrun simctl list runtimes
+          echo "--- devices ---"
+          xcrun simctl list devices available | head -30
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: gradle and the Android SDK on macOS
+        run: |
+          ./gradlew --version
+          which sdkmanager || true
+          ls "$ANDROID_HOME" 2>/dev/null || echo "no ANDROID_HOME on the macOS image"
+
+  emulator:
+    name: emulator (api ${{ inputs.emulator_api }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: which system images exist
+        run: |
+          sudo mkdir -p /usr/local/lib/android/sdk
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT ANDROID_HOME=$ANDROID_HOME"
+          (sdkmanager --list 2>/dev/null || true) | grep "system-images;android-3" | head -20 || echo "sdkmanager not on PATH"
+      - name: enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: boot one and ask it who it is
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ inputs.emulator_api }}
+          target: default
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb shell getprop ro.build.version.sdk
+            adb shell settings get secure show_ime_with_hard_keyboard
