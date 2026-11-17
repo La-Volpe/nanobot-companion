@@ -139,6 +139,23 @@ cd iosApp && xcodebuild -scheme iosApp -destination 'platform=iOS Simulator,name
                                             # 210 swift-testing + 57 XCUITest
 ```
 
+### What CI runs, and what it deliberately does not
+
+GitHub Actions runs the parts that need nothing but a machine with a toolchain:
+
+| job | what it proves |
+|---|---|
+| `test` (ubuntu) | `:core:testAndroidHostTest`, `:core-cli:test`, `:app:testDebugUnitTest`, and the copy parity check |
+| `macos` | `:core:jvmTest` (it links the iOS framework before it runs), `:core:iosSimulatorArm64Test`, the coverage gate, and the XCUITest suite on a simulator |
+| `connected` (advisory) | the Compose instrumented suite on an emulator. Advisory because the emulator's software keyboard can vanish and only a cold boot revives it |
+| `builds` | the release APK, the AAB and the CLI zip, with the licence and third-party notices asserted inside each artefact |
+
+**No secret is involved anywhere.** The five instruments that need a live gateway or a real device —
+`:core:jvmTest -Pcontract`, `tools/parity-check.sh`, `tools/session20.sh`, `tools/soak.sh` and
+`tools/android-session.sh` — never run on a hosted runner. They belong to a `self-hosted` runner on a machine
+that has a gateway, and to a person who can watch them; running them against a hosted machine would either need
+a gateway secret in CI or prove nothing.
+
 Instruments that are not unit tests, and earn their keep:
 
 - `tools/session20.sh`: 20-minute live session through the core (`beats=8, failures=0`)

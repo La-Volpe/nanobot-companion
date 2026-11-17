@@ -1,21 +1,39 @@
-# T63: everything a Linux runner can honestly run.
+# Continuous integration.
 #
-# Not in here on purpose: `:core:jvmTest` (it links the iOS framework — see tasks.md T63/T64),
-# `:core:iosSimulatorArm64Test`, `:core:koverVerify` (it aggregates the JVM host tests), the XCUITest
-# suite, the connected Android suite, and anything that needs a live gateway or a physical device.
-# Versions are the ones `probe.yml` proved on 2026-11-17 (run 44027157337): ubuntu-24.04,
-# platform 37 installable, Gradle 9.7.0 through the wrapper.
+# The policy, in one place and repeated in the README's testing section (T67):
+#
+#   No gateway secret, API key or device credential ever reaches a hosted runner. The five instruments that
+#   need a real gateway or a real device — `:core:jvmTest -Pcontract`, `tools/parity-check.sh`,
+#   `tools/session20.sh`, `tools/soak.sh`, `tools/android-session.sh` — never run here. They belong to a
+#   `self-hosted` runner on a machine that has a gateway, and to a person who can watch them.
+#
+# No workflow here may name a secret context at all: everything below runs on public images, and the
+# only credentials a job would need belong to the self-hosted instruments above.
+#
+# What runs where, and why, is in tasks.md T62–T66. The short version:
+#   test (ubuntu)      the suites that need no framework and no device
+#   macos              :core:jvmTest (it links the iOS framework first), the iOS tests, the coverage gate
+#                      (which aggregates the two host suites) and XCUITest
+#   connected          the Compose instrumented suite on an emulator — advisory, because the emulator's
+#                      software keyboard can vanish and only a cold boot brings it back (AGENTS gotcha 28)
+#   builds             release APK/AAB and the CLI zip, with the licence and notices asserted inside them
 name: ci
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
+  workflow_dispatch:
 
-# One run per branch: a second push cancels the first rather than queueing minutes behind it.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  # The image's SDK manager does not know platform 37; the package is `android-37.0`, not `android-37`.
+  ANDROID_PLATFORM: platforms;android-37.0
+  ANDROID_BUILD_TOOLS: build-tools;37.0.0
 
 jobs:
   test:
@@ -31,17 +49,13 @@ jobs:
           java-version: "21"
 
       - name: Android SDK
-        # The action that would do this (`android-actions/setup-android@v3`) fails on this image, and
-        # the SDK is already there: the probe installed platform 37 with this exact command.
+        # `android-actions/setup-android@v3` fails on this image and the SDK is already there, so the
+        # SDK manager is driven directly, from the path the image keeps it at.
         run: |
           set -o pipefail
-          SDKMANAGER=$(ls -d "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin 2>/dev/null | head -1)/sdkmanager
-          echo "sdkmanager: $SDKMANAGER ($("$SDKMANAGER" --version 2>/dev/null | head -1))"
-          # The image's cmdline-tools were too old to know about platform 37 — it exists in Google's
-          # repository (this machine lists it) and the same manager finds it once updated.
+          SDKMANAGER=$(ls -d "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin | head -1)/sdkmanager
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-          "$SDKMANAGER" --update >/dev/null 2>&1 || true
-          if "$SDKMANAGER" "platforms;android-37.0" "build-tools;37.0.0"; then echo "ANDROID-37 INSTALLED"; else echo "ANDROID-37 NOT INSTALLABLE"; exit 1; fi
+          "$SDKMANAGER" "$ANDROID_PLATFORM" "$ANDROID_BUILD_TOOLS" >/dev/null
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -66,3 +80,4 @@ jobs:
             app/build/reports/tests/**
             app/build/test-results/**
           retention-days: 7
+
