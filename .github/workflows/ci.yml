@@ -34,8 +34,11 @@ jobs:
         # The action that would do this (`android-actions/setup-android@v3`) fails on this image, and
         # the SDK is already there: the probe installed platform 37 with this exact command.
         run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platforms;android-37" "build-tools;37.0.0" >/dev/null
+          set -o pipefail
+          SDKMANAGER=$(ls -d "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin 2>/dev/null | head -1)/sdkmanager
+          echo "sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          if "$SDKMANAGER" "platforms;android-37" "build-tools;37.0.0"; then echo "ANDROID-37 INSTALLED"; else echo "ANDROID-37 NOT INSTALLABLE"; exit 1; fi
 
       - uses: gradle/actions/setup-gradle@v4
 
