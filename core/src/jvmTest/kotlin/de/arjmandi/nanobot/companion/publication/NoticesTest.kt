@@ -29,7 +29,7 @@ class NoticesTest {
     fun licenceIsMitAndNamesTheCopyrightHolder() {
         val licence = file("LICENSE").readText()
 
-        assertTrue(licence.startsWith("MIT License"), "the root licence is MIT as decided (T51)")
+        assertTrue(licence.startsWith("MIT License"), "the root licence is MIT as decided")
         assertTrue(licence.contains("Copyright (c) 2026 Javád Arjmandi"), "the holder is the owner, no email address")
         assertTrue(licence.contains("Permission is hereby granted, free of charge"), "the MIT grant is intact")
         assertTrue(licence.contains("THE SOFTWARE IS PROVIDED \"AS IS\""), "the MIT warranty disclaimer is intact")
@@ -92,7 +92,7 @@ class NoticesTest {
         for (bundle in bundles) {
             for (name in listOf("LICENSE", "THIRD_PARTY_NOTICES.txt")) {
                 val shipped = file("$bundle/$name")
-                assertTrue(shipped.isFile, "$bundle/$name ships in the app (T51: in both distributions)")
+                assertTrue(shipped.isFile, "$bundle/$name ships in the app (in both distributions)")
                 assertEquals(
                     file(name).readText(),
                     shipped.readText(),

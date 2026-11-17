@@ -45,7 +45,7 @@ internal class Recorder(
         try {
             // One throwaway bootstrap for the api token the HTTP reads need.
             val apiToken = client.bootstrap(profile)["api_token"]?.jsonText()
-                ?: error("bootstrap has no api_token; /api/sessions needs it (docs/decisions.md D15.6)")
+                ?: error("bootstrap has no api_token; /api/sessions needs it")
 
             // The file scenario writes a fixed path, so the previous run's copy has to go or
             // the write changes nothing and the frame carries no diff. The recorder owns
@@ -111,7 +111,7 @@ internal class Recorder(
         try {
             val set = newestSet()
             val apiToken = client.bootstrap(profile)["api_token"]?.jsonText()
-                ?: error("bootstrap has no api_token; the reads need one (docs/decisions.md D15.6)")
+                ?: error("bootstrap has no api_token; the reads need one")
             val rawSessions = client.sessions(profile, apiToken)
             val redactor = Redactor(
                 homeDir = homeDir,
@@ -201,7 +201,7 @@ internal class Recorder(
     ): File {
         val plain = recorded.first { it.scenario.name == "plain" }
         val webui = plain.bootstrap["terminal"]?.let { (it as JsonObject)["webui"] as JsonObject }
-            ?: error("bootstrap has no terminal.webui contract (D15.1)")
+            ?: error("bootstrap has no terminal.webui contract")
         val recordedAt = LocalDateTime.now(ZoneOffset.UTC)
         val set = File(outRoot, "${recordedAt.format(DATE)}-$gatewayCommit")
         check(set.parentFile == outRoot) { "refusing to replace $set outside $outRoot" }

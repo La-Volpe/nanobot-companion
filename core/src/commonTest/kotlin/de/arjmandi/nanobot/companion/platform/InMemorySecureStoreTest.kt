@@ -31,6 +31,6 @@ class InMemorySecureStoreTest {
 
         store.remove("gateway.secret")
 
-        assertNull(store.get("gateway.secret"), "disconnect forgets the key (plan.md D5, I7)")
+        assertNull(store.get("gateway.secret"), "disconnect forgets the key")
     }
 }

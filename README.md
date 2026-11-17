@@ -3,7 +3,7 @@
 A native iOS and Android client for a [nanobot](https://github.com/HKUDS/nanobot)
 gateway. One Kotlin Multiplatform module holds everything that is not UI. iOS
 renders it with SwiftUI, Android with Jetpack Compose, both against the
-gateway's own WebSocket protocol — the same one the browser WebUI speaks.
+gateway's own WebSocket protocol, the same one the browser WebUI speaks.
 
 **Not affiliated with HKUDS/nanobot.** This is an independent client for the
 gateway that project publishes; the credits and licences for the artwork it
@@ -52,23 +52,24 @@ The arrow is the dependency direction: nothing below points back up, and
 
 ## What is hard here
 
-- **Two feeds, one reducer.** The gateway replays the same event vocabulary for
+- Two feeds, one reducer. The gateway replays the same event vocabulary for
   live frames and for stored history, so `:core` reduces both through
-  `projection/ThreadReducer.kt`. A chat that is reopened after a reconnect
-  looks exactly like the chat you were reading. The gateway's stored pages are
-  *compacted*: the answer text survives only inside `stream_end.text` and the
-  reasoning inside `reasoning_end.text`.
-- **The protocol is the contract and it is verified against the real thing.**
-  `-Pcontract` runs four tests against a live nanobot 0.4.1; fixtures are
-  recorded by `:core-cli record`, never hand-written, and carry provenance
-  (gateway version, commit, redaction rules).
-- **Nothing is allowed to be theatre.** The architecture guard, the Kover floor
-  and the parity instrument are all proved non-vacuous by breaking them. A test
-  that passes with the implementation deleted is not a test — several tasks were
-  rejected for exactly that.
-- **Both platforms are compared mechanically, not by eye.** `tools/parity-check.sh`
-  diffs the CLI's, iOS's and Android's reduction of the *same stored chat*, and
-  compares nine error-copy keys across the two string tables.
+  `projection/ThreadReducer.kt`, and a chat reopened after a reconnect looks
+  exactly like the chat you were reading. The stored pages are *compacted*:
+  the answer text survives only inside `stream_end.text` and the reasoning
+  inside `reasoning_end.text`.
+- The protocol is the contract, and it is verified against the real thing.
+  `-Pcontract` runs four tests against a live nanobot 0.4.1. Fixtures are
+  recorded by `:core-cli record`, never hand-written, and carry provenance:
+  gateway version, commit, redaction rules.
+- Nothing here is allowed to be theatre. The architecture guard, the Kover
+  floor and the parity instrument were each proved non-vacuous by breaking
+  them. A test that passes with the implementation deleted is not a test;
+  several tasks were rejected for exactly that.
+- Both platforms are compared mechanically, not by eye.
+  `tools/parity-check.sh` diffs the CLI's, iOS's and Android's reduction of the
+  *same stored chat*, and compares nine error-copy keys across the two string
+  tables.
 
 One turn arrives twice, and both routes end in the same place:
 
@@ -92,8 +93,8 @@ flowchart LR
 | History: `GET /api/sessions/{key}/webui-thread` | `nanobot/webui/transcript.py` |
 | Writes: socket only, except token-gated `POST /api/attachments` | `nanobot/webui/ws_http.py` |
 
-A bootstrap token is single-use, so every reconnect bootstraps again — that is
-a rule the engine obeys, not a bug to paper over.
+A bootstrap token is single-use, so every reconnect bootstraps again. The
+engine obeys that rule; it is not a bug to paper over.
 
 ## Building and running
 
@@ -106,7 +107,7 @@ a nanobot gateway you can reach.
 tools/run-on-device.sh --local                                   # iOS on a plugged-in iPhone
 ```
 
-The Xcode project is checked in as a hand-written `project.pbxproj`; the
+The Xcode project is checked in as a hand-written `project.pbxproj`. The
 framework arrives through a Run Script phase that calls
 `./gradlew :core:embedAndSignAppleFrameworkForXcode`. No CocoaPods, no
 XcodeGen, no Tuist.
@@ -119,8 +120,8 @@ tools/nanobot-dev.sh stop
 ```
 
 It writes everything to `.dev/` (venv, config, secret, profile, logs) and
-never touches `~/.nanobot`. Point the app at your own gateway or at
-that LAN address; the secret is the gateway's WebUI secret.
+never touches `~/.nanobot`. Point the app at your own gateway or at that LAN
+address; the secret is the gateway's WebUI secret.
 
 ## Testing
 
@@ -136,11 +137,11 @@ cd iosApp && xcodebuild -scheme iosApp -destination 'platform=iOS Simulator,name
 
 Instruments that are not unit tests, and earn their keep:
 
-- `tools/session20.sh` — 20-minute live session through the core (`beats=8, failures=0`)
-- `tools/soak.sh` — 30 minutes, 200 sends, 50 reconnects, leak check
-- `tools/android-session.sh` — the same beats on the emulator, through the app
-- `tools/parity-check.sh` — CLI vs iOS vs Android transcript, plus error copy
-- `tools/consult.sh` — ask clef, a decision model, to choose between two options
+- `tools/session20.sh`: 20-minute live session through the core (`beats=8, failures=0`)
+- `tools/soak.sh`: 30 minutes, 200 sends, 50 reconnects, leak check
+- `tools/android-session.sh`: the same beats on the emulator, through the app
+- `tools/parity-check.sh`: CLI vs iOS vs Android transcript, plus error copy
+- `tools/consult.sh`: ask clef, a decision model, to choose between two options
 
 ## Layout
 
@@ -154,18 +155,18 @@ scripts/gate.sh      runs a phase checklist kept outside the repo; refuses to pa
 docs/diagrams/       the diagrams above, rendered to SVG (regenerate with mmdc)
 ```
 
-The working record — plan, phase checklists, decision log, open questions —
-stays outside the repository. It is how the work was tracked, not what the
-project ships.
+The working record (plan, phase checklists, decision log, open questions) stays
+outside the repository. It is how the work was tracked, not what the project
+ships.
 
 ## How this was built
 
 With an agent loop held to a written plan: TDD per task, one commit per task
 with the failing run in the message, and phase gates that were only ticked after
 the evidence had been re-run. Two gates were *held* rather than ticked because
-the instruments found real defects — an app that did not replay history on
-reconnect and an iOS composer that silently dropped attachments. Both were fixed
-with red-then-green tests.
+the instruments found real defects: an app that did not replay history on
+reconnect, and an iOS composer that silently dropped attachments. Both were
+fixed with red-then-green tests.
 
 `git log` is the durable record: one commit per task, each naming what it
 changed and, where a red was weak, saying so. The plan, the checklists, the
@@ -174,7 +175,7 @@ shipped.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE). The work of the projects this app is built on or
+MIT, see [LICENSE](LICENSE). The work of the projects this app is built on or
 copies from is in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt): nanobot's
 MIT notice for the day/night mark and the product glyphs, Lucide's ISC plus the
 Feather attribution for the seventeen WebUI icons the generator reads, Open

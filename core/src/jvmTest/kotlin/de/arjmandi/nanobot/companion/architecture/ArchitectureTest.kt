@@ -31,7 +31,7 @@ class ArchitectureTest {
             .filter { it.sourceSet == "commonMain" }
             .flatMap { file -> Architecture.forbiddenPlatformImports(file).map { "${file.path}: $it" } }
 
-        assertTrue(offenders.isEmpty(), "commonMain must stay UI- and platform-free (plan.md D2):\n${offenders.joinToString("\n")}")
+        assertTrue(offenders.isEmpty(), "commonMain must stay UI- and platform-free:\n${offenders.joinToString("\n")}")
     }
 
     @Test
@@ -39,7 +39,7 @@ class ArchitectureTest {
         val offenders = Architecture.sources()
             .flatMap { file -> Architecture.layerViolations(file).map { "${file.path}: $it" } }
 
-        assertTrue(offenders.isEmpty(), "layering is one-way (plan.md §2):\n${offenders.joinToString("\n")}")
+        assertTrue(offenders.isEmpty(), "layering is one-way:\n${offenders.joinToString("\n")}")
     }
 
     @Test
@@ -102,7 +102,7 @@ class ArchitectureTest {
             packageName = "de.arjmandi.nanobot.companion.wire",
             imports = emptyList(),
             body = listOf(
-                "// plan.md: de.arjmandi.nanobot.companion.facade.NanobotCore owns this.",
+                "// de.arjmandi.nanobot.companion.facade.NanobotCore owns this.",
                 "/* and the engine, de.arjmandi.nanobot.companion.engine.TurnEngine, runs it */",
                 "internal val note: String = \"see de.arjmandi.nanobot.companion.engine.TurnEngine\"",
                 "internal val raw: String = " + quotes +

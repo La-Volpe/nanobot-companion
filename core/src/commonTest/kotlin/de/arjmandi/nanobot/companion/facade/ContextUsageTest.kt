@@ -63,7 +63,7 @@ class ContextUsageTest {
         )
         assertNull(
             ContextUsage.window(unknown, settings, preset = "nope"),
-            "a preset the gateway does not list has no window to show, and the configured one is not it (T46)",
+            "a preset the gateway does not list has no window to show, and the configured one is not it",
         )
         assertNull(ContextUsage.window(unknown, SettingsState(), preset = null), "and a gateway that said nothing leaves no denominator to invent")
     }

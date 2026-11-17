@@ -38,11 +38,11 @@ class FrameCodecTest {
     @Test
     fun typedFieldsMatchTheFixturePayload() {
         val deltas = Fixtures.wsFrames().map { FrameCodec.decode(it.toString()) }.filterIsInstance<DeltaFrame>()
-        assertTrue(deltas.isNotEmpty(), "the recording has no delta; C4.2 would be written blind")
+        assertTrue(deltas.isNotEmpty(), "the recording has no delta; the streaming reducer would be written blind")
 
         val delta = deltas.first()
         assertEquals("pong", delta.text, "delta.text is the streamed chunk")
-        assertNotNull(delta.streamId, "D15.3: stream_id is opaque but present")
+        assertNotNull(delta.streamId, "stream_id is opaque but present")
         assertEquals("turn-1", delta.turnId)
         assertEquals("answer", delta.turnPhase)
         assertEquals(3, delta.turnSeq)
@@ -51,7 +51,7 @@ class FrameCodecTest {
 
         val end = Fixtures.wsFrames().map { FrameCodec.decode(it.toString()) }.filterIsInstance<TurnEndFrame>().single()
         assertEquals("turn-1", end.turnId)
-        assertEquals(5703, end.usage?.promptTokens, "D15.4: turn_end carries usage")
+        assertEquals(5703, end.usage?.promptTokens, "turn_end carries usage")
         assertEquals(32768, end.contextWindowTokens)
         assertEquals(false, end.goalState.active)
     }
@@ -62,7 +62,7 @@ class FrameCodecTest {
 
         assertIs<ReadyFrame>(ready)
         assertEquals("UUID-2", ready.chatId)
-        assertEquals("/api/attachments", ready.upload?.path, "D15.5: ready advertises the upload path")
+        assertEquals("/api/attachments", ready.upload?.path, "ready advertises the upload path")
         assertEquals("REDACTED", ready.upload?.token, "the upload token is a live capability and must be redacted")
     }
 

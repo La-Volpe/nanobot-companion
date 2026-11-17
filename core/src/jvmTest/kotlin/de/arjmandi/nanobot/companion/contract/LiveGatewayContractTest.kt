@@ -102,8 +102,8 @@ class LiveGatewayContractTest {
         val loaded = core.sessions.first { it.loaded }
 
         assertTrue(loaded.rows.isNotEmpty(), "the dev gateway has recorded sessions; the drawer needs rows")
-        assertTrue(loaded.rows.all { it.key.startsWith("websocket:") }, "rows are keyed websocket:<uuid> (D15.6)")
-        assertTrue(loaded.rows.all { it.updatedAtMs != null }, "ISO timestamps parse (D15.2)")
+        assertTrue(loaded.rows.all { it.key.startsWith("websocket:") }, "rows are keyed websocket:<uuid>")
+        assertTrue(loaded.rows.all { it.updatedAtMs != null }, "ISO timestamps parse")
         core.disconnect(forget = false)
         }
     }
@@ -126,7 +126,7 @@ class LiveGatewayContractTest {
         assertEquals(TurnStatus.Complete, turn.status, "a real turn ends complete, not failed")
         assertTrue(turn.answer.text.isNotBlank(), "the answer streamed through the facade: '${turn.answer.text.take(40)}'")
         assertTrue(turn.answer.segments.any { it.closed }, "stream_end closed the segment")
-        assertTrue(settled.usage != null || turn.usage != null, "turn_end carried usage (D15.4)")
+        assertTrue(settled.usage != null || turn.usage != null, "turn_end carried usage")
         core.disconnect(forget = false)
         }
     }

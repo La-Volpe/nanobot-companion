@@ -114,7 +114,7 @@ class ChatRoundTripTest {
 
         assertEquals("pong", settled.turn("turn-1")?.answer?.text, "the answer streamed through the facade into the thread")
         assertEquals(null, settled.activeTurnId, "turn_end settles the stop button")
-        assertEquals(7, settled.usage?.totalTokens, "usage comes from turn_end (D15.4)")
+        assertEquals(7, settled.usage?.totalTokens, "usage comes from turn_end")
         assertEquals(1, tokens.get(), "one connect, one bootstrap")
 
         // The drawer came from the API, using the bootstrap's api_token.

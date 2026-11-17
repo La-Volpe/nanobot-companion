@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 """Regenerate the app's icon asset catalog from nanobot's own WebUI sources.
 
-The companion does not invent its own glyphs: it uses the ones the WebUI ships, so a
-row, a chip and a button read the same on the web and on the phone. Two families:
+The companion does not invent its own glyphs. It reads the ones the WebUI ships, so a row, a
+chip and a button read the same on the web and on the phone. Two families:
 
-  - `webui/src/components/icons/product-icons.tsx` — nanobot's own 24x24 drawings,
-    stroke 1.75, round caps. New chat, send, voice, stop, settings, archive, ...
-  - `lucide-react` icons the WebUI imports by name (Menu, X, ChevronDown, ...),
-    stroke 2. Those are the same glyphs the browser draws.
+  - `webui/src/components/icons/product-icons.tsx`, nanobot's own 24x24 drawings, stroke 1.75,
+    round caps. New chat, send, voice, stop, settings, archive, ...
+  - `lucide-react` icons the WebUI imports by name (Menu, X, ChevronDown, ...), stroke 2. Those
+    are the same glyphs the browser draws.
+
+It also writes the Android vector drawables (`app/src/main/res/drawable/ic_webui_*.xml`) from
+the same geometry, so both apps draw the same shape.
 
 Run it with the gateway checkout present (the read-only source of record):
 
     python3 tools/webui-icons.py
 
-It writes `iosApp/iosApp/Assets.xcassets/Icon*.imageset` as template images, so a
-SwiftUI view tints them with `foregroundStyle` exactly like an SF Symbol.
+It writes `iosApp/iosApp/Assets.xcassets/Icon*.imageset` as template images, so a SwiftUI view
+tints them with `foregroundStyle` exactly like an SF Symbol.
 """
 
 from __future__ import annotations

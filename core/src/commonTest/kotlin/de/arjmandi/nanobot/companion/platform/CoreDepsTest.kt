@@ -53,7 +53,7 @@ class CoreDepsTest {
 
         assertTrue(
             deps.files.read("gateway.json")!!.contains("s3cr3t"),
-            "D5: the token never enters the plain file store in production, and this test proves " +
+            "the token never enters the plain file store in production, and this test proves " +
                 "the fake would show it if a caller ever routed the secret there",
         )
         assertEquals("s3cr3t", deps.secureStore.get("gateway.secret"), "the secure store is the right home")

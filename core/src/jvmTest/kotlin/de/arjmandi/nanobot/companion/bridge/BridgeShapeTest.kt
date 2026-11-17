@@ -177,7 +177,7 @@ class BridgeShapeTest {
             secrets.body.contains("+ (void)storeGatewaySecretSecret:(NSString *)secret") &&
                 secrets.body.contains("+ (NSString * _Nullable)readGatewaySecret") &&
                 secrets.body.contains("+ (void)forgetGatewaySecret"),
-            "the stored key is reachable before anything is connected (D5):\n${secrets.body}",
+            "the stored key is reachable before anything is connected:\n${secrets.body}",
         )
 
         val factory = assertNotNull(header.declaration("CompanionBridgeKt"), "the factory is a top-level function")
@@ -186,7 +186,7 @@ class BridgeShapeTest {
                 "+ (CoreCompanion *)openCompanionBaseUrl:(NSString *)baseUrl secret:(NSString *)secret " +
                     "allowUnverifiedCertificate:(BOOL)allowUnverifiedCertificate",
             ),
-            "one call builds deps, client and facade, and the trust switch is a parameter of it (C3.2):\n${factory.body}",
+            "one call builds deps, client and facade, and the trust switch is a parameter of it:\n${factory.body}",
         )
     }
 

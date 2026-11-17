@@ -68,7 +68,7 @@ class OutboundCodecTest {
 
         assertEquals("set_workspace_scope", encoded.text("type"))
         assertEquals("chat-1", encoded.text("chat_id"))
-        assertEquals("full", encoded.text("access_mode"), "access_mode is default|full (plan.md §0)")
+        assertEquals("full", encoded.text("access_mode"), "access_mode is default|full")
         assertEquals("/tmp/ws", encoded.text("project_path"))
         assertTrue(
             encoded["restrict_to_workspace"] == null,

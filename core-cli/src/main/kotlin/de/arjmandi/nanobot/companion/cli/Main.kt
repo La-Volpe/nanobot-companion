@@ -25,7 +25,7 @@ fun main(args: Array<String>) {
 
 private fun usage(): String =
     """
-    nanobot-companion-cli — drives :core without a UI (plan.md C8.3)
+    nanobot-companion-cli: drives :core without a UI
 
     usage: core-cli <command> [options]
 
@@ -43,10 +43,10 @@ private fun usage(): String =
       watch       follow one chat and print a plain, diffable transcript
                     [--chat CHAT_ID] [--prompt TEXT | --prompts "a|b|c"] [--out FILE]
                     [--verify] [--history-out FILE]    compare with the WebUI's thread page
-      session     the 20-minute scripted session G2 asks for (plan.md §7): connect,
+      session     the 20-minute scripted session the iOS gate asks for: connect,
                     send, stream, attach, transcribe, stop, reconnect mid-turn, resume
                     [--minutes 20] [--prompt TEXT]
-      soak        reconnect/send soak harness (plan.md C8.4)
+      soak        reconnect/send soak harness
                     [--sends 200] [--reconnects 50] [--minutes 30] [--prompt TEXT]
 
     every command takes [--profile .dev/profile.json]

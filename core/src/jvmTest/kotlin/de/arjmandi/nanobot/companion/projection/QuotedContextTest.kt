@@ -83,6 +83,6 @@ class QuotedContextTest {
         assertIs<UserPrompt>(userPrompt)
         assertEquals("and this?", userPrompt.text)
         assertEquals("earlier message", userPrompt.quote, "the quote is the client's, so the ack must not erase it")
-        assertFalse(userPrompt.optimistic, "message_accepted still settles the bubble (C4.5)")
+        assertFalse(userPrompt.optimistic, "message_accepted still settles the bubble")
     }
 }

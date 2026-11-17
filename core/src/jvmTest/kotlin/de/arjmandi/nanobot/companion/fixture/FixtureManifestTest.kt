@@ -122,10 +122,10 @@ class FixtureManifestTest {
         assertEquals(1, (webui["min_protocol"] as JsonPrimitive).content.toInt())
         assertTrue(
             (webui["capabilities"] as JsonArray).any { (it as JsonPrimitive).content == "webui.core.v1" },
-            "webui.core.v1 is the capability every client requires (D15.1)",
+            "webui.core.v1 is the capability every client requires",
         )
-        assertTrue(bootstrap["runtime_capabilities"].obj().isNotEmpty(), "D15.1: host action flags are a dict")
-        assertTrue(bootstrap["runtime_capabilities"].obj()["can_restart_engine"] != null, "D15.1: host flags stay separate")
+        assertTrue(bootstrap["runtime_capabilities"].obj().isNotEmpty(), "host action flags are a dict")
+        assertTrue(bootstrap["runtime_capabilities"].obj()["can_restart_engine"] != null, "host flags stay separate")
 
         val attachments = bootstrap["limits"].obj()["attachments"].obj()
         assertEquals(4, (attachments["max_count"] as JsonPrimitive).content.toInt())
@@ -140,10 +140,10 @@ class FixtureManifestTest {
 
         assertTrue(rows.isNotEmpty(), "a recording needs at least the session it created")
         for (row in rows.map { it.obj() }) {
-            assertTrue(row.str("key")!!.startsWith("websocket:"), "D15.6: session rows are keyed websocket:<id>")
-            assertTrue(iso.matches(row.str("created_at")!!), "D15.2: created_at is an ISO-8601 string")
-            assertTrue(iso.matches(row.str("updated_at")!!), "D15.2: updated_at is an ISO-8601 string")
-            assertTrue(row["workspace_scope"].obj()["access_mode"] != null, "D15.6: workspace_scope nests access_mode")
+            assertTrue(row.str("key")!!.startsWith("websocket:"), "session rows are keyed websocket:<id>")
+            assertTrue(iso.matches(row.str("created_at")!!), "created_at is an ISO-8601 string")
+            assertTrue(iso.matches(row.str("updated_at")!!), "updated_at is an ISO-8601 string")
+            assertTrue(row["workspace_scope"].obj()["access_mode"] != null, "workspace_scope nests access_mode")
         }
     }
 
@@ -203,7 +203,7 @@ class FixtureManifestTest {
         for (entry in events.map { it.obj() }) {
             assertTrue(entry.str("event") != null, "history events use the socket's vocabulary")
             assertEquals(turnId, entry.str("turn_id"), "history must be the same turn as the live recording")
-            assertTrue(entry["turn_seq"] != null, "D15: history carries turn_seq for ordering")
+            assertTrue(entry["turn_seq"] != null, "history carries turn_seq for ordering")
         }
         assertTrue(
             events.map { it.obj().str("event") }.containsAll(listOf("user_message", "turn_end")),

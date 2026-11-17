@@ -34,7 +34,7 @@ class ScenarioFixturesTest {
         assertTrue("end" in phases, "no finished tool row in the recording; phases were $phases")
 
         val started = toolEvents.first { it.str("phase") == "start" }
-        assertTrue(!started.str("name").isNullOrBlank(), "a tool row needs the tool's name to render (C4.4)")
+        assertTrue(!started.str("name").isNullOrBlank(), "a tool row needs the tool's name to render")
         assertTrue(started["call_id"] != null, "start and end of one call are joined by call_id")
         assertTrue(
             toolEvents.any { it.str("phase") == "end" && it["result"]?.let { r -> r !is JsonPrimitive || r.isString } == true },
@@ -49,7 +49,7 @@ class ScenarioFixturesTest {
 
         val end = frames.filter { it.event() == "turn_end" }.lastOrNull()
         assertTrue(end != null, "the failure scenario never settled; got ${frames.map { it.event() }}")
-        assertEquals("failed", end!!.str("outcome"), "C4.5 settles a failed turn from turn_end.outcome")
+        assertEquals("failed", end!!.str("outcome"), "the reducer settles a failed turn from turn_end.outcome")
         assertTrue(!end.str("failure_kind").isNullOrBlank(), "the retry copy is chosen by failure_kind")
         assertTrue(!end.str("failure_message").isNullOrBlank(), "the gateway ships the message a user reads")
 
@@ -67,7 +67,7 @@ class ScenarioFixturesTest {
 
         val error = frames.firstOrNull { it.event() == "error" }
         assertTrue(error != null, "the error scenario recorded no error frame; got ${frames.map { it.event() }}")
-        assertTrue(!error!!.str("detail").isNullOrBlank(), "error.detail is what the taxonomy is keyed on (C7.4)")
+        assertTrue(!error!!.str("detail").isNullOrBlank(), "error.detail is what the taxonomy is keyed on")
         // The recording, not the docs, says this: a rejection is reported with `detail`
         // alone. The error taxonomy must not require a chat id the gateway never sends.
         assertNull(error.str("chat_id"), "a rejection frame names no chat; the taxonomy keys on detail")

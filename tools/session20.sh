@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# The 20-minute scripted session G2 asks for (plan.md §7): connect, send, stream, attach,
-# transcribe, stop, reconnect mid-turn, resume — against the live dev gateway, through the same
-# :core the iOS app links.
+# The 20-minute scripted session the iOS gate asks for: connect, send, stream, attach, transcribe,
+# stop, reconnect mid-turn, resume. It runs against the live dev gateway, through the same :core
+# the iOS app links.
 #
-# It is an instrument, not a test: it prints one plain line per beat so the log can be pasted
-# into GATES.md, and it stops the gateway it started.
+# It is an instrument rather than a test. It prints one plain line per beat so the log can be
+# pasted under the gate item, and it stops the gateway it started.
 #
 # usage: tools/session20.sh [--minutes 20] [--prompt TEXT]
 set -euo pipefail

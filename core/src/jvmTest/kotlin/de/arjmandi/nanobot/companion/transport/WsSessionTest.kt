@@ -45,7 +45,7 @@ class WsSessionTest {
         val session = WsSession(wsClient())
         session.frames("ws://localhost/ws?token=single-use").toList()
 
-        assertEquals("token=single-use", query, "the handshake carries the bootstrap token in the query (D15.5)")
+        assertEquals("token=single-use", query, "the handshake carries the bootstrap token in the query")
     }
 
     @Test

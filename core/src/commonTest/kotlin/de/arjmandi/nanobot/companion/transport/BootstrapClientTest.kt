@@ -47,7 +47,7 @@ class BootstrapClientTest {
         val outcome = client(engine).fetch(secret = "s3cr3t")
 
         assertIs<BootstrapOutcome.Ready>(outcome)
-        assertEquals("s3cr3t", seen, "the key travels in X-Nanobot-Auth (plan.md §0)")
+        assertEquals("s3cr3t", seen, "the key travels in X-Nanobot-Auth")
         assertEquals(null, engine.requestHistory.single().headers[HttpHeaders.Authorization], "not a bearer header")
         assertEquals("/webui/bootstrap", path)
     }
