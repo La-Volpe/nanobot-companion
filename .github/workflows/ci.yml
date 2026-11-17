@@ -152,13 +152,12 @@ jobs:
 
   connected:
     name: Android connected (manual)
-    # Manual only, on purpose. Three pull_request runs produced three different harness failures — the
-    # emulator action's adb server fighting a pinned ANDROID_SERIAL, an AVD that needed a cold boot before
-    # its software keyboard would appear (AGENTS gotcha 28), and one boot that produced no test results at
-    # all. None of them were the app, so none of them belong in the signal a merge depends on: this job is
-    # here for the day somebody wants Android's UI suite checked on a clean machine, with
-    # `gh workflow run ci.yml`. The suites that do gate a PR are `test`, `macos` and `builds`.
-    if: github.event_name == 'workflow_dispatch'
+    # Runs on pull requests and on demand, and can never gate one: `continue-on-error` keeps the workflow
+    # conclusion green whatever the emulator does, and the emulator is what fails first — the action's adb
+    # server fought a pinned ANDROID_SERIAL, an AVD needed a cold boot before its software keyboard would
+    # appear (AGENTS gotcha 28), and one boot produced no test results at all. The suites that gate a merge
+    # are `test`, `macos` and `builds`; this one is information, and the results are uploaded whatever it says.
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     continue-on-error: true
@@ -203,10 +202,12 @@ jobs:
             # No ANDROID_SERIAL: on a runner there is exactly one device and the action owns the adb
             # server, so pinning it here only fights the action ("Unable to connect to adb daemon on
             # port: 5037"). The pin belongs to a developer's machine, where a phone may also be attached.
-            # One retry: this job is advisory, and the emulator — not the app — is what fails first.
-            # A red that survives two attempts is worth reading; a red that does not is the harness.
-            ./gradlew --stacktrace :app:connectedDebugAndroidTest \
-              || ./gradlew --stacktrace :app:connectedDebugAndroidTest
+            # One retry, written without a line continuation: the action hands this script to a shell that
+            # keeps the backslash, and Gradle then looks for a task named "\" ("Selection failed — Task '\'
+            # not found"), which is how the first real execution died before the suite was selected.
+            if ! ./gradlew --stacktrace :app:connectedDebugAndroidTest; then
+              ./gradlew --stacktrace :app:connectedDebugAndroidTest
+            fi
 
       - name: the results, whatever they say
         if: always()
