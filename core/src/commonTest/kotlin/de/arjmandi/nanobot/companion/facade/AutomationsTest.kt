@@ -6,6 +6,7 @@ import de.arjmandi.nanobot.companion.platform.FakeAppInfo
 import de.arjmandi.nanobot.companion.platform.FakeClock
 import de.arjmandi.nanobot.companion.platform.InMemoryFileStore
 import de.arjmandi.nanobot.companion.platform.InMemorySecureStore
+import de.arjmandi.nanobot.companion.testing.awaitValue
 import de.arjmandi.nanobot.companion.transport.BootstrapOutcome
 import de.arjmandi.nanobot.companion.transport.ConnectionAttempt
 import de.arjmandi.nanobot.companion.transport.FakeSocket
@@ -22,11 +23,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -154,8 +151,8 @@ class AutomationsTest {
 
         // The read runs beside the pump (an HTTP round trip must not hold up a handshake), so the
         // test waits on the state it fills rather than on a dispatcher's idea of "idle".
-        val read = withContext(Dispatchers.Default) {
-            withTimeout(5_000) { core.automations.first { it.jobs.isNotEmpty() } }
+        val read = core.automations.awaitValue(timeoutMs = 5_000, what = "the automations the new socket reads") {
+            it.jobs.isNotEmpty()
         }
 
         assertEquals(
@@ -191,6 +188,10 @@ class AutomationsTest {
         )) {
             val socket = FakeSocket()
             val core = core(socket)
+            // The socket reads the list when it opens. That read has to land before the action
+            // does, or its answer overwrites the action's own list afterwards and the switch the
+            // gateway just flipped reads as unchanged.
+            core.automations.awaitValue(what = "the automations the socket reads at connect") { it.loaded }
             var result: AutomationActionResult? = null
             val job = launch { result = core.runAutomation("weekly-digest", kind) }
             runCurrent()
