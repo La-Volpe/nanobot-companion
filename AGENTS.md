@@ -190,7 +190,11 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
     words were "No code signature found". It is removed; do not put it back. A
     device install also needs `NSAllowsLocalNetworking` in `Info.plist` for
     plain HTTP to a LAN gateway, and an Apple ID signed into Xcode to mint a
-    profile, otherwise the build stops at "No Account for Team".
+    profile, otherwise the build stops at "No Account for Team". The project
+    carries **no** `DEVELOPMENT_TEAM` on purpose (T25): it used to hold two
+    team ids, which named two Apple accounts in a public repository. Pick your
+    own team in Xcode for a device build, or sign with an xcconfig you keep
+    out of git. Simulator builds and `build-for-testing` need nothing.
 
 20. **Android blocks cleartext at targetSdk 37.** `network_security_config.xml`
     permits it for the dev gateway; without it the first connect fails as
