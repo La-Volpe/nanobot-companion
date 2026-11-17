@@ -6,6 +6,8 @@ import de.arjmandi.nanobot.companion.platform.FakeAppInfo
 import de.arjmandi.nanobot.companion.platform.FakeClock
 import de.arjmandi.nanobot.companion.platform.InMemoryFileStore
 import de.arjmandi.nanobot.companion.platform.InMemorySecureStore
+import de.arjmandi.nanobot.companion.testing.ReadLog
+import de.arjmandi.nanobot.companion.testing.awaitValue
 import de.arjmandi.nanobot.companion.transport.BootstrapOutcome
 import de.arjmandi.nanobot.companion.transport.ConnectionAttempt
 import de.arjmandi.nanobot.companion.transport.FakeSocket
@@ -20,7 +22,7 @@ import io.ktor.http.headersOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlinx.coroutines.flow.first
+import kotlin.test.assertTrue
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -62,10 +64,10 @@ class PresetAgreementTest {
     /** What `GET /api/sessions` answers; a test rewrites it to say what the gateway applied. */
     private var sessions: String = """{"sessions":[]}"""
 
-    private val reads = mutableListOf<String>()
+    private val reads = ReadLog()
 
     private fun engine(): MockEngine = MockEngine { request ->
-        reads += request.url.encodedPath
+        reads.record(request)
         val body = when {
             request.url.encodedPath == "/api/settings" -> settings
             request.url.encodedPath == "/api/settings/usage" -> """{"days":[]}"""
@@ -91,7 +93,9 @@ class PresetAgreementTest {
      * that is still on the wire (`ModelChipTest` learned the same).
      */
     private suspend fun readsOf(core: NanobotCore, chatId: String, preset: String?) {
-        core.sessions.first { state -> state.rows.any { row -> row.chatId == chatId && row.modelPreset == preset } }
+        core.sessions.awaitValue(what = "the drawer row for $chatId with preset $preset") { state ->
+            state.rows.any { row -> row.chatId == chatId && row.modelPreset == preset }
+        }
     }
 
     /** The pick's own half of the row, asserted before a read that only the settled turn starts. */
@@ -151,7 +155,7 @@ class PresetAgreementTest {
         val core = core(socket)
         connect(core, socket, chat)
         val handle = core.chat(chat)
-        core.settings.first { it.loaded }
+        core.settings.awaitValue(what = "the gateway's settings") { it.loaded }
 
         handle.setModelPreset("Vision and OCR")
         runCurrent()
@@ -173,7 +177,7 @@ class PresetAgreementTest {
         val core = core(first, second)
         connect(core, first, chat)
         val handle = core.chat(chat)
-        core.settings.first { it.loaded }
+        core.settings.awaitValue(what = "the gateway's settings") { it.loaded }
 
         handle.setModelPreset("Vision and OCR")
         runCurrent()
@@ -184,6 +188,9 @@ class PresetAgreementTest {
         sessions = row(other, null)
         connect(core, second, other)
         readsOf(core, other, null)
+        // The greeting clears the pick and the drawer read is what republishes the chip, so the row
+        // landing is not yet the chip changing: wait for the chip itself.
+        handle.composer.awaitValue(what = "the chip back on the gateway's preset") { it.modelPreset == "primary" }
 
         val composer = handle.composer.value
         assertEquals("primary", composer.modelPreset, "the chat is on what the gateway configured")
@@ -202,7 +209,7 @@ class PresetAgreementTest {
         val core = core(socket)
         connect(core, socket, chat)
         val handle = core.chat(chat)
-        core.settings.first { it.loaded }
+        core.settings.awaitValue(what = "the gateway's settings") { it.loaded }
         handle.setModelPreset("Vision and OCR")
         runCurrent()
         assertThePickShowsItsOwnPreset(handle)
@@ -211,7 +218,7 @@ class PresetAgreementTest {
         sessions = row(chat, "Vision and OCR")
         socket.turnEnds(chat, contextTokens = 64_000)
         readsOf(core, chat, "Vision and OCR")
-        advanceUntilIdle()
+        handle.composer.awaitValue(what = "the settled composer row") { it.contextPercent == 25 }
 
         val composer = handle.composer.value
         assertEquals("Vision and OCR", composer.modelPreset)
@@ -224,10 +231,13 @@ class PresetAgreementTest {
             offered.filter { it.active }.map { it.name },
             "the sheet ticks the preset the row just confirmed",
         )
-        assertEquals(
-            2,
-            reads.count { it == "/api/sessions" },
-            "the greeting's read, then the one the settled switch asked for: ${reads}",
+        // Not "exactly two": the count was never the claim, and a debounced drawer refresh can add a
+        // third legitimately. What has to be true is that the switch's own read went out as well as
+        // the greeting's — the settled row above is the proof that at least those two answered.
+        val paths = reads.paths()
+        assertTrue(
+            paths.count { path -> path == "/api/sessions" } >= 2,
+            "the greeting's read and the one the settled switch asked for both went out: $paths",
         )
     }
 
@@ -242,7 +252,7 @@ class PresetAgreementTest {
         val core = core(socket)
         connect(core, socket, chat)
         val handle = core.chat(chat)
-        core.settings.first { it.loaded }
+        core.settings.awaitValue(what = "the gateway's settings") { it.loaded }
         handle.setModelPreset("Vision and OCR")
         runCurrent()
         assertThePickShowsItsOwnPreset(handle)
@@ -255,7 +265,11 @@ class PresetAgreementTest {
         )
         socket.turnEnds(chat, contextTokens = 64_000)
         readsOf(core, chat, null)
-        advanceUntilIdle()
+        // The revert is `settlePicks` running after the rows land, so the row arriving is not the
+        // revert: the chip is what the test reads, so the chip is what it waits for.
+        handle.composer.awaitValue(what = "the chip back on the chat's own preset") {
+            it.modelPreset == "primary" && it.contextPercent == 6
+        }
 
         val composer = handle.composer.value
         assertEquals("primary", composer.modelPreset, "the chip goes back to what the chat is really on")
@@ -274,7 +288,7 @@ class PresetAgreementTest {
         val core = core(socket)
         connect(core, socket, chat)
         val handle = core.chat(chat)
-        core.settings.first { it.loaded }
+        core.settings.awaitValue(what = "the gateway's settings") { it.loaded }
         handle.setModelPreset("Vision and OCR")
         runCurrent()
         assertThePickShowsItsOwnPreset(handle)
@@ -283,7 +297,7 @@ class PresetAgreementTest {
         sessions = row(other, null)
         socket.turnEnds(chat, contextTokens = 64_000)
         readsOf(core, other, null)
-        advanceUntilIdle()
+        handle.composer.awaitValue(what = "the ring after the settled turn") { it.contextPercent == 25 }
 
         assertEquals("qwen3-vl", handle.composer.value.modelName, "no row came back to contradict it")
         assertEquals(256_000, handle.composer.value.contextWindowTokens)

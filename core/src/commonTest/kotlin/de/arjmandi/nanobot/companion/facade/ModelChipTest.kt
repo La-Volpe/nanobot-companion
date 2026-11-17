@@ -6,6 +6,8 @@ import de.arjmandi.nanobot.companion.platform.FakeAppInfo
 import de.arjmandi.nanobot.companion.platform.FakeClock
 import de.arjmandi.nanobot.companion.platform.InMemoryFileStore
 import de.arjmandi.nanobot.companion.platform.InMemorySecureStore
+import de.arjmandi.nanobot.companion.testing.ReadLog
+import de.arjmandi.nanobot.companion.testing.awaitValue
 import de.arjmandi.nanobot.companion.transport.BootstrapOutcome
 import de.arjmandi.nanobot.companion.transport.ConnectionAttempt
 import de.arjmandi.nanobot.companion.transport.FakeSocket
@@ -22,7 +24,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -60,10 +61,10 @@ class ModelChipTest {
            "updated_at":"2026-11-14T03:37:10.475000Z"}]}
     """.trimIndent()
 
-    private val reads = mutableListOf<String>()
+    private val reads = ReadLog()
 
     private fun engine(status: HttpStatusCode = HttpStatusCode.OK): MockEngine = MockEngine { request ->
-        reads += request.url.encodedPath
+        reads.record(request)
         val body = when {
             request.url.encodedPath == "/api/settings" -> settings
             request.url.encodedPath == "/api/sessions" -> sessions
@@ -114,8 +115,9 @@ class ModelChipTest {
         handle.open()
         // The settings read is the socket's, started at connect, so the chip follows it
         // rather than the other way round: waiting on the flow is what a reader sees, and on
-        // Kotlin/Native the mock engine's answer lands outside the virtual clock.
-        core.settings.first { it.loaded }
+        // Kotlin/Native the mock engine's answer lands outside the virtual clock. The chip is
+        // mirrored after the settings land, so the chip is what the test waits for.
+        handle.composer.awaitValue(what = "the chip naming the gateway's preset") { it.modelPreset == "primary" }
 
         assertEquals("primary", handle.composer.value.modelPreset, "the chip names the preset, not the bare word")
         assertEquals("deepseek-v4.1-flash:cloud", handle.composer.value.modelName)
@@ -128,8 +130,9 @@ class ModelChipTest {
 
         handle.open()
         // The drawer's rows carry this chat's own preset, and they are a read of their own: the
-        // chip follows the read that names it (the settings read is the socket's).
-        core.sessions.first { it.loaded }
+        // chip follows the read that names it (the settings read is the socket's), and the row
+        // landing is not the chip changing, so the chip is what the test waits for.
+        handle.composer.awaitValue(what = "the chip on this chat's own preset") { it.modelPreset == "cheap" }
 
         assertEquals("cheap", handle.composer.value.modelPreset, "the session row is what this chat runs")
     }
@@ -140,7 +143,7 @@ class ModelChipTest {
         val core = core(engine(), socket)
         val handle = core.chat(chat)
         handle.open()
-        core.sessions.first { it.loaded }
+        core.sessions.awaitValue(what = "the drawer's rows") { it.loaded }
 
         socket.push(
             """{"event":"turn_model_updated","chat_id":"$chat",
@@ -174,11 +177,11 @@ class ModelChipTest {
         // screenshot said "Model" on exactly this screen.
         val handle = core.chat(null)
         // The read runs beside the pump, so the chip follows it rather than the other way round.
-        core.settings.first { it.loaded }
+        handle.composer.awaitValue(what = "the chip naming the gateway's preset") { it.modelPreset == "primary" }
 
         assertEquals("primary", handle.composer.value.modelPreset, "the chip names the preset, not the bare word")
         assertEquals("deepseek-v4.1-flash:cloud", handle.composer.value.modelName)
-        assertEquals(1, reads.count { it == "/api/settings" }, "and the read is the socket's, once")
+        assertEquals(1, reads.paths().count { it == "/api/settings" }, "and the read is the socket's, once")
     }
 
     @Test
@@ -190,7 +193,7 @@ class ModelChipTest {
         core.chat("b").open()
         advanceUntilIdle()
 
-        assertEquals(1, reads.count { it == "/api/settings" }, "a second chat does not read settings again")
+        assertEquals(1, reads.paths().count { it == "/api/settings" }, "a second chat does not read settings again")
     }
 
     @Test
@@ -199,6 +202,8 @@ class ModelChipTest {
         val handle = core.chat(chat)
 
         handle.open()
+        // A refused read fills no state, so the only thing there is to wait for is the read itself.
+        reads.changes.awaitValue(what = "the refused settings read") { list -> list.any { it.path == "/api/settings" } }
         advanceUntilIdle()
 
         assertNull(handle.composer.value.modelPreset, "nothing was read, so the chip says nothing")
