@@ -170,7 +170,7 @@ class UploadFlowTest {
 
         val rejected = assertIs<UploadResult.Rejected>(handle.upload(image(size = 7 * 1024 * 1024)))
 
-        assertEquals(AttachmentRejection.FileTooLarge, rejected.reason, "6 MiB is the gateway's own per-file ceiling (C3.7)")
+        assertEquals(AttachmentRejection.FileTooLarge, rejected.reason, "6 MiB is the gateway's own per-file ceiling")
         assertEquals(0, posted, "the bytes never leave the device")
     }
 

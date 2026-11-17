@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Starts a throwaway nanobot gateway for contract tests (plan.md P0.5, C8.3).
+# Starts a throwaway nanobot gateway for contract tests and the instruments.
 #
 # It writes everything under .dev/ and never touches ~/.nanobot:
 #   .dev/config.json    gateway config (websocket channel + ollama provider)
 #   .dev/workspace/     the agent's workspace
 #   .dev/secret         the bootstrap secret (X-Nanobot-Auth)
-#   .dev/profile.json   {url, secret} — what :core and :core-cli consume
+#   .dev/profile.json   {url, secret}, the shape :core and :core-cli consume
 #
-# The `broken` model preset is deliberate: it names a model ollama does not have, so a
-# switch to it fails its turn and `core-cli record` can capture a real `turn_end` with
-# `outcome: failed` for the failure scenario (plan.md C4.5/C7.4).
+# The `broken` model preset is deliberate. It names a model ollama does not have, so switching to
+# it fails the turn, and `core-cli record` can then capture a real `turn_end` carrying
+# `outcome: failed` for the failure scenario.
 #
 # usage:
 #   tools/nanobot-dev.sh start [--port 18765] [--model <ollama-model>] [--lan]

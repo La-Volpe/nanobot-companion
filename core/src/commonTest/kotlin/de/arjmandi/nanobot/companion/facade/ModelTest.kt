@@ -173,7 +173,7 @@ class ModelTest {
         val composer = handle.composer.value
         assertEquals("deepseek", composer.modelPreset, "the chip shows the preset the gateway says answered")
         assertEquals("deepseek-v4.1-flash", composer.modelName)
-        assertEquals(65_536, composer.contextWindowTokens, "the usage ring's denominator comes from here (C6.7)")
+        assertEquals(65_536, composer.contextWindowTokens, "the usage ring's denominator comes from here")
     }
 
     @Test

@@ -44,7 +44,7 @@ class UploadClientTest {
 
         client(engine).upload(capability, file, "hello world!".encodeToByteArray())
 
-        assertEquals("Bearer upload-token", authorization, "the upload token is a bearer capability (D15.5)")
+        assertEquals("Bearer upload-token", authorization, "the upload token is a bearer capability")
         assertEquals(HttpMethod.Post, method)
         assertEquals("12", contentLength, "the gateway rejects a chunked body, so the length is exact")
         assertEquals(null, transferEncoding)
@@ -59,7 +59,7 @@ class UploadClientTest {
 
         val result = client(engine).upload(capability, file, ByteArray(12))
 
-        assertEquals("ref-1", assertIs<UploadOutcome.Uploaded>(result).reference, "the message carries the reference (C6.6)")
+        assertEquals("ref-1", assertIs<UploadOutcome.Uploaded>(result).reference, "the message carries the reference")
     }
 
     @Test

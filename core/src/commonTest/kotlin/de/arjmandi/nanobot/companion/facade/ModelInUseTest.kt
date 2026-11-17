@@ -17,7 +17,7 @@ class ModelInUseTest {
         assertEquals(
             "1M",
             ModelInUse("glm-5.3-flash:cloud", "primary", 1_000_000).windowLabel,
-            "the owner's gateway answers 1 000 000 and the row read 1000k (T36)",
+            "the owner's gateway answers 1 000 000 and the row read 1000k",
         )
         assertEquals("200K", ModelInUse("anthropic/claude-opus-4-5", "default", 200_000).windowLabel)
         assertEquals("32.8K", ModelInUse("deepseek-v4.1-flash:cloud", "primary", 32_768).windowLabel)

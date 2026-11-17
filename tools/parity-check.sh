@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# G3's third item (plan.md §8): iOS and Android side by side on one gateway, same transcript,
-# same error copy — compared mechanically rather than by looking at two screens.
+# iOS and Android side by side on one gateway: same transcript, same error copy, compared
+# mechanically instead of by looking at two screens.
 #
-# Three instruments, no eyeballs:
+# Three comparisons, all mechanical:
 #
 #   1. the transcript, CLI reference. One chat is created on the dev gateway and a turn settled
 #      through :core-cli; `core-cli send` prints that thread as the CLI's plain transcript.
 #   2. the transcript, the two apps. The Android live test and the iOS `ParityTranscriptTests`
 #      each open the *same* chat through their own bridge and print the thread they hold in the
 #      same plain fields; `parity_transcript.py` diffs each against the CLI. Both app sides are
-#      :core — the socket's reduction in the CLI, the gateway's page through `HistoryReplay` in
-#      the apps — so a difference is an app-path bug and nothing else.
+#      :core: the socket's reduction in the CLI, the gateway's page through `HistoryReplay` in
+#      the apps. A difference is therefore an app-path bug and nothing else.
 #   3. the error copy. The eight sentences in iOS's ConnectionCopy.swift and the eight strings
 #      in app/src/main/res/values/strings.xml are parsed and compared, key for key.
 #

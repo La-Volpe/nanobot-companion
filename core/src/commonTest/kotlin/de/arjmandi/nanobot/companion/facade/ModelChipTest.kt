@@ -162,7 +162,7 @@ class ModelChipTest {
         handle.setModelPreset("cheap")
         advanceUntilIdle()
 
-        assertEquals("cheap", handle.composer.value.modelPreset, "the chip shows the pick at once (I5)")
+        assertEquals("cheap", handle.composer.value.modelPreset, "the chip shows the pick at once")
     }
 
     @Test

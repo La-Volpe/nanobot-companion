@@ -90,7 +90,7 @@ class TurnLifecycleTest {
         val turn = running.turns.single()
         assertEquals(TurnStatus.Complete, turn.status)
         assertNull(running.activeTurnId, "nothing is running, so the composer offers send again")
-        assertEquals(32_768, running.contextWindowTokens, "the usage ring has its window (C6.7)")
+        assertEquals(32_768, running.contextWindowTokens, "the usage ring has its window")
         assertEquals(10, running.usage?.promptTokens)
     }
 

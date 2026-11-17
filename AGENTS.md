@@ -8,7 +8,7 @@ before changing anything.
 
 A native iOS and Android client for a **nanobot** gateway. `:core` owns
 everything that is not UI, in Kotlin Multiplatform; the two apps render it
-natively — SwiftUI (`iosApp/`) and Jetpack Compose (`:app`).
+natively: SwiftUI (`iosApp/`) and Jetpack Compose (`:app`).
 
 ```
 core/       :core — KMP library, no UI, no Compose, no UIKit
@@ -22,7 +22,7 @@ scripts/    gate.sh — runs a phase checklist kept outside the repo; refuses to
 
 Data flow, in one line: gateway socket → `wire` frames → `projection` reducer →
 `engine` effects → `facade` state → SwiftUI/Compose. Stored history goes through
-**the same reducer**, which is the point.
+**the same reducer**.
 
 Two rules shape every diff:
 
@@ -95,7 +95,7 @@ two for you.
 |---|---|
 | Kotlin | 2.4.21 |
 | Gradle | 9.7.0 (wrapper) |
-| AGP | 9.5.1 — `:core` uses `com.android.kotlin.multiplatform.library` |
+| AGP | 9.5.1 (`:core` uses `com.android.kotlin.multiplatform.library`) |
 | Ktor | 3.6.1 (Darwin / OkHttp / Java engines), the only third-party runtime dependency |
 | coroutines / serialization | 1.11.0 / 1.13.0 |
 | Kover | 0.9.9, configured **inside `:core`** |
@@ -106,15 +106,14 @@ two for you.
 
 All pins live in `gradle/libs.versions.toml`, with the resolution date in a comment.
 
-## Gotchas already paid for — do not regress
-
+## Gotchas already paid for (do not regress)
 1. **compileSdk must be 37.** `okhttp-android:5.5.1`, pulled by Ktor's OkHttp
    engine, declares an AAR metadata floor of 37; 36 fails
    `checkAndroidMainAarMetadata`.
 
 2. **AGP 9 for a KMP module**: `kotlin { androidLibrary { namespace; compileSdk;
    minSdk } }`, no top-level `android { }`. For a plain app module, AGP 9 has
-   built-in Kotlin — applying `org.jetbrains.kotlin.android` is a hard error.
+   built-in Kotlin, so applying `org.jetbrains.kotlin.android` is a hard error.
 
 3. **Android host tests exist only if you ask for them**: `androidLibrary {
    withHostTestBuilder {}.configure {} }` creates `:core:testAndroidHostTest`.
@@ -126,7 +125,7 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
    Inject the scope/dispatcher (this was a real defect in A5, not a test quirk).
 
 5. **Kover configuration must live in the module.** A root-level `kover { }`
-   only configures the root report — class excludes silently do nothing until
+   only configures the root report, so class excludes silently do nothing until
    it moves into `core/build.gradle.kts`. The 85% floor is real: raise it
    to 100 and the rule fails naming the percentage.
 
@@ -136,7 +135,7 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
 
 7. **`explicitApi()` is on.** Every public declaration needs explicit visibility
    and type, because Swift and Compose both consume the facade. `EngineHost` is
-   an abstract class for this reason — `explicitApi` rejects `internal` interface
+   an abstract class for this reason: `explicitApi` rejects `internal` interface
    members.
 
 8. **`expect/actual` is limited to four concerns**: `Clock`, `SecureStore`,
@@ -145,16 +144,16 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
 
 9. **`ready` means the greeting was processed, not that it arrived.** The engine
    waits for the frame to be reduced before it reports `Open`, and
-   `ready.chat_id` is a bare uuid while session rows are keyed `websocket:<uuid>`
-   — both were real bugs the live contract run found.
+   `ready.chat_id` is a bare uuid while session rows are keyed `websocket:<uuid>`.
+   Both were real bugs the live contract run found.
 
 10. **A bootstrap token is single-use.** Every connect bootstraps again; reuse
     fails the handshake. Do not cache a token.
 
 11. **`attach` carries no history.** An opened chat shows its past only after
     `GET /api/sessions/{key}/webui-thread` is read and reduced
-    (`ChatHandle.open()`). Binding a handle is not opening it — that distinction
-    broke `core-cli watch --chat` for a while.
+    (`ChatHandle.open()`). Binding a handle is not opening it, and that
+    distinction broke `core-cli watch --chat` for a while.
 
 12. **Stored pages are compacted.** A turn replays as
     `user_message · reasoning_end · stream_end · turn_end`, with the answer text
@@ -163,7 +162,7 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
     against the dev gateway's raw ones.
 
 13. **`quoted_context` is a string.** An object-shaped quote is dropped by the
-    gateway silently — no error, no quote.
+    gateway silently: no error, no quote.
 
 14. **Unknown frames and unknown fields must never throw.** Events are sealed
     classes over the preserved raw JSON, `ignoreUnknownKeys = true`, and an
@@ -187,7 +186,7 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
     broken because you cannot see it.
 
 19. **`CODE_SIGNING_ALLOWED = NO` breaks device installs.** The project carried
-    it as a simulator-era shortcut and the .app shipped unsigned — installd's
+    it as a simulator-era shortcut and the .app shipped unsigned, and installd's
     words were "No code signature found". It is removed; do not put it back. A
     device install also needs `NSAllowsLocalNetworking` in `Info.plist` for
     plain HTTP to a LAN gateway, and an Apple ID signed into Xcode to mint a
@@ -201,7 +200,7 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
     id; `onChange` does not fire for a value set before the view exists; live
     tests need the `TEST_RUNNER_` prefix on their environment variables; and a
     fast model can finish a turn before a stop tap lands, which is a race in the
-    instrument — pick a prompt that stays open.
+    instrument, so pick a prompt that stays open.
 
 22. **The dev gateway needs help to start.** `NANOBOT_SKIP_WEBUI_BUILD=1`
     (otherwise `nanobot webui` runs npm install/build), and a Python 3.12 venv
@@ -217,8 +216,8 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
     project were deliberately left open until a defect was fixed.
 
 25. **The glyphs are nanobot's, not the platform's.** `tools/webui-icons.py`
-    reads the WebUI's own drawings — `components/icons/product-icons.tsx` plus
-    the lucide icons it imports — and writes both the iOS template imagesets
+    reads the WebUI's own drawings (`components/icons/product-icons.tsx` plus
+    the lucide icons it imports) and writes both the iOS template imagesets
     (`Assets.xcassets/Icon*.imageset`) and the Android vector drawables
     (`res/drawable/ic_webui_*.xml`). Adding an SF Symbol or a Unicode character
     where a WebUI glyph exists is a regression: the phone stops matching the
@@ -234,7 +233,7 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
     the app drifts back to looking like a bare shell.
 
 27. **The iosApp target is a file-system-synchronized group**, so a new asset
-    catalog or a new Swift file needs no `project.pbxproj` entry — but a new
+    catalog or a new Swift file needs no `project.pbxproj` entry, but a new
     *kind* of resource still needs its build setting
     (`ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`). Without it the bundle has
     no icon and SpringBoard draws a grey grid; `BrandTests` fails on exactly
@@ -244,21 +243,21 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
    With no Simulator GUI, iOS reports a hardware keyboard attached
    (`HardwareKeyboardLastSeen=1`) and draws no software keyboard: the composer never
    moves and the keyboard element sits off-screen with a plausible frame. Android's
-   emulator does the same — `mInputShown=false` after a tap that should raise it,
+   emulator does the same: `mInputShown=false` after a tap that should raise it,
    with the IME listed and enabled, and neither `show_ime_with_hard_keyboard=1` nor
    an IME disable/enable cycle nor `adb reboot` bringing it back; a cold boot of the
-   AVD does. A dismissal test failing there is describing the host, not the app:
+   AVD does. A dismissal test failing there is describing the host, not the app.
    iOS `KeyboardTests` measures both facts (composer moved? keyboard frame inside the
    window?) and skips with the numbers, and Android's five keyboard cases fail as a
-   class on the same tree that passed 80/0 an hour earlier — check that before
+   class on the same tree that passed 80/0 an hour earlier. Check that before
    believing a regression.
 
 ## Conventions
 
 - **TDD, and a red that means something.** Write the assertion, watch it fail
-  for a behavioural reason, then implement. A compile error is not a red — when
-  it is the only red a task had, say so in the commit body (`[C3.2]`, `[C3.6]`
-  do exactly that).
+  for a behavioural reason, then implement. A compile error is not a red, so
+  when it is the only red a task had, say so in the commit body (`[C3.2]`,
+  `[C3.6]` do exactly that).
 - **Prove a guard non-vacuous by breaking it.** Delete the teardown, import a
   higher layer, raise the coverage floor to 100, doctor one transcript line.
   Every guard in this repo has been broken on purpose once.
@@ -276,7 +275,7 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
   icons until the WebUI port; they render differently on every device and never
   match the browser. Generate from `tools/webui-icons.py`.
 - **Strings live per platform, keyed the same.** `ConnectionCopy.swift` and
-  `res/values/strings.xml` must agree key for key — `tools/parity_copy.py`
+  `res/values/strings.xml` must agree key for key, and `tools/parity_copy.py`
   under `parity-check.sh` compares them.
 - **Comments explain why.** The repo is full of short comments naming the
   gateway file or the incident that forced a line. Keep that habit; no banners,
@@ -294,16 +293,16 @@ When asked to review this codebase, meet this bar:
 - Read the source and the tests before judging. Never review from memory.
 - Anchor every claim as `file:line`. An unanchored claim is an opinion.
 - Judge against four criteria, each with a verdict:
-  1. **Layering and purity** — `commonMain` free of UI and platform imports, one
+  1. Layering and purity: `commonMain` free of UI and platform imports, one
      reducer serving socket and history, effects as data. Deviations named with
      severity.
-  2. **Protocol fidelity** — every frame and field traced to the gateway source
+  2. Protocol fidelity: every frame and field traced to the gateway source
      or a recorded fixture; capability-gated features degrade instead of
      crashing; no invented endpoints.
-  3. **Tests with red evidence** — inventory the suites, name the real gaps,
+  3. Tests with red evidence: inventory the suites, name the real gaps,
      quote the coverage numbers, and say plainly where a red was a compile error
      or a probe rather than a first-run failure.
-  4. **Not overengineered** — no speculative abstraction, no dependency that
+  4. Not overengineered: no speculative abstraction, no dependency that
      replaces ten lines of standard library, no test that passes with the
      implementation deleted.
 - Review-only: change nothing. The deliverable is a ranked, sized list of
@@ -329,7 +328,7 @@ the environment changed (fresh install, rebooted device), start the sweep over.
 ## When adding a feature, the expected diff shape
 
 1. **Wire**: the frame or payload in `:core/wire`, decoded tolerantly, with a
-   fixture recorded by `:core-cli record` — not typed by hand.
+   fixture recorded by `:core-cli record`, not typed by hand.
 2. **Projection**: the reducer branch, pure, with `Effect` values for anything
    that talks to the socket.
 3. **Engine**: execute the effect, keep the one-writer rule, no new coroutine

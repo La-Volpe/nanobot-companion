@@ -134,7 +134,7 @@ class FacadeContractTest {
         assertEquals(
             listOf("attach"),
             socket.sent.map(::envelopeType),
-            "an unattached chat is attached before its message is allowed through (C5.4)",
+            "an unattached chat is attached before its message is allowed through",
         )
     }
 

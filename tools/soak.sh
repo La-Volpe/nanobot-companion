@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# The soak rig (plan.md C8.4, G1). Thirty minutes of real wall clock against the dev
-# gateway: 200 sends, 50 reconnects, and a leak check after every teardown.
+# The soak rig. Thirty minutes of real wall clock against the dev gateway: 200 sends, 50
+# reconnects, and a leak check after every teardown.
 #
 # It does not start or stop the gateway. Whoever owns the gateway owns its lifetime
-# (tools/nanobot-dev.sh start / stop), which keeps this script usable against a real host.
+# (tools/nanobot-dev.sh start / stop), so this script also works against a real host.
 #
 #   tools/soak.sh                    # 30 min, 200 sends, 50 reconnects
 #   SOAK_MINUTES=1 tools/soak.sh     # a smoke run

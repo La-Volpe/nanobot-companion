@@ -41,7 +41,7 @@ class SessionListTest {
 
         assertEquals(2, rows.size)
         val newest = rows.first()
-        assertEquals("websocket:bbb", newest.key, "the key is the session key (D15.6)")
+        assertEquals("websocket:bbb", newest.key, "the key is the session key")
         assertEquals("bbb", newest.chatId)
         assertEquals("newest", newest.title)
         assertEquals("second", newest.preview)
@@ -87,7 +87,7 @@ class SessionListTest {
 
         val outcome = SessionListClient(HttpClient(engine), "http://127.0.0.1:18765").fetch("api-token")
 
-        assertEquals("Bearer api-token", authorization, "D15.6: /api/sessions wants the bootstrap api_token")
+        assertEquals("Bearer api-token", authorization, "/api/sessions wants the bootstrap api_token")
         assertEquals(2, (outcome as SessionListOutcome.Loaded).rows.size)
     }
 }

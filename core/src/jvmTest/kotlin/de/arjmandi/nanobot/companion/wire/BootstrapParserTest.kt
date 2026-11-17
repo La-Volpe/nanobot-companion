@@ -66,7 +66,7 @@ class BootstrapParserTest {
         assertTrue(payload.hostActions.canRestartEngine.not(), "local gateway cannot restart itself")
         assertTrue(
             payload.hostActions.canExportDiagnostics.not(),
-            "D15.1: runtime_capabilities are host action flags, so they never gate a protocol feature",
+            "runtime_capabilities are host action flags, so they never gate a protocol feature",
         )
         assertTrue(
             payload.contract.capabilities.none { it == "can_restart_engine" },

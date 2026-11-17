@@ -4,7 +4,7 @@
 #   tools/consult.sh "Which of these is the right shape for X?" \
 #       --option "label one=what this option costs and buys" \
 #       --option "label two=what this option costs and buys" \
-#       --state-file plan.md --state "extra context, one line"
+#       --state-file my-notes.md --state "extra context, one line"
 #
 # clef is a decision model, not a chat model: ollama only exposes it through
 # POST /v1/systemone with a `state` and typed `questions` (choice | noul | score).

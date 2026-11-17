@@ -70,7 +70,7 @@ internal class Harness private constructor(
         }
         val document = Json.parseToJsonElement(response.bodyAsText()) as JsonObject
         return document["api_token"]?.jsonPrimitive?.content
-            ?: throw HarnessError("the gateway's bootstrap has no api_token; /api/* reads need one (D15.6)")
+            ?: throw HarnessError("the gateway's bootstrap has no api_token; /api/* reads need one")
     }
 
     /** The WebUI's own thread page for a chat, exactly as the browser reads it. */

@@ -106,7 +106,7 @@ class RedactorTest {
         ).single()
 
         val stream = out.at("stream_id").content
-        assertTrue(Regex("""^stream-\d+$""").matches(stream), "D15.3: stream_id is opaque, so an alias keeps its purpose: $stream")
+        assertTrue(Regex("""^stream-\d+$""").matches(stream), "stream_id is opaque, so an alias keeps its purpose: $stream")
         assertTrue(!out.at("handle", "id").content.contains("1b99a6c3"))
         assertTrue(!out.at("page", "history_generation").content.contains("3f8b2b69"))
     }

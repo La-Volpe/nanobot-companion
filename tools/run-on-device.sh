@@ -5,12 +5,12 @@
 #   tools/run-on-device.sh --local                # connect to the LAN dev gateway (.dev)
 #   tools/run-on-device.sh --url https://your-gateway.example --secret-file ~/.nanobot-companion.secret
 #
-# There is no default gateway: the address belongs to whoever runs this, and a committed one
-# would be somebody's own gateway in a public repo (T23).
+# There is no default gateway. The address belongs to whoever runs this script, and a committed
+# default would be somebody's own gateway sitting in a public repo.
 #
-# The secret is handed to the app through its launch environment (DEVICECTL_CHILD_*), so it is
-# never typed on the phone and never printed here. The app needs a signed build; signing is set
-# to automatic with the personal team in the Xcode project, so a free Apple ID is enough.
+# The secret reaches the app through its launch environment (DEVICECTL_CHILD_*), so it is never
+# typed on the phone and never printed here. The app needs a signed build, and the Xcode project
+# uses automatic signing with the personal team, so a free Apple ID is enough.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -141,7 +141,8 @@ APP="$ROOT/build/ios-device/Build/Products/Debug-iphoneos/iosApp.app"
 echo "installing…"
 xcrun devicectl device install app --device "$UDID" "$APP" >/dev/null || {
   echo "install failed. On the phone, trust the developer certificate first:" >&2
-  echo "  Settings → General → VPN & Device Management → Apple Development: your certificate
+  echo "  Settings → General → VPN & Device Management → Apple Development: your certificate" >&2
+  echo "  (the name shown under the team in Xcode's Signing & Capabilities)" >&2
   exit 1
 }
 

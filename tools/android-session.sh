@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# The Android half of G3's scripted session (plan.md §8): the same beats tools/session20.sh
-# carries through :core-cli, driven by the app's own bridge and view models on the emulator
-# against the live dev gateway.
+# The Android half of the scripted session: the same beats tools/session20.sh carries through
+# :core-cli, driven by the app's own bridge and view models on the emulator against the live dev
+# gateway.
 #
-# It is an instrument, not a test: it prints one "live android: beat ..." line per beat so the
-# log can be pasted into GATES.md, and it stops the gateway it started.
+# It is an instrument rather than a test. It prints one "live android: beat ..." line per beat so
+# the log can be pasted under the gate item, and it stops the gateway it started.
 #
 # usage: tools/android-session.sh [--prompt TEXT]
 set -euo pipefail
