@@ -42,8 +42,11 @@ jobs:
           echo "SDK=$ANDROID_SDK_ROOT"
           set -o pipefail
           SDKMANAGER=$(ls -d "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin 2>/dev/null | head -1)/sdkmanager
-          echo "sdkmanager: $SDKMANAGER"
+          echo "sdkmanager: $SDKMANAGER ($("$SDKMANAGER" --version 2>/dev/null | head -1))"
+          # The image's cmdline-tools were too old to know about platform 37 — it exists in Google's
+          # repository (this machine lists it) and the same manager finds it once updated.
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" --update >/dev/null 2>&1 || true
           if "$SDKMANAGER" "platforms;android-37" "build-tools;37.0.0"; then echo "ANDROID-37 INSTALLED"; else echo "ANDROID-37 NOT INSTALLABLE"; exit 1; fi
 
   macos:
