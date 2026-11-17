@@ -149,7 +149,8 @@ class ModelChipTest {
             """{"event":"turn_model_updated","chat_id":"$chat",
                 "model_name":"another-model","model_preset":"another"}""",
         )
-        advanceUntilIdle()
+        // The frame is reduced on the pump and the chip follows it; the clock says nothing about when.
+        handle.composer.awaitValue(what = "the chip on the frame's preset") { it.modelPreset == "another" }
 
         assertEquals("another", handle.composer.value.modelPreset)
         assertEquals("another-model", handle.composer.value.modelName)
@@ -160,10 +161,12 @@ class ModelChipTest {
         val core = core(engine())
         val handle = core.chat(chat)
         handle.open()
-        advanceUntilIdle()
+        // Opening seeds the chip from the settings read; the pick is only honest once the chat has an id,
+        // and that arrives with the `attached` frame rather than with the clock.
+        handle.composer.awaitValue(what = "the chip bound to the opened chat") { it.modelPreset == "primary" }
 
         handle.setModelPreset("cheap")
-        advanceUntilIdle()
+        handle.composer.awaitValue(what = "the chip showing the pick") { it.modelPreset == "cheap" }
 
         assertEquals("cheap", handle.composer.value.modelPreset, "the chip shows the pick at once")
     }
