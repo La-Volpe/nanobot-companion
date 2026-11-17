@@ -1,21 +1,39 @@
-# T63: everything a Linux runner can honestly run.
+# Continuous integration.
 #
-# Not in here on purpose: `:core:jvmTest` (it links the iOS framework — see tasks.md T63/T64),
-# `:core:iosSimulatorArm64Test`, `:core:koverVerify` (it aggregates the JVM host tests), the XCUITest
-# suite, the connected Android suite, and anything that needs a live gateway or a physical device.
-# Versions are the ones `probe.yml` proved on 2026-11-17 (run 44027157337): ubuntu-24.04,
-# platform 37 installable, Gradle 9.7.0 through the wrapper.
+# The policy, in one place and repeated in the README's testing section (T67):
+#
+#   No gateway secret, API key or device credential ever reaches a hosted runner. The five instruments that
+#   need a real gateway or a real device — `:core:jvmTest -Pcontract`, `tools/parity-check.sh`,
+#   `tools/session20.sh`, `tools/soak.sh`, `tools/android-session.sh` — never run here. They belong to a
+#   `self-hosted` runner on a machine that has a gateway, and to a person who can watch them.
+#
+# No workflow here may name a secret context at all: everything below runs on public images, and the
+# only credentials a job would need belong to the self-hosted instruments above.
+#
+# What runs where, and why, is in tasks.md T62–T66. The short version:
+#   test (ubuntu)      the suites that need no framework and no device
+#   macos              :core:jvmTest (it links the iOS framework first), the iOS tests, the coverage gate
+#                      (which aggregates the two host suites) and XCUITest
+#   connected          the Compose instrumented suite on an emulator — advisory, because the emulator's
+#                      software keyboard can vanish and only a cold boot brings it back (AGENTS gotcha 28)
+#   builds             release APK/AAB and the CLI zip, with the licence and notices asserted inside them
 name: ci
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
+  workflow_dispatch:
 
-# One run per branch: a second push cancels the first rather than queueing minutes behind it.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  # The image's SDK manager does not know platform 37; the package is `android-37.0`, not `android-37`.
+  ANDROID_PLATFORM: platforms;android-37.0
+  ANDROID_BUILD_TOOLS: build-tools;37.0.0
 
 jobs:
   test:
@@ -31,17 +49,13 @@ jobs:
           java-version: "21"
 
       - name: Android SDK
-        # The action that would do this (`android-actions/setup-android@v3`) fails on this image, and
-        # the SDK is already there: the probe installed platform 37 with this exact command.
+        # `android-actions/setup-android@v3` fails on this image and the SDK is already there, so the
+        # SDK manager is driven directly, from the path the image keeps it at.
         run: |
           set -o pipefail
-          SDKMANAGER=$(ls -d "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin 2>/dev/null | head -1)/sdkmanager
-          echo "sdkmanager: $SDKMANAGER ($("$SDKMANAGER" --version 2>/dev/null | head -1))"
-          # The image's cmdline-tools were too old to know about platform 37 — it exists in Google's
-          # repository (this machine lists it) and the same manager finds it once updated.
+          SDKMANAGER=$(ls -d "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin | head -1)/sdkmanager
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-          "$SDKMANAGER" --update >/dev/null 2>&1 || true
-          if "$SDKMANAGER" "platforms;android-37.0" "build-tools;37.0.0"; then echo "ANDROID-37 INSTALLED"; else echo "ANDROID-37 NOT INSTALLABLE"; exit 1; fi
+          "$SDKMANAGER" "$ANDROID_PLATFORM" "$ANDROID_BUILD_TOOLS" >/dev/null
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -66,3 +80,183 @@ jobs:
             app/build/reports/tests/**
             app/build/test-results/**
           retention-days: 7
+
+  macos:
+    name: iOS (macos)
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Android SDK
+        # The coverage gate aggregates `jvmTest` and `testAndroidHostTest`, so this job needs the Android
+        # SDK as well as Xcode. The macOS image ships none, so the command-line tools are fetched once.
+        run: |
+          set -o pipefail
+          if [ ! -d "$HOME/android-sdk/cmdline-tools/latest" ]; then
+            curl -sSLo /tmp/cmdtools.zip https://dl.google.com/android/repository/commandlinetools-mac-13114758_latest.zip
+            mkdir -p "$HOME/android-sdk/cmdline-tools"
+            unzip -q /tmp/cmdtools.zip -d "$HOME/android-sdk/cmdline-tools"
+            mv "$HOME/android-sdk/cmdline-tools/cmdline-tools" "$HOME/android-sdk/cmdline-tools/latest"
+          fi
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$HOME/android-sdk" >> "$GITHUB_ENV"
+          yes | "$HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_PLATFORM" "$ANDROID_BUILD_TOOLS" >/dev/null
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: the Kotlin/Native half and the coverage gate
+        # `:core:jvmTest` links `core.framework` for the simulator before it runs — the bridge shape test
+        # reads the header Kotlin/Swift interop actually generates — and no Linux host can do that.
+        run: |
+          ./gradlew --stacktrace \
+            :core:jvmTest \
+            :core:iosSimulatorArm64Test \
+            :core:koverVerify
+
+      - name: XCUITest on a simulator
+        # `CODE_SIGNING_ALLOWED=NO` is not AGENTS gotcha 19: that one is about *device* installs, where an
+        # unsigned .app is refused by installd. A simulator test needs no team, and the project's two
+        # DEVELOPMENT_TEAM ids are for device builds.
+        run: |
+          xcodebuild test \
+            -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 17' \
+            -derivedDataPath .ci-derived \
+            -resultBundlePath .ci-results.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: the skip lists, printed rather than asserted
+        # The unit suite carries one opt-in skip (210 = 209 + 1 in the local run) and the UI suite the
+        # environment ones, whose count varies with which live suites have a gateway. Printing them keeps
+        # the numbers honest without pinning a figure the environment owns.
+        if: always()
+        run: |
+          xcrun xcresulttool get test-results summary --path .ci-results.xcresult 2>/dev/null || true
+
+      - name: keep the result bundle when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-xcresult
+          path: .ci-results.xcresult
+          retention-days: 7
+
+  connected:
+    name: Android connected (advisory)
+    # Advisory by design: the emulator's software keyboard can stop appearing (`mInputShown=false`,
+    # AGENTS gotcha 28) and only a cold AVD boot revives it, so a red here is information, not a gate.
+    # Deliberately not triggered by `push`, so a merge to main cannot be blocked by that flake.
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Android SDK
+        run: |
+          set -o pipefail
+          SDKMANAGER=$(ls -d "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin | head -1)/sdkmanager
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" "$ANDROID_PLATFORM" "$ANDROID_BUILD_TOOLS" >/dev/null
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: instrumented suite on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          # Pinned: unpinned, Gradle takes whichever device it finds first, and a run that reached a
+          # plugged-in phone failed wholesale with "No compose hierarchies found".
+          ANDROID_SERIAL: emulator-5554
+        with:
+          api-level: 36
+          target: default
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb shell settings put secure show_ime_with_hard_keyboard 1 || true
+            ./gradlew --stacktrace :app:connectedDebugAndroidTest
+
+      - name: the results, whatever they say
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-connected-results
+          path: |
+            app/build/outputs/androidTest-results/**
+            app/build/reports/androidTests/**
+          retention-days: 7
+
+  builds:
+    name: release builds (ubuntu)
+    # Slow half, and no test depends on it: main and tags, or a deliberate dispatch.
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Android SDK
+        run: |
+          set -o pipefail
+          SDKMANAGER=$(ls -d "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin | head -1)/sdkmanager
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" "$ANDROID_PLATFORM" "$ANDROID_BUILD_TOOLS" >/dev/null
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: build the three artefacts
+        run: |
+          ./gradlew --stacktrace \
+            :app:assembleRelease \
+            :app:bundleRelease \
+            :core-cli:distZip
+
+      - name: the notices must be inside the artefacts
+        # A packaging change that drops the licence or the notices fails here instead of being found later.
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/release/app-release-unsigned.apk
+          aab=app/build/outputs/bundle/release/app-release.aab
+          zip=core-cli/build/distributions/core-cli.zip
+          for f in "$apk" "$aab" "$zip"; do
+            [ -f "$f" ] || { echo "missing $f"; exit 1; }
+          done
+          unzip -l "$apk" | grep -q "assets/THIRD_PARTY_NOTICES.txt" || { echo "APK lacks the notices"; exit 1; }
+          unzip -l "$apk" | grep -q "assets/LICENSE" || { echo "APK lacks the licence"; exit 1; }
+          unzip -l "$aab" | grep -q "assets/THIRD_PARTY_NOTICES.txt" || { echo "AAB lacks the notices"; exit 1; }
+          unzip -l "$zip" | grep -q "core-cli/THIRD_PARTY_NOTICES.txt" || { echo "CLI zip lacks the notices"; exit 1; }
+          echo "notices present in all three artefacts"
+
+      - name: upload them
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artefacts
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+            core-cli/build/distributions/core-cli.zip
+          retention-days: 14
