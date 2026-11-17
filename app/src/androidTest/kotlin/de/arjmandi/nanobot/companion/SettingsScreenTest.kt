@@ -202,8 +202,8 @@ class SettingsScreenTest {
         val model = SettingsViewModel(Credentials(), Notifier(), store, disconnectGateway = {})
         screen(model)
 
-        compose.onNodeWithTag("settings.notificationsCopy").assertIsDisplayed()
-        compose.onNodeWithText("no push service", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("settings.notificationsCopy").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("no push service", substring = true).performScrollTo().assertIsDisplayed()
 
         compose.onNodeWithTag("settings.toggle.Needs attention").performScrollTo().performClick()
         compose.waitForIdle()
