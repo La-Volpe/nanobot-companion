@@ -187,6 +187,10 @@ jobs:
           target: default
           arch: x86_64
           disable-animations: true
+          # Cold boot, exactly as on a developer's machine: a snapshot restored emulator can come back with
+          # the software keyboard already broken (`mInputShown=false`, AGENTS gotcha 28), and only a cold
+          # boot revives it. `KeyboardTests` needs that keyboard to exist at all.
+          emulator-options: -no-snapshot-load -no-boot-anim -no-audio -no-window
           script: |
             adb shell settings put secure show_ime_with_hard_keyboard 1 || true
             # No ANDROID_SERIAL: on a runner there is exactly one device and the action owns the adb
