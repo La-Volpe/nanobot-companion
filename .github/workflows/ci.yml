@@ -259,7 +259,9 @@ jobs:
           unzip -l "$apk" | grep -q "assets/THIRD_PARTY_NOTICES.txt" || { echo "APK lacks the notices"; exit 1; }
           unzip -l "$apk" | grep -q "assets/LICENSE" || { echo "APK lacks the licence"; exit 1; }
           unzip -l "$aab" | grep -q "assets/THIRD_PARTY_NOTICES.txt" || { echo "AAB lacks the notices"; exit 1; }
+          unzip -l "$aab" | grep -q "assets/LICENSE" || { echo "AAB lacks the licence"; exit 1; }
           unzip -l "$zip" | grep -q "core-cli/THIRD_PARTY_NOTICES.txt" || { echo "CLI zip lacks the notices"; exit 1; }
+          unzip -l "$zip" | grep -q "core-cli/LICENSE" || { echo "CLI zip lacks the licence"; exit 1; }
           echo "notices present in all three artefacts"
 
       - name: upload them
