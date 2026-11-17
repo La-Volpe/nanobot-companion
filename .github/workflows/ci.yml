@@ -1,0 +1,62 @@
+# T63: everything a Linux runner can honestly run.
+#
+# Not in here on purpose: `:core:jvmTest` (it links the iOS framework — see tasks.md T63/T64),
+# `:core:iosSimulatorArm64Test`, `:core:koverVerify` (it aggregates the JVM host tests), the XCUITest
+# suite, the connected Android suite, and anything that needs a live gateway or a physical device.
+# Versions are the ones `probe.yml` proved on 2026-11-17 (run 44027157337): ubuntu-24.04,
+# platform 37 installable, Gradle 9.7.0 through the wrapper.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# One run per branch: a second push cancels the first rather than queueing minutes behind it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: tests (ubuntu)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Android SDK
+        # The action that would do this (`android-actions/setup-android@v3`) fails on this image, and
+        # the SDK is already there: the probe installed platform 37 with this exact command.
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-37" "build-tools;37.0.0" >/dev/null
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: the suites that need no framework and no device
+        run: |
+          ./gradlew --stacktrace \
+            :core:testAndroidHostTest \
+            :core-cli:test \
+            :app:testDebugUnitTest
+
+      - name: copy parity
+        run: python3 tools/parity_copy.py
+
+      - name: keep the reports when a suite fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-test-reports
+          path: |
+            core/build/reports/tests/**
+            core/build/test-results/**
+            app/build/reports/tests/**
+            app/build/test-results/**
+          retention-days: 7
