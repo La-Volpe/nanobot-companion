@@ -6,6 +6,7 @@ import de.arjmandi.nanobot.companion.platform.FakeAppInfo
 import de.arjmandi.nanobot.companion.platform.FakeClock
 import de.arjmandi.nanobot.companion.platform.InMemoryFileStore
 import de.arjmandi.nanobot.companion.platform.InMemorySecureStore
+import de.arjmandi.nanobot.companion.testing.awaitValue
 import de.arjmandi.nanobot.companion.transport.BootstrapOutcome
 import de.arjmandi.nanobot.companion.transport.ConnectionAttempt
 import de.arjmandi.nanobot.companion.transport.FakeSocket
@@ -25,7 +26,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 /**
@@ -72,7 +72,11 @@ class SessionReadStateTest {
         )
         socket.push("""{"event":"ready","chat_id":"a","client_id":"companion"}""")
         assertIs<ConnectResult.Connected>(core.connect(), "the greeting is what opens the socket")
-        runCurrent()
+        // The greeting starts a drawer read beside the pump, on the engine's own thread, and
+        // `runCurrent` cannot cover that. It has to be waited for here rather than left to the
+        // clock: an answer that lands after a test has set its own state would overwrite the very
+        // thing the test then asserts (T70).
+        core.sessions.awaitValue(what = "the drawer read the greeting starts") { it.loaded }
         return core
     }
 

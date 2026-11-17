@@ -26,8 +26,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 /**
@@ -103,7 +101,8 @@ class ModelChipTest {
         )
         socket.push("""{"event":"ready","chat_id":"websocket:$chat","client_id":"companion"}""")
         assertIs<ConnectResult.Connected>(core.connect())
-        advanceUntilIdle()
+        // No `advanceUntilIdle` here: the reads the greeting starts answer on the engine's own
+        // thread, so every test below waits for the state it reads instead (T70).
         return core
     }
 
@@ -192,9 +191,15 @@ class ModelChipTest {
         val core = core(engine())
 
         core.chat(chat).open()
-        advanceUntilIdle()
-        core.chat("b").open()
-        advanceUntilIdle()
+        // The settings read runs beside the pump, so opening the first chat does not prove it
+        // went out: its answer does, and the answer is a real round trip.
+        core.settings.awaitValue(what = "the settings the socket reads") { it.loaded }
+
+        val second = core.chat("b")
+        second.open()
+        // The second open is a page read of its own, so waiting for that page is waiting for
+        // everything a second open does to have been done.
+        second.history.awaitValue(what = "the second chat's history page") { it == HistoryStatus.Loaded }
 
         assertEquals(1, reads.paths().count { it == "/api/settings" }, "a second chat does not read settings again")
     }
@@ -207,7 +212,6 @@ class ModelChipTest {
         handle.open()
         // A refused read fills no state, so the only thing there is to wait for is the read itself.
         reads.changes.awaitValue(what = "the refused settings read") { list -> list.any { it.path == "/api/settings" } }
-        advanceUntilIdle()
 
         assertNull(handle.composer.value.modelPreset, "nothing was read, so the chip says nothing")
         assertNull(handle.composer.value.modelName)

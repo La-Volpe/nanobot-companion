@@ -25,7 +25,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
@@ -159,8 +158,13 @@ class PresetAgreementTest {
 
         handle.setModelPreset("Vision and OCR")
         runCurrent()
+        // The settled turn asks for the drawer's rows again, because a pick waits on that answer.
+        // A row for another chat is what proves the read landed, and a chat with no row keeps its
+        // pick; the ring is what the test reads, so the ring is what it waits for.
+        sessions = row(other, null)
         socket.turnEnds(chat, contextTokens = 64_000)
-        advanceUntilIdle()
+        readsOf(core, other, null)
+        handle.composer.awaitValue(what = "the ring on the picked preset's window") { it.contextPercent == 25 }
 
         val composer = handle.composer.value
         assertEquals("Vision and OCR", composer.modelPreset, "the chip names the preset that was picked")
@@ -189,8 +193,12 @@ class PresetAgreementTest {
         connect(core, second, other)
         readsOf(core, other, null)
         // The greeting clears the pick and the drawer read is what republishes the chip, so the row
-        // landing is not yet the chip changing: wait for the chip itself.
-        handle.composer.awaitValue(what = "the chip back on the gateway's preset") { it.modelPreset == "primary" }
+        // landing is not yet the chip changing: wait for the chip itself. The whole row, because
+        // `modelName` was the one field this test asserted without ever waiting for it, and the
+        // hosted runner failed it on a string comparison (run 44042007234).
+        handle.composer.awaitValue(what = "the chip back on the gateway's preset") {
+            it.modelPreset == "primary" && it.modelName == "GLM-4.6" && it.contextWindowTokens == 1_000_000
+        }
 
         val composer = handle.composer.value
         assertEquals("primary", composer.modelPreset, "the chat is on what the gateway configured")
