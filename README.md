@@ -125,14 +125,18 @@ address; the secret is the gateway's WebUI secret.
 
 ## Testing
 
+Counts are what the suites reported on 2026-11-17, read from `core/build/test-results/`,
+`app/build/test-results/` and the Xcode `.xcresult` of a full run; re-read them the same way if you want to
+know whether they are still true.
+
 ```bash
-./gradlew :core:allTests                    # 292 jvm · 185 iOS sim · 172 android host
-./gradlew :core:jvmTest -Pcontract          # against a live gateway (4 tests)
-./gradlew :core:koverVerify                 # 85% floor on wire/projection/engine (measured 95.7%)
-./gradlew :app:testDebugUnitTest            # 79
-./gradlew :app:connectedDebugAndroidTest    # 56 on the emulator
+./gradlew :core:allTests                    # 439 jvm · 321 iOS sim · 307 android host
+./gradlew :core:jvmTest -Pcontract          # against a live gateway (10 tests across three suites)
+./gradlew :core:koverVerify                 # 85% floor on wire/projection/engine
+./gradlew :app:testDebugUnitTest            # 173
+./gradlew :app:connectedDebugAndroidTest    # 83 on the emulator
 cd iosApp && xcodebuild -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 17' test
-                                            # 95 swift-testing + 29 XCUITest
+                                            # 210 swift-testing + 57 XCUITest
 ```
 
 Instruments that are not unit tests, and earn their keep:
