@@ -27,7 +27,9 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # The event name is part of the group so a manual dispatch is not killed by the next push: a person asking
+  # for the Android suite should get an answer, which is exactly what happened to the first dispatch run.
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 env:
