@@ -148,3 +148,60 @@ jobs:
           path: .ci-results.xcresult
           retention-days: 7
 
+  connected:
+    name: Android connected (advisory)
+    # Advisory by design: the emulator's software keyboard can stop appearing (`mInputShown=false`,
+    # AGENTS gotcha 28) and only a cold AVD boot revives it, so a red here is information, not a gate.
+    # Deliberately not triggered by `push`, so a merge to main cannot be blocked by that flake.
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Android SDK
+        run: |
+          set -o pipefail
+          SDKMANAGER=$(ls -d "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin | head -1)/sdkmanager
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" "$ANDROID_PLATFORM" "$ANDROID_BUILD_TOOLS" >/dev/null
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: instrumented suite on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          # Pinned: unpinned, Gradle takes whichever device it finds first, and a run that reached a
+          # plugged-in phone failed wholesale with "No compose hierarchies found".
+          ANDROID_SERIAL: emulator-5554
+        with:
+          api-level: 36
+          target: default
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb shell settings put secure show_ime_with_hard_keyboard 1 || true
+            ./gradlew --stacktrace :app:connectedDebugAndroidTest
+
+      - name: the results, whatever they say
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-connected-results
+          path: |
+            app/build/outputs/androidTest-results/**
+            app/build/reports/androidTests/**
+          retention-days: 7
+
