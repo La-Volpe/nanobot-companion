@@ -7,9 +7,9 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.StandardTestDispatcher
 
 /**
- * The composition root (plan.md C1.5). Its point is that an engine or facade test can
+ * The composition root. Its point is that an engine or facade test can
  * be built out of fakes alone, so this test composes [CoreDeps] from the test doubles
- * and uses every seam through it — if a seam is missing, nothing else in C4–C8 compiles.
+ * and uses every seam through it: if a seam is missing, nothing else in the facade compiles.
  */
 class CoreDepsTest {
 

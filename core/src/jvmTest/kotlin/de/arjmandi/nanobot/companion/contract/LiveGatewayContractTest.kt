@@ -34,7 +34,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assume.assumeTrue
 
 /**
- * The wire against a real gateway (plan.md §3.4, G1). These run only with `-Pcontract` and a
+ * The wire against a real gateway. These run only with `-Pcontract` and a
  * gateway started by `tools/nanobot-dev.sh`, and they are the only tests in the repo that are
  * allowed to be slow: one real turn through a real model, the drawer's real payload, and a real
  * refusal.
@@ -141,8 +141,8 @@ class LiveGatewayContractTest {
         val stored = listed.rows.firstOrNull { it.preview.isNotBlank() }
             ?: error("the dev gateway has no session with history; run one turn first")
 
-        // A chat this socket never watched: everything that lands here came from the page read
-        // (D46), which is exactly what the app was missing after a reconnect.
+        // A chat this socket never watched: everything that lands here came from the page read,
+        // which is exactly what the app was missing after a reconnect.
         val handle = core.chat(stored.chatId)
         handle.open()
 

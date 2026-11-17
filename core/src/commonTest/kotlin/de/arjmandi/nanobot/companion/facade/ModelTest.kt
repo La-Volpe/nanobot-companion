@@ -25,7 +25,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Presets are a chat command, not a frame (plan.md C6.2, §0): `/model <preset>` goes out as a
+ * Presets are a chat command, not a frame: `/model <preset>` goes out as a
  * message and `turn_model_updated` is the answer. The composer therefore learns the model
  * from the gateway, and a fallback has to reach the user as a notice, not silence.
  */
@@ -66,7 +66,7 @@ class ModelTest {
         return core
     }
 
-    /** The same core, before a greeting: its pending chat has no id yet (C5.3). */
+    /** The same core, before a greeting: its pending chat has no id yet. */
     private suspend fun TestScope.freshCore(socket: FakeSocket): NanobotCore =
         core(socket = socket, connect = false)
 
@@ -88,11 +88,10 @@ class ModelTest {
     }
 
     /**
-     * T39: the owner tapped a preset and "nothing happened". `/model <preset>` is a turn of its
-     * own and the gateway answers it with a message and a `turn_end` — no `turn_model_updated`
-     * (measured against the dev gateway, 2026-11-15) — so the chip's optimistic pick is the only
-     * thing naming the new preset, and the next frame used to wipe it back to the gateway's
-     * configured one.
+     * The owner tapped a preset and "nothing happened". `/model <preset>` is a turn of its own and
+     * the gateway answers it with a message and a `turn_end`, no `turn_model_updated` (measured
+     * against the dev gateway, 2026-11-15), so the chip's optimistic pick is the only thing naming
+     * the new preset, and the next frame used to wipe it back to the gateway's configured one.
      */
     @Test
     fun aPickedPresetSurvivesTheFramesThatFollow() = runTest {
@@ -114,7 +113,7 @@ class ModelTest {
         )
     }
 
-    /** The gateway's own word for the model it ran wins over a pick it never confirmed (T39). */
+    /** The gateway's own word for the model it ran wins over a pick it never confirmed. */
     @Test
     fun theGatewaysAnswerOutranksThePick() = runTest {
         val socket = FakeSocket()
@@ -132,8 +131,8 @@ class ModelTest {
     }
 
     /**
-     * T39, the silent half: a pick on a socket that will not carry it told nobody and left the
-     * chip claiming a model the chat was not on.
+     * The silent half: a pick on a socket that will not carry it told nobody, and left the chip
+     * claiming a model the chat was not on.
      */
     @Test
     fun aPickTheSocketRefusedSaysSoAndPutsTheChipBack() = runTest {
@@ -153,7 +152,7 @@ class ModelTest {
     fun aPickOnAChatWithNoIdIsRejected() = runTest {
         val socket = FakeSocket()
         val core = freshCore(socket)
-        // A chat with no greeting behind it keeps a null id (`newChatSession`, C5.3).
+        // A chat with no greeting behind it keeps a null id (`newChatSession`).
         val fresh = core.chat(chatId = null)
 
         assertEquals(PresetResult.Rejected(PresetRejection.NotConnected), fresh.setModelPreset("primary"))

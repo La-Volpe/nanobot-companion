@@ -15,9 +15,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 
 /**
- * `core-cli connect | sessions | send | watch | soak` (plan.md C8.3). Every command prints
- * plain lines, because two of them are gate instruments: `watch`'s transcript is compared
- * against the WebUI's, and `soak`'s summary is pasted into `GATES.md`.
+ * `core-cli connect | sessions | send | watch | soak`. Every command prints plain lines,
+ * because two of them are instruments: `watch`'s transcript is compared against the WebUI's,
+ * and `soak`'s summary is pasted into the gate record.
  */
 internal object HarnessCommands {
 
@@ -49,13 +49,13 @@ internal object HarnessCommands {
                 harness.connect()
                 harness.chat(flags["chat"]).also { named ->
                     // A named chat has to be opened, not just bound: `chat(id)` only registers a
-                    // handle, and the stored turns arrive from the thread page that `open()` reads
-                    // (D46). Without this the transcript of an existing chat is empty.
+                    // handle, and the stored turns arrive from the thread page that `open()` reads.
+                    // Without this the transcript of an existing chat is empty.
                     named.open()
                 }
             }
             // `--media PATH` uploads a real file first and sends its reference, which is the
-            // composer's own path (C6.6) and the only way to get real bytes into a chat from
+            // composer's own path and the only way to get real bytes into a chat from
             // this harness. The row the gateway signs back is what a media row draws.
             val media = flags["media"]?.let { path -> upload(handle, File(path)) }
             val draft = OutboundDraft(text = prompt, media = listOfNotNull(media))
@@ -88,8 +88,8 @@ internal object HarnessCommands {
                 harness.connect()
                 harness.chat(flags["chat"]).also { named ->
                     // A named chat has to be opened, not just bound: `chat(id)` only registers a
-                    // handle, and the stored turns arrive from the thread page that `open()` reads
-                    // (D46). Without this the transcript of an existing chat is empty.
+                    // handle, and the stored turns arrive from the thread page that `open()` reads.
+                    // Without this the transcript of an existing chat is empty.
                     named.open()
                 }
             }
@@ -125,8 +125,8 @@ internal object HarnessCommands {
     }
 
     /**
-     * The soak rig (plan.md C8.4): reconnect, send, settle, repeat, for a wall-clock budget.
-     * Everything it counts is a gate item: uncaught errors, leaked jobs, sends, reconnects.
+     * The soak rig: reconnect, send, settle, repeat, for a wall-clock budget. Everything it
+     * counts is a gate item: uncaught errors, leaked jobs, sends, reconnects.
      */
     fun soak(args: List<String>) = run("soak", args) { flags ->
         val sends = flags["sends"]?.toInt() ?: 200
@@ -166,7 +166,7 @@ internal object HarnessCommands {
                 val roundStarted = System.currentTimeMillis()
 
                 // A reconnect is a fresh bootstrap and a fresh single-use token, and it rejoins
-                // the same chat afterwards: the gateway has no resume (plan.md §0, C3.4).
+                // the same chat afterwards: the gateway has no resume.
                 if (sent > 0 && sent % everyNth == 0 && reconnected < reconnects) {
                     harness.disconnect()
                     val active = harness.core.activeChildJobs()

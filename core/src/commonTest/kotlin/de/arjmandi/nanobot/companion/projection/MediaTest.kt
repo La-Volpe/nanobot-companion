@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 /**
  * A turn's media, as the gateway sends it (`nanobot/webui/outbound_delivery.py:465` on the
  * socket, `nanobot/webui/transcript.py:1567` in the stored page): `media_urls` is a list of
- * `{url, name}` — no `kind`, because the WebUI infers it (`webui/src/lib/media.ts:38-53`) —
+ * `{url, name}` with no `kind`, because the WebUI infers it (`webui/src/lib/media.ts:38-53`),
  * and the url is the origin-relative signed path `/api/media/<sig>/<payload>`.
  *
  * The rows are what the two apps draw, so what they are and what they are called is decided

@@ -5,7 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /**
- * The secure store is the only place a gateway secret may live (plan.md D5). The
+ * The secure store is the only place a gateway secret may live. The
  * in-memory fake is what every facade and engine test uses, so its contract is the
  * same three calls the Keychain and Keystore implementations owe.
  */

@@ -3,9 +3,9 @@ package de.arjmandi.nanobot.companion.wire
 import kotlinx.serialization.json.JsonObject
 
 /**
- * Tool rows, diffs and prompts (plan.md C4.4). The gateway reports tool work inside
- * `message.tool_events` and edits inside `file_edit`, so both carry the raw objects the
- * activity list renders from.
+ * Tool rows, diffs and prompts. The gateway reports tool work inside `message.tool_events`
+ * and edits inside `file_edit`, so both carry the raw objects the activity list renders
+ * from.
  */
 internal data class MessageFrame(
     val text: String?,

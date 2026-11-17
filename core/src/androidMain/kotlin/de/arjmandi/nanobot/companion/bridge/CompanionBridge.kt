@@ -10,9 +10,9 @@ import de.arjmandi.nanobot.companion.platform.productionDeps
 import io.ktor.client.HttpClient
 
 /**
- * The app-level object the Android layer holds (plan.md §8, the twin of the iOS `Companion`).
+ * The app-level object the Android layer holds (the twin of the iOS `Companion`).
  * It exists for the same two reasons: the facade's constructor wants an `HttpClient`, which no
- * screen should build, and the client needs an owner that ends it — a `NanobotCore` outlives
+ * screen should build, and the client needs an owner that ends it, since a `NanobotCore` outlives
  * neither.
  */
 public class Companion internal constructor(
@@ -28,10 +28,10 @@ public class Companion internal constructor(
 
 /**
  * Builds the whole Android stack from the three things onboarding collects: the address, the key,
- * and whether the user turned on the unverified-certificate switch for this gateway (C3.2).
+ * and whether the user turned on the unverified-certificate switch for this gateway.
  *
  * The `context` is here because the platform stores are: the encrypted preferences this app keeps
- * its key in and the app-support directory a thread cache is written to (D17).
+ * its key in and the app-support directory a thread cache is written to.
  */
 public fun openCompanion(
     context: Context,

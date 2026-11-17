@@ -2,7 +2,7 @@ package de.arjmandi.nanobot.companion.wire
 
 import kotlinx.serialization.json.JsonObject
 
-/** `message_accepted` reconciles the optimistic bubble with the server's turn id (C4.5). */
+/** `message_accepted` reconciles the optimistic bubble with the server's turn id. */
 internal data class MessageAcceptedFrame(
     val turnId: String?,
     val startsTurn: Boolean,
@@ -22,7 +22,7 @@ internal data class SessionUpdatedFrame(
     override val event: String get() = "session_updated"
 }
 
-/** The model that answered this turn, which is what the composer's preset chip shows (C6.2). */
+/** The model that answered this turn, which is what the composer's preset chip shows. */
 internal data class TurnModelUpdatedFrame(
     val modelName: String?,
     val modelPreset: String?,
@@ -78,7 +78,7 @@ internal data class RecoveryStateFrame(
     override val event: String get() = "recovery_state"
 }
 
-/** The turn's settle frame: usage for the ring, `goal_state` for the strip, failure fields for retry (C4.5). */
+/** The turn's settle frame: usage for the ring, `goal_state` for the strip, failure fields for retry. */
 internal data class TurnEndFrame(
     val turnId: String?,
     val latencyMs: Long?,
@@ -99,7 +99,7 @@ internal data class TurnEndFrame(
     override val event: String get() = "turn_end"
 }
 
-/** D15.4: every one of these arrives inside `turn_end.usage` and `model_request.request_usage`. */
+/** Every one of these arrives inside `turn_end.usage` and `model_request.request_usage`. */
 public data class Usage(
     public val promptTokens: Int = 0,
     public val completionTokens: Int = 0,

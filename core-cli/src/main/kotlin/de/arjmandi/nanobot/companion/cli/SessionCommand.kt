@@ -13,18 +13,18 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * `core-cli session` — the 20-minute scripted session G2 asks for (plan.md §7), run against the
+ * `core-cli session`: the 20-minute scripted session the iOS gate asks for, run against the
  * live gateway with the same `:core` the app links.
  *
  * The beats are the gate's own list: connect, send, stream, attach, transcribe, stop, reconnect
  * mid-turn, resume. The pacing spreads them across the budget so the session really lasts
  * twenty minutes and a socket that dies at minute twelve is not a session that never had time
- * to fail. One line per beat, plain, so the log can be pasted into `GATES.md`.
+ * to fail. One line per beat, plain, so the log can be pasted into the gate record.
  *
- * Two substitutions, named rather than hidden: the recording is a generated 2-second WAV
- * (a simulator and a CI host have no microphone; the bytes are real and go through the real
- * gateway), and the reconnect is `connect()` again, which is what the app does — the gateway
- * mints a single-use token per handshake and has no resume (plan.md §0, C3.4).
+ * Two substitutions are deliberate. The recording is a generated 2-second WAV, because a
+ * simulator and a CI host have no microphone, and the bytes are real and go through the real
+ * gateway. The reconnect is `connect()` again, which is what the app does: the gateway mints a
+ * single-use token per handshake and has no resume.
  */
 internal object SessionCommand {
 
@@ -73,7 +73,7 @@ internal object SessionCommand {
             }
             pace(started, paceMs, 1)
 
-            // 4. attach: a real file, uploaded with the greeting's capability (C6.6).
+            // 4. attach: a real file, uploaded with the greeting's capability.
             beat("attach") {
                 val file = PickedFile(
                     name = "session-attach.txt",

@@ -24,7 +24,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * A socket that dies without a FIN, a close frame or an error (plan.md §2): the phone changed
+ * A socket that dies without a FIN, a close frame or an error: the phone changed
  * networks, or the gateway's host stopped answering, so `incoming` never ends and the dot stays
  * green over a connection that cannot carry anything. The heartbeat is the engine's own answer
  * to that, and everything here runs on virtual time with a fake transport.

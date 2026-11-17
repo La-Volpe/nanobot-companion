@@ -16,9 +16,9 @@ internal sealed interface AutomationsOutcome {
 }
 
 /**
- * `GET /api/webui/automations` (plan.md C7.2) — the only automation endpoint that is a plain
- * read. Every action is a socket mutation, because the gateway refuses WebUI writes over
- * HTTP with a 405 ("WebUI mutations require an authenticated WebSocket").
+ * `GET /api/webui/automations`, the only automation endpoint that is a plain read. Every
+ * action is a socket mutation, because the gateway refuses WebUI writes over HTTP with a
+ * 405 ("WebUI mutations require an authenticated WebSocket").
  */
 internal class AutomationsClient(
     private val http: HttpClient,

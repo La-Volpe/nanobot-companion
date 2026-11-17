@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 import kotlinx.serialization.json.JsonArray
 
 /**
- * C6.4's evidence: the palette is built from two recorded payloads, not from remembered
+ * The palette's evidence: it is built from two recorded payloads, not from remembered
  * shapes. `palette/commands.json` is `/api/commands` and `palette/cli-apps.json` is
  * `/api/settings/cli-apps?installed_only=1`, both captured from the dev gateway and
  * indexed in the set's manifest (`manifest.reads`).

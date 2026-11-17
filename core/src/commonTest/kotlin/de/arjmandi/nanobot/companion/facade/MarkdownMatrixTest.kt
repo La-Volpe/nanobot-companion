@@ -9,9 +9,9 @@ import kotlin.test.assertTrue
 
 /**
  * The construct matrix: one row per markdown construct the WebUI's renderer handles, and what this
- * parser makes of it. `webui/src/components/MarkdownTextRenderer.tsx` is where the list comes from —
- * `remark-gfm` (tables, task items, strikethrough, autolinks), `remark-breaks`, `streamdown`'s
- * block splitting, and the `mermaid` fence the code-block switch looks for — so a row exists here
+ * parser makes of it. `webui/src/components/MarkdownTextRenderer.tsx` is where the list comes
+ * from: `remark-gfm` (tables, task items, strikethrough, autolinks), `remark-breaks`, `streamdown`'s
+ * block splitting, and the `mermaid` fence the code-block switch looks for. A row exists here
  * because the browser draws it, not because markdown happens to have it.
  *
  * Every row is written as the tree the platform should receive, in one line. A group collects all
@@ -114,8 +114,8 @@ class MarkdownMatrixTest {
         )
         row("a tilde fence can hold backticks", "~~~\n```\n~~~", "code(-:```)")
         // CommonMark: a closing fence is a run of the same character, at least as long as its
-        // opener. Anything shorter, or the other character, is content — which is what makes
-        // markdown-inside-markdown one block instead of three (T21).
+        // opener. Anything shorter, or the other character, is content, which is what makes
+        // markdown-inside-markdown one block instead of three.
         row(
             "a shorter run inside a longer fence is content",
             "````\n```\ninner\n```\n````",

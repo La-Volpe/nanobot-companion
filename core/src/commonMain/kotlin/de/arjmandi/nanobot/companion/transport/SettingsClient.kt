@@ -16,9 +16,9 @@ internal sealed interface SettingsOutcome {
 }
 
 /**
- * Settings → Overview (plan.md C7.1): `GET /api/settings` and `GET /api/settings/usage`, both
- * with the bootstrap `api_token` (D15.6). One call, two documents, because Overview shows the
- * version beside the totals and a half-loaded screen would say "0 tokens spent".
+ * Settings → Overview: `GET /api/settings` and `GET /api/settings/usage`, both with the
+ * bootstrap `api_token`. One call, two documents, because Overview shows the version beside
+ * the totals and a half-loaded screen would say "0 tokens spent".
  */
 internal class SettingsClient(
     private val http: HttpClient,

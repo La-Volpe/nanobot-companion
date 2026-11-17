@@ -9,7 +9,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * One socket serves every chat (plan.md C5.4). The gateway tags each frame with its chat,
+ * One socket serves every chat. The gateway tags each frame with its chat,
  * so the router's job is two rules: route by `chat_id`, and never let a send overtake the
  * attach that makes its chat real.
  */

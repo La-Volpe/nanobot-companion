@@ -7,8 +7,8 @@ import kotlin.system.exitProcess
  * `core-cli record [--profile PATH] [--out DIR] [--scenario NAME] [--prompt TEXT]
  * [--gateway-rev REV] [--nanobot-src DIR]`
  *
- * The provenance header the plan asks for is `manifest.json`: a JSON file cannot
- * carry a comment, and a sidecar is what the codec reads anyway.
+ * The provenance header is `manifest.json`: a JSON file cannot carry a comment, and a sidecar
+ * is what the codec reads anyway.
  */
 internal object RecordCommand {
 

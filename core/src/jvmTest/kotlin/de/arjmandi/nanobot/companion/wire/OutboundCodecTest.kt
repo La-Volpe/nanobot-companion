@@ -11,7 +11,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * The ten envelopes the client may send (plan.md C2.3, §0). Their shape is the
+ * The ten envelopes the client may send. Their shape is the
  * gateway's inbound contract (`nanobot/webui/inbound_commands.py`), so a wrong field
  * name here is a silent refusal on the wire, not a compile error.
  */
@@ -55,7 +55,7 @@ class OutboundCodecTest {
         assertEquals("ref-1", media.text("reference"))
         assertEquals("report.pdf", media.text("name"))
         // A string, not an object: webui/src/lib/types.ts:1866 and the gateway's
-        // normalize_webui_quote (D23). This assertion previously expected an object and
+        // normalize_webui_quote. This assertion previously expected an object and
         // was wrong, which is how the quote was silently lost.
         assertEquals("earlier message", (encoded["quoted_context"] as JsonPrimitive).content)
     }

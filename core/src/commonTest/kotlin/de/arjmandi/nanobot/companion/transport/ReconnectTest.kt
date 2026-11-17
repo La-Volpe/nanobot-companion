@@ -13,7 +13,7 @@ import kotlinx.serialization.json.jsonObject
 
 /**
  * A bootstrap token is consumed by the handshake, which is the failure mode that makes a
- * mobile chat client go quiet after the phone sleeps (plan.md C3.4, §11). One connection
+ * mobile chat client go quiet after the phone sleeps. One connection
  * attempt is therefore exactly one bootstrap plus one handshake, never a reused token.
  */
 class ReconnectTest {

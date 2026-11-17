@@ -28,17 +28,18 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 /**
- * One preset, one answer (T46). The owner opened a new chat on the round-3 build and the composer
+ * One preset, one answer. The owner opened a new chat on the round-3 build and the composer
  * read `GLM` over a `256K` ring: `GLM` is what `primary` runs and 256 000 is `Vision and OCR`'s
  * window, so one row was describing two presets, one of them belonging to a chat the owner was
  * not in.
  *
  * Measured against the dev gateway (2026-11-16, `core-cli send --prompt "/model broken"`):
- * `GET /api/settings` still answers `agent.model_preset: primary` afterwards — `/model` writes the
- * preset into the *session's* metadata (`loop.py:587 set_session_model_preset`) and publishes no
- * frame at all — while `GET /api/sessions` answers the chat's own `model_preset: broken` on its
- * row. So the settings read cannot settle a switch, the chat's row can, and neither may supply
- * half a row: whatever names the preset names its model and its window too.
+ * `GET /api/settings` still answers `agent.model_preset: primary` afterwards, because `/model`
+ * writes the preset into the *session's* metadata (`loop.py:587 set_session_model_preset`) and
+ * publishes no frame at all, while `GET /api/sessions` answers the chat's own
+ * `model_preset: broken` on its row. So the settings read cannot settle a switch, the chat's row
+ * can, and neither may supply half a row: whatever names the preset names its model and its
+ * window too.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class PresetAgreementTest {
@@ -99,7 +100,7 @@ class PresetAgreementTest {
         assertEquals(256_000, handle.composer.value.contextWindowTokens, "and its own window")
     }
 
-    /** Each connect takes the next socket, because a bootstrap token is single-use (C3.4). */
+    /** Each connect takes the next socket, because a bootstrap token is single-use. */
     private fun TestScope.core(vararg sockets: FakeSocket): NanobotCore {
         val text = """
             {"token":"tok","ws_url":"ws://127.0.0.1:18765/","ws_path":"/","expires_in":300,
@@ -192,7 +193,7 @@ class PresetAgreementTest {
 
     /**
      * The pick the gateway applied: its session row is the confirmation, and it says the same
-     * preset the chip does — so the sheet's tick, the chip's name and the ring's window all
+     * preset the chip does, so the sheet's tick, the chip's name and the ring's window all
      * describe one model.
      */
     @Test
@@ -231,9 +232,9 @@ class PresetAgreementTest {
     }
 
     /**
-     * The pick the gateway refused — an unknown or removed preset answers with a message and a
-     * `turn_end`, and writes no metadata. Everything goes back together: a chip that keeps the
-     * preset of a switch that did not happen is the same lie as the name from another preset.
+     * The pick the gateway refused: an unknown or removed preset answers with a message and a
+     * `turn_end`, and writes no metadata. Everything goes back together, because a chip that keeps
+     * the preset of a switch that did not happen is the same lie as the name from another preset.
      */
     @Test
     fun aRefusedSwitchRevertsTheNameTheWindowAndTheRing() = runTest {

@@ -7,8 +7,7 @@ import kotlinx.serialization.json.jsonObject
 /**
  * Text in, [Frame] out. Nothing here throws on a payload it does not understand: an
  * unknown event or a mis-shaped one becomes [UnknownFrame] with its raw bytes intact,
- * which is what lets a newer gateway talk to this client instead of killing the chat
- * (plan.md C2.2).
+ * which is what lets a newer gateway talk to this client instead of killing the chat.
  */
 internal object FrameCodec {
 

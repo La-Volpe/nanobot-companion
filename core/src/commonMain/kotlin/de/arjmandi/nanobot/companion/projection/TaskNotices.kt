@@ -4,7 +4,7 @@ package de.arjmandi.nanobot.companion.projection
  * When a frame is worth a notification (the WebUI's rule, `lib/browser-notifications.ts`
  * `taskNoticeKey`, plus the one case a browser does not have: a chat the user is looking at).
  *
- * Pure by construction — a settled turn or a recovery in, a decision out — because the same
+ * Pure by construction, a settled turn or a recovery in and a decision out, because the same
  * answer has to hold on two platforms and neither may keep its own copy of the rule.
  */
 
@@ -113,13 +113,13 @@ public object TaskNoticeRule {
 }
 
 /**
- * The three switches Notifications draws (design README) and the outcome each one gates (T43).
+ * The three switches Notifications draws and the outcome each one gates.
  *
  * The gateway settles four outcomes and the screen has three rows, so the middle row is "failed or
  * stopped": a switch that names less than it gates would silence a turn the user watched stop, and
  * a control that lies is worse than one that is missing. The keys and the defaults live here
- * because both phones store the same three flags — a key that drifted between the row and the
- * poster would be a switch that quietly gates nothing.
+ * because both phones store the same three flags, and a key that drifted between the row and the
+ * poster would be a switch that gates nothing.
  */
 public enum class NoticeCategory(
     /** The store key the row writes and the poster reads. */
@@ -149,7 +149,7 @@ public enum class NoticeCategory(
 }
 
 /**
- * The reader's three switches, read at post time (T43) so a change applies to the next notice and
+ * The reader's three switches, read at post time so a change applies to the next notice and
  * not to the next launch. The defaults are [NoticeCategory]'s, so a fresh install posts exactly what
  * its switches say.
  */
@@ -173,7 +173,8 @@ public enum class NotificationPermission { NotAsked, Granted, Denied }
 /**
  * When to ask. Never at launch: the first moment the answer changes something is a notice the
  * app wanted to show and could not, and Settings is the other place a user goes looking. A
- * denied answer is not re-asked — the platform's own screen is the only honest offer then.
+ * denied answer is not re-asked, because the platform's own screen is the only honest offer
+ * then.
  */
 public object NotificationPrompt {
     public fun shouldAsk(permission: NotificationPermission, missedANotice: Boolean): Boolean =

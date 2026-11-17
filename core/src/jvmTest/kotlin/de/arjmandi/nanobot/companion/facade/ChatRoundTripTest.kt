@@ -38,7 +38,7 @@ import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * The whole path in one test: bootstrap, handshake, `ready`, send, stream, `turn_end`
- * (plan.md C8.1, G1's `-Pcontract` in miniature). The gateway here is a real Ktor WebSocket
+ * (`-Pcontract` in miniature). The gateway here is a real Ktor WebSocket
  * server in-process, so what is exercised is the client's own HTTP and socket code rather
  * than a fake of it.
  */
@@ -117,7 +117,7 @@ class ChatRoundTripTest {
         assertEquals(7, settled.usage?.totalTokens, "usage comes from turn_end (D15.4)")
         assertEquals(1, tokens.get(), "one connect, one bootstrap")
 
-        // The drawer came from the API, using the bootstrap's api_token (D15.6).
+        // The drawer came from the API, using the bootstrap's api_token.
         val loaded = core.sessions.first { it.loaded }
         assertEquals(listOf("Round trip"), loaded.rows.map { it.title })
 

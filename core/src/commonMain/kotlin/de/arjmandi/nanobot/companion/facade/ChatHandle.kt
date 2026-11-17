@@ -13,7 +13,7 @@ import de.arjmandi.nanobot.companion.wire.UploadReference
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-/** The gateway's own transcription bounds, from `transcription_ws.py` (C6.5). */
+/** The gateway's own transcription bounds, from `transcription_ws.py`. */
 internal const val MIN_TRANSCRIPTION_MS: Long = 650
 internal const val MAX_TRANSCRIPTION_MS: Long = 120_000
 
@@ -21,7 +21,7 @@ internal const val MAX_TRANSCRIPTION_MS: Long = 120_000
 private const val BAD_REQUEST: Int = 400
 
 /**
- * One chat (plan.md §2). The handle is a view over a [ChatSession] the core owns, so two
+ * One chat. The handle is a view over a [ChatSession] the core owns, so two
  * handles for the same chat show the same thread instead of drifting apart.
  */
 public class ChatHandle internal constructor(
@@ -29,13 +29,13 @@ public class ChatHandle internal constructor(
     internal val session: ChatSession,
 ) {
 
-    /** The gateway's chat id, null for a chat the gateway has not minted yet (C5.3). */
+    /** The gateway's chat id, null for a chat the gateway has not minted yet. */
     public val id: StateFlow<String?> get() = session.id
 
     public val thread: StateFlow<ThreadState> get() = session.thread
 
     /**
-     * Whether the stored page has been read (D46). A thread with no turns is either an untouched
+     * Whether the stored page has been read. A thread with no turns is either an untouched
      * conversation or one whose history has not arrived, and the screen needs to tell them apart.
      */
     public val history: StateFlow<HistoryStatus> get() = session.history
@@ -43,9 +43,9 @@ public class ChatHandle internal constructor(
     public val composer: StateFlow<ComposerState> get() = session.composer
 
     /**
-     * Open this chat (I3): one `attach` for the live subscription, then the stored turns from
-     * the gateway's own thread page, reduced into [thread] (D46). A screen calls this when it
-     * appears; calling it again on the same chat is free.
+     * Open this chat: one `attach` for the live subscription, then the stored turns from the
+     * gateway's own thread page, reduced into [thread]. A screen calls this when it appears;
+     * calling it again on the same chat is free.
      */
     @Throws(Throwable::class)
     public suspend fun open() {
@@ -56,7 +56,7 @@ public class ChatHandle internal constructor(
     /**
      * A prompt that landed, asked the only way a screen can: is there a bubble for it that was
      * not there before? [mark] is the thread's turn ids from before the attempt, so a second
-     * send of the same words is not credited to the first bubble (T42).
+     * send of the same words is not credited to the first bubble.
      *
      * This exists because a receipt can fail where the message did not: the phone showed the
      * prompt under its own bubble *and* back in the composer, so the restore has to be decided by
@@ -75,17 +75,17 @@ public class ChatHandle internal constructor(
     }
 
     /**
-     * A preset switch is the `/model` command on this chat, not a frame of its own (C6.2).
+     * A preset switch is the `/model` command on this chat, not a frame of its own.
      *
      * The pick is the chat's own until the gateway answers, which is the WebUI's `localModelPreset`:
      * `/model` comes back as a turn with an ordinary message and **no** `turn_model_updated`
      * (measured against the dev gateway), so the chip has nothing else to name the new preset and
-     * a frame in between used to wipe it back (T39). A pick that never reached the socket is a
+     * a frame in between used to wipe it back. A pick that never reached the socket is a
      * rejection rather than a silence, and the chip goes back to what the chat is really on.
      *
      * The row is mirrored in full rather than the preset alone: a chip that names the new preset
      * while the ring still divides by the old one's window is the half-updated row that read `GLM`
-     * over `256K` (T46).
+     * over `256K`.
      */
     @Throws(Throwable::class)
     public suspend fun setModelPreset(preset: String): PresetResult {
@@ -104,8 +104,8 @@ public class ChatHandle internal constructor(
     }
 
     /**
-     * The access chip. The gateway answers only by refusing — `detail:
-     * "workspace_scope_rejected"` — so the previous mode is remembered here until then (C6.3).
+     * The access chip. The gateway answers only by refusing (`detail:
+     * "workspace_scope_rejected"`), so the previous mode is remembered here until then.
      */
     @Throws(Throwable::class)
     public suspend fun setWorkspaceScope(mode: WorkspaceScope) {
@@ -117,8 +117,8 @@ public class ChatHandle internal constructor(
 
     /**
      * A picked file goes to the gateway's upload endpoint and comes back as a reference to
-     * put on the next message (C6.6). The size and type checks happen before a byte leaves the
-     * device, using `ready.limits` like every other composer limit (C3.7).
+     * put on the next message. The size and type checks happen before a byte leaves the
+     * device, using `ready.limits` like every other composer limit.
      */
     @Throws(Throwable::class)
     public suspend fun upload(file: PickedFile): UploadResult {
@@ -131,13 +131,13 @@ public class ChatHandle internal constructor(
         return core.upload(session, file)
     }
 
-    /** The composer's text field; the draft also survives a refused send (C6.1). */
+    /** The composer's text field; the draft also survives a refused send. */
     public fun setDraft(text: String) {
         session.composer.value = session.composer.value.copy(draft = text)
     }
 
     /**
-     * Type-and-send while a turn runs (C5.5, I5): the WebUI's `showStopButton = isStreaming &&
+     * Type-and-send while a turn runs: the WebUI's `showStopButton = isStreaming &&
      * !canSend` means the Send button queues rather than stops. What is typed while a prompt
      * waits joins it, which is the WebUI's own merge (`useQueuedPrompt.mergeQueuedPrompt`).
      */
@@ -178,7 +178,7 @@ public class ChatHandle internal constructor(
     }
 
     /**
-     * One recording, transcribed by the gateway (C6.5). The transcript lands after whatever
+     * One recording, transcribed by the gateway. The transcript lands after whatever
      * was already typed, so a half-written note is not replaced.
      */
     @Throws(Throwable::class)
@@ -190,9 +190,9 @@ public class ChatHandle internal constructor(
     }
 
     /**
-     * The recovery notice's two buttons (C7.3). Both are socket mutations carrying the
-     * recovery id, and the gateway's refusal is what comes back — a refused continue leaves
-     * the decision on screen rather than pretending the task resumed.
+     * The recovery notice's two buttons. Both are socket mutations carrying the recovery id,
+     * and the gateway's refusal is what comes back: a refused continue leaves the decision on
+     * screen rather than pretending the task resumed.
      */
     @Throws(Throwable::class)
     public suspend fun continueRecovery(): AutomationActionResult {
@@ -211,7 +211,7 @@ public class ChatHandle internal constructor(
     }
 
     /**
-     * The subtask dock's stop control (I8). The gateway's one control is `subagent.cancel` with
+     * The subtask dock's stop control. The gateway's one control is `subagent.cancel` with
      * the session key and the task id (`ws_http.py:931`); a refusal leaves the task on screen.
      */
     @Throws(Throwable::class)
@@ -221,12 +221,12 @@ public class ChatHandle internal constructor(
         return core.subagentCancel(chatId, taskId)
     }
 
-    /** A notice the client owns — the sandbox warning — goes away when the user says so. */
+    /** A notice the client owns, the sandbox warning, goes away when the user says so. */
     public fun dismissNotice(id: String) {
         session.thread.value = ThreadReducer.dismiss(session.thread.value, id)
     }
 
-    /** Stop is the text `/stop` on the running turn; the gateway has no stop frame (C5.5). */
+    /** Stop is the text `/stop` on the running turn; the gateway has no stop frame. */
     @Throws(Throwable::class)
     public suspend fun stop() {
         val chatId = session.id.value ?: return
@@ -237,7 +237,7 @@ public class ChatHandle internal constructor(
     }
 }
 
-/** The turn a bubble for [text] became, or null when this thread has no such prompt (T42). */
+/** The turn a bubble for [text] became, or null when this thread has no such prompt. */
 internal fun landedTurn(thread: ThreadState, text: String, before: List<String>): String? {
     val prompt = text.trim()
     if (prompt.isEmpty()) return null
@@ -257,7 +257,7 @@ internal class ChatSession(id: MutableStateFlow<String?>) {
      * The page read behind [thread]. It starts `Loaded` because nobody has asked for a page: a
      * chat with no id has none to ask for, and a chat just learned about is empty until `open()`
      * puts a read in flight. Starting it `Loading` made a brand-new chat wear the skeleton of a
-     * page that was never on its way (T29).
+     * page that was never on its way.
      */
     val history: MutableStateFlow<HistoryStatus> = MutableStateFlow(HistoryStatus.Loaded)
 
@@ -265,26 +265,26 @@ internal class ChatSession(id: MutableStateFlow<String?>) {
 
     var control: TurnControlState = TurnControlState()
 
-    /** The mode to go back to if the gateway refuses the switch (C6.3). */
+    /** The mode to go back to if the gateway refuses the switch. */
     var scopeBeforeSwitch: WorkspaceScope? = null
 
     /**
      * The preset this chat was last told to switch to, until the gateway names the model it ran
      * (`turn_model_updated`) or the chat's own session row answers for it. `/model` has no frame
-     * of its own, so this is what the chip reads in between (T39, T46).
+     * of its own, so this is what the chip reads in between.
      */
     var pickedPreset: String? = null
 
     /**
      * Whether the turn the pick became has ended: only then has the gateway committed the preset
-     * to the session's metadata, so only then is a drawer read an answer about it (T46).
+     * to the session's metadata, so only then is a drawer read an answer about it.
      */
     var pickAnswered: Boolean = false
 
-    /** What was typed before a recording started; the transcript is appended to it (C6.5). */
+    /** What was typed before a recording started; the transcript is appended to it. */
     var draftBeforeRecording: String = ""
 
-    /** Uploads waiting for a message to carry them; cleared when one is accepted (C6.6). */
+    /** Uploads waiting for a message to carry them; cleared when one is accepted. */
     val media: MutableList<UploadReference> = mutableListOf()
 
     /** The queue as the chip reads it: the prompts waiting for this chat, one per line. */

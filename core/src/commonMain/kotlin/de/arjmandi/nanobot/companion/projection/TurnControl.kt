@@ -3,8 +3,8 @@ package de.arjmandi.nanobot.companion.projection
 import de.arjmandi.nanobot.companion.wire.Outbound
 
 /**
- * Stopping, steering and the prompt queue (plan.md C5.5). All three are the same question —
- * what may the client send while a turn runs — so they live in one pure state machine.
+ * Stopping, steering and the prompt queue. All three answer the same question, what may the
+ * client send while a turn runs, so they live in one pure state machine.
  *
  * Stop is the text `/stop` on the chat (there is no stop frame); steering is another
  * `message` that reuses the running turn's id; the queue is client-side because the

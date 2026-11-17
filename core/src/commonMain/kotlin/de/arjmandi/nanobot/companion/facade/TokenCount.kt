@@ -3,7 +3,7 @@ package de.arjmandi.nanobot.companion.facade
 import kotlin.math.roundToLong
 
 /**
- * The WebUI's token copy, copied rather than invented (T36): a million must read `1M`, not
+ * The WebUI's token copy, copied rather than invented: a million must read `1M`, not
  * `1000k`, on every surface that prints a window.
  *
  * `window` and `modelWindow` are `formatContextWindow` and `formatModelContextWindow` from
@@ -28,7 +28,7 @@ public object TokenCount {
         else -> window(tokens)
     }
 
-    /** A running count: `999`, `15.5K`, `155K`, `1.5M` — one decimal below 100k, then whole. */
+    /** A running count: `999`, `15.5K`, `155K`, `1.5M`, with one decimal below 100k and whole above. */
     public fun compact(tokens: Long): String = when {
         tokens < 1_000 -> tokens.toString()
         tokens < 1_000_000 -> decimal(tokens.toDouble() / 1_000, keepZero = false, digits(tokens < 100_000)) + "K"

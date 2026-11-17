@@ -32,7 +32,7 @@ import kotlinx.coroutines.test.runTest
  * "No sessions" and "the read did not answer" are two different facts, and the drawer has to
  * draw them differently: the first is a fact about the gateway, the second is the app's problem
  * and must not be dressed up as "No sessions yet. Start one from the chat." This file pins the
- * core's half of that distinction — before it, every outcome of `GET /api/sessions` became
+ * core's half of that distinction: before it, every outcome of `GET /api/sessions` became
  * `loaded = true` with whatever rows happened to be there, so a 500 read as an empty drawer.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)

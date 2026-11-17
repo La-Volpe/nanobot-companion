@@ -19,9 +19,8 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
 /**
- * Session rows (plan.md C5.1): `GET /api/sessions` with the bootstrap api token, ISO-8601
- * timestamps parsed to instants (D15.2, D15.6), newest first, and a refused token mapped
- * to the taxonomy instead of an empty drawer.
+ * Session rows: `GET /api/sessions` with the bootstrap api token, ISO-8601 timestamps parsed to
+ * instants, newest first, and a refused token mapped to the taxonomy instead of an empty drawer.
  */
 class SessionListTest {
 

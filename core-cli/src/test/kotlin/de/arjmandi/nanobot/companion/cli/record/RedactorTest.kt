@@ -12,7 +12,7 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * Fixtures are committed, so every value that changes between two recordings of the
  * same scripted turn has to be normalised, and every value that identifies this
- * machine or this login has to go (plan.md §3.3, C2.5).
+ * machine or this login has to go.
  */
 class RedactorTest {
 
@@ -74,7 +74,7 @@ class RedactorTest {
         val all = sessions.flatMap { row -> listOf(row["created_at"]!!.jsonPrimitive.content, row["updated_at"]!!.jsonPrimitive.content) }
         assertTrue(all.all { Regex("""^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?$""").matches(it) }, "still ISO-8601: $all")
         assertTrue(all.none { it.contains("2026") }, "the recording date is churn and must not survive: $all")
-        // C5.1 sorts sessions by updated_at, so normalisation must not collapse them.
+        // The drawer sorts sessions by updated_at, so normalisation must not collapse them.
         assertEquals(4, all.toSet().size, "distinct timestamps stay distinct and keep their rank: $all")
         assertTrue(
             sessions[0]["created_at"]!!.jsonPrimitive.content < sessions[0]["updated_at"]!!.jsonPrimitive.content,
@@ -124,7 +124,7 @@ class RedactorTest {
     }
 
     /**
-     * The recording machine's locale (T26). `/api/settings` carries the agent's timezone both as
+     * The recording machine's locale. `/api/settings` carries the agent's timezone both as
      * `agent.timezone` and as the flattened `agents.defaults.timezone` in `runtime_config`, and
      * `Europe/Berlin` in a published fixture names the machine that recorded it.
      */
@@ -162,7 +162,7 @@ class RedactorTest {
     }
 
     /**
-     * T55: the vocabulary was `token, api_token, secret, password`, which misses the names a
+     * The vocabulary was `token, api_token, secret, password`, which misses the names a
      * gateway actually uses for a provider key and the headers a proxy logs.
      */
     @Test
@@ -182,7 +182,7 @@ class RedactorTest {
         assertTrue(out.toString().contains("sk-live-1").not(), "no key value survives: $out")
     }
 
-    /** The row id is the one `key`-shaped name that is not a secret, so it must survive (D15.6). */
+    /** The row id is the one `key`-shaped name that is not a secret, so it must survive. */
     @Test
     fun aSessionKeyIsNotACredential() {
         val out = redact(
@@ -196,9 +196,9 @@ class RedactorTest {
     }
 
     /**
-     * T55: the session listing is somebody's reading history. The recorder's own chats carry the
-     * prompts it sent, but every other row belongs to whoever recorded — so all of them become
-     * stable placeholders, and the drawer still has distinct rows to draw.
+     * The session listing is somebody's reading history. The recorder's own chats carry the
+     * prompts it sent, but every other row belongs to whoever recorded, so all of them become
+     * stable placeholders and the drawer still has distinct rows to draw.
      */
     @Test
     fun sessionTitlesAndPreviewsBecomePlaceholders() {
@@ -223,7 +223,7 @@ class RedactorTest {
         assertEquals("", previews[3])
     }
 
-    /** `/api/palette` also has `title` keys — command names, not anybody's history. */
+    /** `/api/palette` also has `title` keys, which are command names and not anybody's history. */
     @Test
     fun theCommandPaletteKeepsItsTitles() {
         val out = redact(
@@ -234,7 +234,7 @@ class RedactorTest {
         assertEquals("New chat", command["title"]!!.jsonPrimitive.content)
     }
 
-    /** T55: the manifest used to name the gateway it was recorded from — a host, in a commit. */
+    /** The manifest used to name the gateway it was recorded from, a host in a commit. */
     @Test
     fun replacesTheRecordedGatewaysOwnAddress() {
         val out = redact(

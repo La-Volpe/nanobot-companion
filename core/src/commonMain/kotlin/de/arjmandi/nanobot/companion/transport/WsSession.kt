@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 /**
- * One socket, one frame stream (plan.md C3.3). The flow is cold: collecting it opens the
+ * One socket, one frame stream. The flow is cold: collecting it opens the
  * connection, so an abandoned subscription cannot leave a socket behind, and completing
  * it closes the socket. The URL already carries the single-use token, because the token
  * is consumed by the handshake itself.
@@ -23,8 +23,8 @@ internal class WsSession(private val http: HttpClient) {
 
     /**
      * A socket that can be written to. The write handle is only usable once the flow is
-     * being collected — the engine starts its pump before anything can be sent, so awaiting
-     * here is a no-op in practice rather than a place to hang.
+     * being collected: the engine starts its pump before anything can be sent, so awaiting here
+     * is a no-op in practice rather than a place to hang.
      */
     fun connect(url: String): Socket {
         val opened = CompletableDeferred<DefaultClientWebSocketSession>()

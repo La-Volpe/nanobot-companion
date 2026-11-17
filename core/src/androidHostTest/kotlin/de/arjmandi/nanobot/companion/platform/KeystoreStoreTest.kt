@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 
 /**
  * The Android secret store is AES-GCM over the Android Keystore `EncryptedFile`
- * equivalent from plan.md D5: ciphertext in the preferences file, key in the Keystore.
+ * equivalent: ciphertext in the preferences file, key in the Keystore.
  * The Keystore itself needs a device, so this test drives the store's own logic with
  * a JCE box and a file-backed preference store, and asserts the property that matters
  * on disk: the plaintext never appears there.

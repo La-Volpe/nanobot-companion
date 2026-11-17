@@ -2,7 +2,7 @@ package de.arjmandi.nanobot.companion.wire
 
 import kotlinx.serialization.json.JsonObject
 
-/** The socket's greeting: it decides the chat, and it hands out the upload capability (D15.5). */
+/** The socket's greeting: it decides the chat, and it hands out the upload capability. */
 internal data class ReadyFrame(
     val clientId: String?,
     val upload: UploadCapability?,
@@ -29,7 +29,7 @@ internal data class PairingChangedFrame(
     override val event: String get() = "pairing_changed"
 }
 
-/** The gateway's default runtime changed; the model catalog should refresh (C6.2). */
+/** The gateway's default runtime changed; the model catalog should refresh. */
 internal data class RuntimeModelUpdatedFrame(
     val modelName: String?,
     val modelPreset: String?,
@@ -60,7 +60,8 @@ internal data class TranscriptionErrorFrame(
 }
 
 /**
- * The answer to a `webui_request` (C7.2). `ok:false` carries `error{status, message}` from the
+ * The answer to a `webui_request`, the socket call an automation action goes out on.
+ * `ok:false` carries `error{status, message}` from the
  * HTTP route the mutation maps onto, so a refused automation action keeps the gateway's own
  * status and words (`inbound_commands.py:1219-1245`).
  */
@@ -76,7 +77,7 @@ internal data class WebuiResponseFrame(
     override val event: String get() = "webui_response"
 }
 
-/** A soft protocol error: the connection stays open, the envelope was refused (C4.5). */
+/** A soft protocol error: the connection stays open, the envelope was refused. */
 internal data class ErrorFrame(
     val detail: String?,
     override val chatId: String?,

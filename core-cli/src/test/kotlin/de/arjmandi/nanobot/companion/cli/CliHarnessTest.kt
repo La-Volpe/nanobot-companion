@@ -13,12 +13,12 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * `core-cli watch` prints a transcript, and that transcript is the instrument for G1's
- * "matches the WebUI's transcript for the same chat" (plan.md §6, C8.3). So the rendering
- * has one hard property: it must depend only on what both feeds agree on. Turn ids are not
- * one of those — a live turn is named by this client until the gateway renames it, while
- * the history page only ever knows the gateway's — so the transcript numbers turns by
- * position and shows everything else.
+ * `core-cli watch` prints a transcript, and that transcript is the instrument for the parity
+ * claim, "matches the WebUI's transcript for the same chat". So the rendering has one hard
+ * property: it must depend only on what both feeds agree on. Turn ids are not one of those (a
+ * live turn is named by this client until the gateway renames it, while the history page only
+ * ever knows the gateway's), so the transcript numbers turns by position and shows everything
+ * else.
  */
 class CliHarnessTest {
 
@@ -98,7 +98,7 @@ class CliHarnessTest {
     @Test
     fun theChatAndModelAreCommentaryNotThread() {
         // Both feeds do not share `turn_model_updated`, so the model line is a `#` comment:
-        // the body is what the parity diff compares (D31).
+        // the body is what the parity diff compares.
         val header = Transcript.header(state())
         assertTrue("# chat websocket:a" in header, header)
         assertTrue("# model primary | deepseek-v4.1-flash:cloud | 32768" in header, header)

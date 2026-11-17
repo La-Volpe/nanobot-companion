@@ -6,8 +6,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * T43: the Notifications screen's switches were local state that persisted nowhere and gated
- * nothing. This is the rule both posters now ask — which switch covers which notice, what it is
+ * The Notifications screen's switches were local state that persisted nowhere and gated
+ * nothing. This is the rule both posters now ask: which switch covers which notice, what it is
  * called, and what a fresh install does before the reader touches anything.
  */
 class NoticeSwitchesTest {

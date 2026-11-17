@@ -17,9 +17,8 @@ internal sealed interface BootstrapOutcome {
 }
 
 /**
- * `GET /webui/bootstrap` with the gateway secret (plan.md C3.1). The token it returns is
- * single-use, so this is a fresh call for every connection attempt — never a cached
- * payload (C3.4).
+ * `GET /webui/bootstrap` with the gateway secret. The token it returns is single-use, so
+ * this is a fresh call for every connection attempt and never a cached payload.
  */
 internal class BootstrapClient(
     private val http: HttpClient,

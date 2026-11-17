@@ -5,13 +5,13 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * The sidebar blob (plan.md C5.2): one immutable value that is both the local file and the
- * `set_sidebar_state` payload. The shape is the live gateway's, read from
- * `GET /api/webui/sidebar-state` — snake_case keys, `schema_version` 1, and the legacy
- * `archived_keys` list still on the wire, which this client keeps but never writes.
+ * The sidebar blob: one immutable value that is both the local file and the `set_sidebar_state`
+ * payload. The shape is the live gateway's, read from `GET /api/webui/sidebar-state`: snake_case
+ * keys, `schema_version` 1, and the legacy `archived_keys` list still on the wire, which this
+ * client keeps but never writes.
  *
- * `session_order` is the *manual* order: a session that is not in it falls back to the
- * server's `updated_at` order (C5.1), so [move] only has to keep what the user dragged.
+ * `session_order` is the *manual* order: a session that is not in it falls back to the server's
+ * `updated_at` order, so [move] only has to keep what the user dragged.
  */
 @Serializable
 internal data class SidebarState(

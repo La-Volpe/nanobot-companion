@@ -7,8 +7,8 @@ import kotlin.test.assertTrue
 
 /**
  * The repository ships a licence and a consolidated notices file, and both app bundles carry a
- * copy of the notices so the text travels with the binary (T51, T59). Three copies of one file
- * drift the moment one of them is edited alone, so they are compared here instead of by eye.
+ * copy of the notices so the text travels with the binary. Three copies of one file drift the
+ * moment one of them is edited alone, so they are compared here instead of by eye.
  *
  * `LICENSE` and `THIRD_PARTY_NOTICES.txt` are deliberately not `.md`: `.gitignore` ignores
  * `*.md`, and a filename nobody tracks is a licence nobody ships.
@@ -82,9 +82,9 @@ class NoticesTest {
     }
 
     /**
-     * T51 asked for the notices to travel with the binary; T59 then has to be able to check the
-     * binary, which means the copies are the root files or the shipped claim is about something
-     * else. `LICENSE` rides along so the notices' reference to it resolves inside the app.
+     * The notices have to travel with the binary, and that claim is only checkable if the copies
+     * are the root files. `LICENSE` rides along so the notices' reference to it resolves inside
+     * the app.
      */
     @Test
     fun bothBundlesCarryTheSameLicenceAndNotices() {

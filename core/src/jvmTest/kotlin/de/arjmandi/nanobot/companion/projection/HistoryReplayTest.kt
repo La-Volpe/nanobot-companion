@@ -7,7 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The parity claim the whole client rests on (plan.md D9, C4.6): history and the live
+ * The parity claim the whole client rests on: history and the live
  * socket speak the same vocabulary, so replaying the recorded history page must produce
  * the same thread a user watched arrive on the socket.
  */

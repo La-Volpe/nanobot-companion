@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import kotlinx.coroutines.Dispatchers
 
-/** The Android app's composition root; the transport seam arrives with C3.2. */
+/** The Android app's composition root: the stores, the clock and the dispatchers. */
 public fun productionDeps(context: Context): CoreDeps = CoreDeps(
     clock = systemClock(),
     secureStore = androidSecureStore(context, SECURE_NAMESPACE),

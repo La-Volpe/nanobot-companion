@@ -30,7 +30,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assume.assumeTrue
 
 /**
- * The heartbeat against a gateway that dies without a close (plan.md §2). `SIGSTOP` is the
+ * The heartbeat against a gateway that dies without a close. `SIGSTOP` is the
  * cleanest silent death a test can produce: the process is frozen, so the kernel keeps both
  * ends of the connection open, no FIN and no close frame go anywhere, and the socket is
  * exactly what a phone that changed networks comes back to. Only the heartbeat can notice.

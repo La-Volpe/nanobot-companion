@@ -8,12 +8,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Activity rows (plan.md C4.4). The gateway reports tool work as `message.tool_events`
- * snapshots — one frame when a call starts, another when it ends — and file work as
- * `file_edit` with a unified diff. A row is keyed by the call id, so the second frame
- * settles the first row instead of adding a second one.
+ * Activity rows. The gateway reports tool work as `message.tool_events` snapshots, one frame
+ * when a call starts and another when it ends, and file work as `file_edit` with a unified
+ * diff. A row is keyed by the call id, so the second frame settles the first row instead of
+ * adding a second one.
  *
- * The tool and file scenarios are the recorded evidence (P3); the failure case is a
+ * The tool and file scenarios are the recorded evidence; the failure case is a
  * constructed frame because a failing tool call cannot be provoked reliably on the dev
  * gateway, and the shape is the same one the recorded frames carry plus `error`.
  */

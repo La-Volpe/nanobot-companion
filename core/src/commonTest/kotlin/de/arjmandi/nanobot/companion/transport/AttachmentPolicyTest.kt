@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /**
- * Upload limits are validated before the bytes leave the phone (plan.md C3.7), so a
+ * Upload limits are validated before the bytes leave the phone, so a
  * rejection is immediate and typed instead of a 4xx after a 20 MiB upload. The numbers
  * and the MIME whitelist come from the gateway's own attachment policy.
  */

@@ -7,7 +7,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * A gateway advertises named capabilities next to a protocol range (D15.1). A feature
+ * A gateway advertises named capabilities next to a protocol range. A feature
  * the client can live without disappears; a protocol the client cannot speak is an
  * error, because guessing at a newer contract is how a chat screen starts lying.
  */

@@ -72,14 +72,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** Where the app keeps the gateway secret in the platform secure store (plan.md D5). */
+/** Where the app keeps the gateway secret in the platform secure store. */
 public const val GATEWAY_SECRET_KEY: String = "gateway.secret"
 
 /** How many announced notice keys the core remembers: enough for a replayed batch, not a log. */
 private const val ANNOUNCED_MEMORY: Int = 32
 
 /**
- * The whole public surface (plan.md C8.1). Everything below it returns effects as data; this
+ * The whole public surface. Everything below it returns effects as data; this
  * is where they are executed, and where the state a screen reads lives.
  *
  * Calls are expected from the platform's main thread, which is how SwiftUI and Compose drive
@@ -113,9 +113,9 @@ public class NanobotCore internal constructor(
     }
 
     /**
-     * What the chip names: a preset, and the model and window that preset runs (I5). One value,
-     * because they are one answer — the name from one preset beside another's window is how a
-     * brand-new chat read `GLM` over a 256 K ring (T46).
+     * What the chip names: a preset, and the model and window that preset runs. One value,
+     * because they are one answer: the name from one preset beside another's window is how a
+     * brand-new chat read `GLM` over a 256 K ring.
      */
     private data class ModelOnChip(val preset: String?, val name: String?, val window: Int?)
 
@@ -124,13 +124,13 @@ public class NanobotCore internal constructor(
     private val _connection = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
     private val _sessions = MutableStateFlow(SessionListState())
 
-    /** What the two composer palettes are drawn from (C6.4); commands and apps arrive on demand. */
+    /** What the two composer palettes are drawn from; commands and apps arrive on demand. */
     private val _palette = MutableStateFlow(PaletteCatalog())
 
-    /** Settings → Overview (C7.1); read when the screen opens, not at connect. */
+    /** Settings → Overview; read when the screen opens, not at connect. */
     private val _settings = MutableStateFlow(SettingsState())
 
-    /** The automations page (C7.2); the list is a read, each action is a socket mutation. */
+    /** The automations page; the list is a read, each action is a socket mutation. */
     private val _automations = MutableStateFlow(AutomationsState())
 
     private val _taskNotice = MutableStateFlow<TaskNotice?>(null)
@@ -174,14 +174,14 @@ public class NanobotCore internal constructor(
     private var payload: BootstrapPayload? = null
     private var uploadCapability: UploadCapability? = null
 
-    /** The chat the last `ready` minted, so a handle opened after connect can still bind (C5.3). */
+    /** The chat the last `ready` minted, so a handle opened after connect can still bind. */
     private var greetingChatId: String? = null
     private var sequence: Int = 0
 
     /** The in-flight drawer read; a second `session_updated` replaces it instead of queueing. */
     private var drawerRefresh: Job? = null
 
-    /** Chats whose stored history this socket has already replayed (D46). */
+    /** Chats whose stored history this socket has already replayed. */
     private val hydrated = mutableSetOf<String>()
 
     public val connection: StateFlow<ConnectionState> = _connection.asStateFlow()
@@ -210,12 +210,12 @@ public class NanobotCore internal constructor(
         visibleSession = handle?.session
     }
 
-    /** Jobs the core started and has not joined: a leak check reads this (plan.md §3.7). */
+    /** Jobs the core started and has not joined: a leak check reads this. */
     public fun activeChildJobs(): Int = engine.activeChildJobs()
 
     /**
-     * Bootstrap, handshake, `ready` (plan.md C8.1). Every call mints a fresh single-use
-     * token, so this is also the reconnect path — there is no separate "resume" (C3.4).
+     * Bootstrap, handshake, `ready`. Every call mints a fresh single-use token, so this is also
+     * the reconnect path, and there is no separate "resume".
      */
     @Throws(Throwable::class)
     public suspend fun connect(): ConnectResult {
@@ -231,7 +231,7 @@ public class NanobotCore internal constructor(
                 // No `Open` here: the pump sets it when it reduces `ready`, and that is the only
                 // place it can be set in order. Assigning it again on the way out of `connect()`
                 // clobbered the `Offline` a socket that died during the handshake had already
-                // reported — a green dot over a socket nobody was reading, which is how a
+                // reported: a green dot over a socket nobody was reading, which is how a
                 // closed-by-the-gateway connection stayed "Open" for the life of the app.
                 ConnectResult.Connected(opened.payload.modelName)
             }
@@ -267,7 +267,7 @@ public class NanobotCore internal constructor(
      * the single pending slot; after it, it is the session the greeting minted. A fresh session
      * per ask was two chats wearing one name: the shell asks twice (once to mark the chat for the
      * notice rule, once for the screen), and the second one was never in the registry, so the
-     * send filled a thread nobody drew and its history stayed unread forever (T29, T30).
+     * send filled a thread nobody drew and its history stayed unread forever.
      */
     private fun newChatSession(): ChatSession {
         val greeted = greetingChatId
@@ -284,7 +284,7 @@ public class NanobotCore internal constructor(
         return registry.value.getValue(chatId)
     }
 
-    /** Refresh the drawer from `GET /api/sessions` (plan.md C5.1, D15.6). */
+    /** Refresh the drawer from `GET /api/sessions` with the bootstrap `api_token` as a bearer. */
     @Throws(Throwable::class)
     public suspend fun refreshSessions() {
         val token = payload?.apiToken
@@ -306,11 +306,11 @@ public class NanobotCore internal constructor(
         // The rows carry each chat's own `model_preset`, which outranks the gateway's current one.
         settlePicks(rows)
         republishComposerModels()
-        // The mention sheet names chats by the same rows, so it is refreshed with them (C6.4).
+        // The mention sheet names chats by the same rows, so it is refreshed with them.
         _palette.value = _palette.value.copy(sessions = PaletteCatalog.sessionsIn(rows))
     }
 
-    /** The automations page (`GET /api/webui/automations`, C7.2). */
+    /** The automations page (`GET /api/webui/automations`). */
     @Throws(Throwable::class)
     public suspend fun refreshAutomations(): CoreError? {
         val token = payload?.apiToken ?: return automationsFailed(CoreError.AuthFailed)
@@ -327,7 +327,7 @@ public class NanobotCore internal constructor(
     /**
      * A read that did not answer leaves the state saying so, and keeps the jobs it already had:
      * a stale page beats a blank one, and the page needs the difference between "refused" and
-     * "none" to avoid saying the wrong thing (T41).
+     * "none" to avoid saying the wrong thing.
      */
     private fun automationsFailed(error: CoreError): CoreError {
         _automations.value = _automations.value.copy(loaded = true, failed = true)
@@ -337,7 +337,7 @@ public class NanobotCore internal constructor(
     /**
      * The automations read runs beside the pump, like the settings one: `/api/webui/automations`
      * is an HTTP round trip. A reconnect blanks the page's state (`disconnect`), so the new socket
-     * asks again rather than leaving the page empty until someone taps it (T41).
+     * asks again rather than leaving the page empty until someone taps it.
      */
     private fun readAutomationsLater() {
         scope.launch {
@@ -347,7 +347,7 @@ public class NanobotCore internal constructor(
     }
 
     /**
-     * One automation action, sent as a socket mutation (C7.2). A successful action answers
+     * One automation action, sent as a socket mutation. A successful action answers
      * with the whole list, so the page never has to re-read to show the switch flipped.
      */
     @Throws(Throwable::class)
@@ -387,7 +387,7 @@ public class NanobotCore internal constructor(
     }
 
     /**
-     * Version, environment and usage (`GET /api/settings`, `/api/settings/usage`, C7.1). A
+     * Version, environment and usage (`GET /api/settings`, `/api/settings/usage`). A
      * refused read leaves the screen empty rather than showing a stale number as if it were
      * current, and the error comes back so the screen can offer a retry.
      */
@@ -399,7 +399,7 @@ public class NanobotCore internal constructor(
             is SettingsOutcome.Loaded -> {
                 _settings.value = outcome.state
                 // The settings read is the first thing that names a chat's model, so the chips
-                // that were waiting on it take it now (I5).
+                // that were waiting on it take it now.
                 republishComposerModels()
                 null
             }
@@ -409,9 +409,9 @@ public class NanobotCore internal constructor(
 
     /**
      * The slash palette and the CLI app mentions (`GET /api/commands`,
-     * `GET /api/settings/cli-apps`, C6.4). The WebUI loads these when the sheet opens rather
-     * than at connect, and returns the error so the sheet can say "try again" instead of
-     * showing a half list.
+     * `GET /api/settings/cli-apps`). The WebUI loads these when the sheet opens rather than at
+     * connect, and returns the error so the sheet can say "try again" instead of showing a half
+     * list.
      */
     @Throws(Throwable::class)
     public suspend fun refreshPalettes(): CoreError? {
@@ -432,11 +432,11 @@ public class NanobotCore internal constructor(
         this.payload = payload
         // The chip is the gateway's own answer and it has one for a chat that has no turns yet,
         // so it is read once per socket rather than as a side effect of opening a chat with an
-        // id: a brand-new chat has none, and it named nothing until a turn ran (T28).
+        // id: a brand-new chat has none, and it named nothing until a turn ran.
         readModelsLater()
         readAutomationsLater()
         // A pick belongs to one chat on one socket: `/model` answers with a turn and no frame, so
-        // nothing ever cleared it, and the next socket's chats wore the last one's preset (T46).
+        // nothing ever cleared it, and the next socket's chats wore the last one's preset.
         // The greeting's drawer read puts back the preset each chat really is on, from the gateway.
         registry.value.values.forEach { session ->
             session.pickedPreset = null
@@ -448,10 +448,10 @@ public class NanobotCore internal constructor(
         // A new socket was told nothing: the gateway subscribes per connection (`runtime.py`
         // `_attach`, `_conn_chats`), so an `attached` from the socket before it says nothing about
         // this one. Without this, `open()` after a reconnect asks for nothing and an answer that
-        // was streaming when the phone slept never arrives (C3.4, C5.4). The threads stay; only
+        // was streaming when the phone slept never arrives. The threads stay; only
         // the facts that belong to one connection are dropped.
         chatSet = chatSet.copy(attached = emptySet(), attaching = emptySet())
-        // The limits the composer validates against are the gateway's, not ours (C6.1).
+        // The limits the composer validates against are the gateway's, not ours.
         registry.value.values.forEach { session -> session.composer.update { it.copy(limits = payload.limits) } }
     }
 
@@ -463,7 +463,7 @@ public class NanobotCore internal constructor(
                 uploadCapability = frame.upload
                 greetingChatId = frame.chatId
                 // The greeting is what mints the first chat, so a `chat(null)` handle learns
-                // its id here rather than inventing one (C5.3).
+                // its id here rather than inventing one.
                 bindPending(frame.chatId)
                 refreshDrawerLater()
             }
@@ -492,7 +492,7 @@ public class NanobotCore internal constructor(
         }
 
         // The gateway naming the model a turn ran is the answer to a `/model` pick, so the
-        // client's own guess steps aside before the row is mirrored (T39).
+        // client's own guess steps aside before the row is mirrored.
         if (frame is TurnModelUpdatedFrame && !frame.modelPreset.isNullOrBlank()) {
             frame.chatId?.let { chatId -> registry.value[chatId]?.pickedPreset = null }
         }
@@ -501,12 +501,12 @@ public class NanobotCore internal constructor(
         chatSet = routed.set
         routed.set.threads.forEach { (chatId, thread) -> publish(chatId, thread) }
 
-        // A settled turn releases the prompt that was waiting for it (C5.5, I5), now that the
+        // A settled turn releases the prompt that was waiting for it, now that the
         // thread it belongs to has taken its answer.
         if (frame is TurnEndFrame) {
             releaseQueued(frame.chatId, frame.turnId)
             // `/model` is answered by a turn and nothing else, so the settled turn is the first
-            // moment the chat's session row can confirm a pick or contradict it (T46):
+            // moment the chat's session row can confirm a pick or contradict it:
             // `set_session_model_preset` committed the metadata before the reply went out.
             frame.chatId?.let { chatId ->
                 val session = registry.value[chatId]
@@ -523,7 +523,7 @@ public class NanobotCore internal constructor(
         raiseTaskNotice(frame)
 
         // A refused scope switch is the only way the gateway answers `set_workspace_scope`
-        // (inbound_commands.py:283), so the chip goes back rather than staying wrong (C6.3).
+        // (inbound_commands.py:283), so the chip goes back rather than staying wrong.
         if (frame is ErrorFrame && frame.detail == SCOPE_REJECTED) {
             frame.chatId?.let { chatId ->
                 registry.value[chatId]?.let { session ->
@@ -588,8 +588,8 @@ public class NanobotCore internal constructor(
     // --- what a handle asks for --------------------------------------------------------
 
     /**
-     * The bytes go to `POST {ready.upload.path}` with the capability the greeting handed out
-     * (C3.6, D15.5); the reference stays with the session until a message carries it (C6.6).
+     * The bytes go to `POST {ready.upload.path}` with the capability the greeting handed out;
+     * the reference stays with the session until a message carries it.
      */
     internal suspend fun upload(session: ChatSession, file: PickedFile): UploadResult {
         val capability = uploadCapability ?: return UploadResult.Failed(CoreError.Unreachable)
@@ -616,7 +616,7 @@ public class NanobotCore internal constructor(
         val session = registry.value[chatId]
         val text = draft.text.trim()
         // The draft is the composer's memory: it goes in before the attempt and only leaves
-        // when the socket took the message (C6.1). A released prompt is not the draft — what
+        // when the socket took the message. A released prompt is not the draft, so what
         // the reader has typed meanwhile stays where it is.
         if (!fromQueue) session?.composer?.update { it.copy(draft = draft.text) }
 
@@ -630,7 +630,7 @@ public class NanobotCore internal constructor(
         val quote = draft.quote?.let(QuotedContext::of)
         // Attachments are references: whatever was uploaded and not yet sent rides this message.
         // A composer that hands the send the references its own cards hold names the same file
-        // twice — once in the draft, once staged on the session — and the gateway refuses that
+        // twice (once in the draft, once staged on the session), and the gateway refuses that
         // whole message (`attachment_rejected`, "Duplicate attachment reference"), so one file is
         // one reference however the two lists overlapped.
         val media = (draft.media.map { UploadReference(reference = it.reference, name = it.name) } +
@@ -643,7 +643,7 @@ public class NanobotCore internal constructor(
             quotedContext = quote,
         )
         // A chat the socket has not attached gets its attach first, and the message waits
-        // behind it (C5.4): sending first would race the attach and lose the turn.
+        // behind it: sending first would race the attach and lose the turn.
         val routed = ChatRouter.send(chatSet, chatId, message)
         chatSet = routed.set
         val outcomes = routed.effects.mapNotNull { (it as? Effect.Send)?.frame }.map { engine.send(it) }
@@ -661,16 +661,16 @@ public class NanobotCore internal constructor(
 
     internal suspend fun write(frame: Outbound): Boolean = engine.send(frame)
 
-    /** A command that changed what the row draws asks for it once (T39's refused pick). */
+    /** A command that changed what the row draws asks for a refresh once, which a refused pick must. */
     internal fun remirrorComposer(session: ChatSession, chatId: String?) {
         mirrorComposer(session, chatId)
     }
 
     /**
-     * One `attach` for a chat the screen opened (I3), then the history page (D46). The socket's
-     * `attached` carries the session's runtime facts, not its turns, so an opened chat only shows
-     * what came before once the WebUI's own page read has been reduced into the same thread — by
-     * the same reducer as a live turn (plan.md D9).
+     * One `attach` for a chat the screen opened, then the history page. The socket's `attached`
+     * carries the session's runtime facts, not its turns, so an opened chat only shows what came
+     * before once the WebUI's own page read has been reduced into the same thread, by the same
+     * reducer as a live turn.
      */
     internal suspend fun openChat(chatId: String) {
         // Once per chat per socket: the page cannot have changed under a chat this core has
@@ -695,7 +695,7 @@ public class NanobotCore internal constructor(
         scope.launch { readModelsForChip() }
     }
 
-    /** Once per socket: the gateway's own answer to "which preset is this chat on" (I5). */
+    /** Once per socket: the gateway's own answer to "which preset is this chat on". */
     private suspend fun readModelsForChip() {
         if (_settings.value.loaded || payload?.apiToken == null || http == null) return
         refreshSettings()
@@ -704,7 +704,7 @@ public class NanobotCore internal constructor(
     /**
      * The stored turns of one chat, under whatever the socket already showed. A read that fails
      * leaves the thread as it is: an empty thread is honest, invented rows are not. It does not
-     * leave the thread *looking* empty, though — the status says the page never came (D46).
+     * leave the thread *looking* empty, though: the status says the page never came.
      */
     private suspend fun replayHistory(chatId: String) {
         val session = registry.value[chatId]
@@ -784,7 +784,7 @@ public class NanobotCore internal constructor(
     // --- internals ---------------------------------------------------------------------
 
     /**
-     * A recovery decision (C7.3): `recovery.continue` or `recovery.dismiss` with the chat and
+     * A recovery decision: `recovery.continue` or `recovery.dismiss` with the chat and
      * the recovery id, answered like any other mutation.
      */
     internal suspend fun recoveryAction(chatId: String, recoveryId: String, action: String): AutomationActionResult {
@@ -815,7 +815,7 @@ public class NanobotCore internal constructor(
     }
 
     /**
-     * One `webui_request` and its answer (C7.2). The WebUI replays a pending mutation with
+     * One `webui_request` and its answer. The WebUI replays a pending mutation with
      * the same request id after a reconnect (`nanobot-client.ts:646`); this client does not,
      * so a request that outlives its socket comes back as [AutomationActionResult.Timeout]
      * and the caller decides whether to ask again.
@@ -837,7 +837,7 @@ public class NanobotCore internal constructor(
     /**
      * The drawer read runs beside the pump, not inside it: `/api/sessions` is an HTTP round
      * trip, and a frame handler that awaits one makes `connect()` as slow as the gateway's
-     * slowest read — and a pump that awaits one stops delivering frames while it waits.
+     * slowest read, while a pump that awaits one stops delivering frames while it waits.
      */
     private fun refreshDrawerLater() {
         drawerRefresh?.cancel()
@@ -855,7 +855,7 @@ public class NanobotCore internal constructor(
         mirrorComposer(waiting, chatId)
     }
 
-    /** The composer mirrors the thread's model and usage: the ring is drawn from here (C6.7). */
+    /** The composer mirrors the thread's model and usage: the ring is drawn from here. */
     private fun publish(chatId: String, thread: ThreadState) {
         val session = registry.value[chatId] ?: return
         session.thread.value = thread
@@ -865,14 +865,14 @@ public class NanobotCore internal constructor(
     /**
      * One place where what the thread knows becomes what the row draws. A settings read lands
      * after the frames that used it, so this runs again when the presets do (`republish`), and
-     * the ring's denominator is resolved the same way both times (T37).
+     * the ring's denominator is resolved the same way both times.
      */
     private fun mirrorComposer(session: ChatSession, chatId: String?) {
         val model = composerModel(chatId, session.pickedPreset)
         session.composer.update { composer ->
             val thread = session.thread.value
             // A new preset drops the old name and the old window together: they described the
-            // preset the chat was on, and keeping half of the pair is the lie this fixes (T46).
+            // preset the chat was on, and keeping half of the pair is the lie this fixes.
             val kept = composer.modelPreset == model.preset
             val name = model.name ?: composer.modelName.takeIf { kept }
             val window = model.window ?: composer.contextWindowTokens.takeIf { kept }
@@ -890,14 +890,14 @@ public class NanobotCore internal constructor(
     /**
      * A pick is the client's guess; the chat's session row is the gateway's answer to it. `/model
      * <preset>` writes the session's own metadata and publishes nothing (`loop.py:587
-     * set_session_model_preset`), and a settings re-read does not change either — measured
+     * set_session_model_preset`), and a settings re-read does not change either. Measured
      * 2026-11-16: `GET /api/settings` still said `agent.model_preset: primary` after a switch to a
      * real `broken` while `GET /api/sessions` answered the chat's row with `model_preset: broken`.
      * So a row either confirms the pick and takes over from it, or names something else and the
      * pick goes: both are the gateway refusing the client the last word, which is the point.
      *
      * Only a pick whose own turn has ended is settled: before that the gateway may not have
-     * committed anything, and a read that answers early — a title arriving mid-switch — is not an
+     * committed anything, and a read that answers early (a title arriving mid-switch) is not an
      * answer about the pick. A chat with no row says nothing either, so a pick with nothing against
      * it stands.
      */
@@ -911,7 +911,7 @@ public class NanobotCore internal constructor(
     }
 
     /**
-     * What the composer's chip should name (I5), in the WebUI's order (`ThreadShell.tsx`
+     * What the composer's chip should name, in the WebUI's order (`ThreadShell.tsx`
      * `activeModelPreset`): the chat's own pick, the preset this chat's own turn reported, then
      * the one the gateway stored for the chat, then the one the gateway is on. A chat that
      * overrides the global preset must not be labelled with the global one, which is why the
@@ -941,8 +941,8 @@ public class NanobotCore internal constructor(
     /**
      * The model [preset] runs. A frame's `model_name` arrived with the preset that frame named
      * (`turn_model_updated`), so it answers for that preset and no other; the gateway's configured
-     * `agent.model` is the name of the preset it configured, and nothing else's — the owner's chip
-     * said `GLM` (the configured `primary`) over `Vision and OCR`'s window (T46).
+     * `agent.model` is the name of the preset it configured, and nothing else's: the owner's chip
+     * said `GLM` (the configured `primary`) over `Vision and OCR`'s window.
      */
     private fun modelName(thread: ThreadState?, settings: SettingsState, preset: String?): String? {
         val reported = thread?.modelName?.takeIf(String::isNotBlank)?.takeIf {
@@ -972,7 +972,7 @@ public class NanobotCore internal constructor(
     private companion object {
         val NOT_A_FILE_CHAR: Regex = Regex("[^A-Za-z0-9._-]")
 
-        /** A chat id is a session key's own uuid: the gateway stores sessions as `websocket:<id>` (D15.6). */
+        /** A chat id is a session key's own uuid: the gateway stores sessions as `websocket:<id>`. */
         const val SESSION_KEY_PREFIX: String = "websocket:"
 
         /** The gateway's own word for a refused scope; read from inbound_commands.py. */

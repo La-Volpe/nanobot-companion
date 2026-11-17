@@ -1,8 +1,8 @@
 package de.arjmandi.nanobot.companion.transport
 
 /**
- * Reconnect pacing (plan.md C3.5). Pure: the jitter source is injected, so ten attempts
- * can be proven in a test without waiting, and the policy is the same on both platforms.
+ * Reconnect pacing. Pure: the jitter source is injected, so ten attempts can be proven in a
+ * test without waiting, and the policy is the same on both platforms.
  */
 internal data class BackoffPolicy(
     val baseMs: Long = 500,

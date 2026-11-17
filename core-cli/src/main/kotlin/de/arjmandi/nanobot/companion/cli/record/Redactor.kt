@@ -8,7 +8,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * Normalises a recorded frame before it is written to a fixture (plan.md C2.5).
+ * Normalises a recorded frame before it is written to a fixture.
  *
  * Two different things have to go. Credentials and identifiers of this machine or
  * this login must never be in the repository. Values that change between two runs
@@ -16,15 +16,15 @@ import kotlinx.serialization.json.JsonPrimitive
  *
  * Aliases for uuids, hashes and stream ids are kept for the whole recording, so a
  * chat id means the same alias in the bootstrap, the socket frames and the history
- * page. ISO timestamps are ranked inside each document instead, because the order
- * carries meaning (C5.1 sorts by `updated_at`) while the absolute moment does not.
+ * page. ISO timestamps are ranked inside each document instead, because the order carries
+ * meaning (the drawer sorts by `updated_at`) while the absolute moment does not.
  *
- * The fourth thing that has to go is the recording machine itself (T55): the gateway's
- * address, and the titles and previews of every session in the listing, which are not
- * this project's to publish just because the recorder could read them.
+ * The fourth thing that has to go is the recording machine itself: the gateway's address, and the
+ * titles and previews of every session in the listing, which are not this project's to publish
+ * just because the recorder could read them.
  */
 /**
- * What a recording says instead of the gateway it was recorded from (T55). RFC 2606 reserves
+ * What a recording says instead of the gateway it was recorded from. RFC 2606 reserves
  * `.example`, so the name can never resolve to somebody's server, and a fixture's provenance can
  * still say "this came over the WebSocket protocol" without naming a host.
  */
@@ -68,7 +68,7 @@ internal class Redactor(
     private fun rewriteField(key: String, value: JsonElement, dates: Map<String, String>): JsonElement {
         if (value is JsonPrimitive && value.isString) {
             // The agent's timezone is the recording machine's locale, under two names:
-            // `agent.timezone` and the flattened `agents.defaults.timezone` (T26). It is a place,
+            // `agent.timezone` and the flattened `agents.defaults.timezone`. It is a place,
             // not a fact about the gateway, so it becomes the one zone that names nobody.
             if (isTimezone(key)) {
                 applied += "timezone fields become UTC"
@@ -85,7 +85,7 @@ internal class Redactor(
                 }
             }
             // `upload_key` and `x-api-key` are credentials by shape, not by name; `key` and
-            // `session_key` are the gateway's own row id, which is not a secret (D15.6).
+            // `session_key` are the gateway's own row id, which is not a secret.
             if (isKeyShaped(key)) {
                 applied += "credential fields (${CREDENTIAL_FIELDS.joinToString()}, and any *_key) become REDACTED"
                 return JsonPrimitive(REDACTED)
@@ -105,8 +105,8 @@ internal class Redactor(
             applied += "ISO-8601 timestamps are re-ranked from 2000-01-01 so order survives and the recording date does not"
             return it
         }
-        // Not just at the front: a tool result is a sentence with a path in the middle of it
-        // ("Successfully wrote 7 characters to /Users/…/tool-probe.txt").
+        // Anywhere in the string, not only at its front: a tool result is a sentence with a path
+        // in the middle of it ("Successfully wrote 7 characters to /Users/…/tool-probe.txt").
         var rewritten = content
         if (workspaceDir.isNotEmpty() && rewritten.contains(workspaceDir)) {
             applied += "the recording workspace path becomes <workspace>"
@@ -117,7 +117,7 @@ internal class Redactor(
             rewritten = rewritten.replace(homeDir, "<home>")
         }
         // The gateway it was recorded from is the one host a recording is guaranteed to name
-        // (T55): in the manifest, in a tool result, in a provider's base url. Loopback names
+        // in the manifest, in a tool result, in a provider's base url. Loopback names
         // nobody, and replacing it would rewrite every provider that runs on this machine.
         if (gatewayUrl.isNotEmpty()) {
             var scrubbed = rewritten
@@ -167,7 +167,7 @@ internal class Redactor(
      * A session row's title and preview are text this project did not write: the gateway
      * summarised somebody's conversation into them. Only the rows the recorder created hold its
      * own scripted prompts, and telling those apart would need the chat ids the redactor does not
-     * have — so every row is aliased. Distinct titles stay distinct and blank stays blank, which
+     * have, so every row is aliased. Distinct titles stay distinct and blank stays blank, which
      * is what the drawer and `title.ifBlank { preview }` actually read.
      */
     private fun rewriteSessionRows(rows: JsonArray, dates: Map<String, String>): JsonElement {
@@ -200,7 +200,7 @@ internal class Redactor(
         const val EXAMPLE_GATEWAY_HOST = "gateway.example:8787"
         val LOOPBACK_HOSTS = setOf("127.0.0.1", "localhost", "::1", "[::1]", "0.0.0.0")
 
-        // Was `token, api_token, secret, password` (T55). A gateway names a provider key
+        // Was `token, api_token, secret, password`. A gateway names a provider key
         // `api_key`, an OpenAI-shaped client sends `authorization`, a proxy logs `x-api-key`;
         // none of those were covered.
         val CREDENTIAL_FIELDS = listOf(
@@ -208,14 +208,14 @@ internal class Redactor(
             "secret", "client_secret", "password", "passphrase",
             "api_key", "apikey", "apiKey", "authorization", "x-api-key", "x_api_key",
         )
-        // `key` is a session row's id and `session_key` spells the same id out (D15.6).
+        // `key` is a session row's id and `session_key` spells the same id out.
         val KEY_SHAPED_EXEMPT = setOf("key", "session_key")
         const val SESSIONS = "sessions"
         val SESSION_TEXT_FIELDS = setOf("title", "preview")
         val OPAQUE_FIELDS = listOf("stream_id")
         // Every absolute moment in a payload churns between two recordings of the same
         // scenario. The cron fields are here because `next_run_at_ms` moved on the moment
-        // the first recording finished (C7.2).
+        // the first recording finished.
         val TIMING_FIELDS = listOf(
             "created_at_ms", "updated_at_ms", "started_at", "started_at_ms", "ended_at",
             "latency_ms", "ttft_ms", "generation_ms",

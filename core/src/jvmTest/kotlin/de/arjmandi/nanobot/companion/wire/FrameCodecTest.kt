@@ -13,7 +13,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * The codec is written *from* the recorded fixtures (plan.md C2.1, C2.5): every frame
+ * The codec is written *from* the recorded fixtures: every frame
  * the live gateway sent must decode into a typed frame and re-encode to the same bytes,
  * because the reducer is only as good as what survives this step.
  */

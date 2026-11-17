@@ -37,7 +37,7 @@ internal data class GatewayProfile(val url: String, val secret: String) {
 
 /**
  * The recorder talks to the gateway itself rather than through `:core`, because the
- * fixtures are what `:core`'s codec is written from (plan.md C2.5 before C2.1).
+ * fixtures are what `:core`'s codec is written from.
  * Every call here mirrors a WebUI call, and the responses are written verbatim
  * apart from [Redactor].
  */
@@ -52,22 +52,22 @@ internal class GatewayClient : AutoCloseable {
     suspend fun sessions(profile: GatewayProfile, apiToken: String): JsonObject =
         get(profile.url + "/api/sessions", apiToken)
 
-    /** The slash palette: the gateway's own command registry (C6.4, `_handle_commands`). */
+    /** The slash palette: the gateway's own command registry (`_handle_commands`). */
     suspend fun commands(profile: GatewayProfile, apiToken: String): JsonObject =
         get(profile.url + "/api/commands", apiToken)
 
-    /** Only what is installed: that is the mention group the composer offers (C6.4). */
+    /** Only what is installed: that is the mention group the composer offers. */
     suspend fun installedCliApps(profile: GatewayProfile, apiToken: String): JsonObject =
         get(profile.url + "/api/settings/cli-apps?installed_only=1", apiToken)
 
-    /** The settings overview: `version{current, commit}` and no uptime field (C7.1, design README). */
+    /** The settings overview: `version{current, commit}` and no uptime field in the design. */
     suspend fun settings(profile: GatewayProfile, apiToken: String): JsonObject =
         get(profile.url + "/api/settings", apiToken)
 
     suspend fun settingsUsage(profile: GatewayProfile, apiToken: String): JsonObject =
         get(profile.url + "/api/settings/usage", apiToken)
 
-    /** The automation list (C7.2). Actions are socket mutations, so only the list is a read. */
+    /** The automation list. Actions are socket mutations, so only the list is a read. */
     suspend fun automations(profile: GatewayProfile, apiToken: String): JsonObject =
         get(profile.url + "/api/webui/automations", apiToken)
 

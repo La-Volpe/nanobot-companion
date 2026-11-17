@@ -21,10 +21,11 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 /**
- * The queued prompt (plan.md C5.5, I5's chip). The WebUI's rule is `showStopButton = isStreaming
- * && !canSend`: typing while a turn runs makes the button Send again, and pressing it queues the
- * prompt instead of stopping the turn (`useQueuedPrompt.ts`). The queue is the client's — the
- * gateway has nowhere to hold a prompt for later — and it releases on the turn's `turn_end`.
+ * The queued prompt, and the chip above the field. The WebUI's rule is
+ * `showStopButton = isStreaming && !canSend`: typing while a turn runs makes the button Send
+ * again, and pressing it queues the prompt instead of stopping the turn (`useQueuedPrompt.ts`).
+ * The queue is the client's, because the gateway has nowhere to hold a prompt for later, and it
+ * releases on the turn's `turn_end`.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ComposerQueueTest {

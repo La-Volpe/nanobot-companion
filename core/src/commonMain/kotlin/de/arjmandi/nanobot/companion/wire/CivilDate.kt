@@ -1,10 +1,10 @@
 package de.arjmandi.nanobot.companion.wire
 
 /**
- * A civil date as a count of days since 1970-01-01, and back. The repo has no date library (D4):
- * the session rows already parse ISO-8601 by hand, and the usage strip needs the one thing a
- * string cannot do — subtract 29 days from today (T44). Both directions are Howard Hinnant's
- * algorithms, which is also what the existing `daysFromCivil` was.
+ * A civil date as a count of days since 1970-01-01, and back. The repo has no date library: the
+ * session rows already parse ISO-8601 by hand, and the usage strip needs the one thing a string
+ * cannot do, subtracting 29 days from today. Both directions are Howard Hinnant's algorithms,
+ * which is also what the existing `daysFromCivil` was.
  */
 internal object CivilDate {
 

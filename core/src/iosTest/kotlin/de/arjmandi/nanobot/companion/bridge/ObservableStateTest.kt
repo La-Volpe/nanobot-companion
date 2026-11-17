@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The subscription wrapper Swift uses in place of collecting a `StateFlow` (C8.2). The
+ * The subscription wrapper Swift uses in place of collecting a `StateFlow`. The
  * generated header hands Swift `id<...StateFlow>` whose `value` is `Any?`, so a screen
  * cannot read its own state without a cast; this class is the one place that cast lives.
  *

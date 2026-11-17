@@ -19,9 +19,9 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 
 /**
- * A chat that does not exist yet (T29, T30). The shell asks the core for "the chat on screen"
- * twice — once to mark it for the notice rule, once for the screen itself — and it asks before
- * the greeting has minted an id on a cold launch. Whatever the core hands back has to be the chat
+ * A chat that does not exist yet. The shell asks the core for "the chat on screen"
+ * twice (once to mark it for the notice rule, once for the screen itself) and it asks before the
+ * greeting has minted an id on a cold launch. Whatever the core hands back has to be the chat
  * the socket fills, or the send goes into one session and the thread the reader looks at is
  * another: a skeleton that never resolves, and a prompt that is accepted and never drawn.
  */

@@ -5,7 +5,7 @@ import de.arjmandi.nanobot.companion.wire.Frame
 import de.arjmandi.nanobot.companion.wire.Outbound
 
 /**
- * Many chats, one socket (plan.md C5.4). Every frame carries the chat it belongs to, so
+ * Many chats, one socket. Every frame carries the chat it belongs to, so
  * routing is a map lookup rather than a decision; what needs deciding is the order around
  * an attach, because a message must not overtake the `attached` that makes its chat real.
  */
@@ -53,8 +53,8 @@ internal object ChatRouter {
     }
 
     /**
-     * Open a chat: the `attach` that makes the gateway replay its history (plan.md C4.6, I3).
-     * An attached chat, or one whose attach is already in flight, asks for nothing — two
+     * Open a chat: the `attach` that makes the gateway replay its history.
+     * An attached chat, or one whose attach is already in flight, asks for nothing, because two
      * attaches would replay the same history twice and double every row.
      */
     fun open(set: ChatSet, chatId: String): ChatRouted {

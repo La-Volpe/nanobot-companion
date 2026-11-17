@@ -23,7 +23,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * The engine is the one place effects stop being data (plan.md §2). Everything here runs on
+ * The engine is the one place effects stop being data. Everything here runs on
  * a fake transport and the test dispatcher's virtual time: no real socket, no wall clock,
  * and every scenario ends by counting what is still running.
  */
@@ -174,7 +174,7 @@ class TurnEngineTest {
         assertEquals(1, socket.closed)
     }
 
-    /** T42: a receipt may not claim a frame the socket refused. The channel takes the frame, the
+    /** A receipt may not claim a frame the socket refused. The channel takes the frame, the
      * writer hands it on, and only the writer knows whether the socket wanted it. */
     @Test
     fun aWriteTheSocketRefusedIsNotASend() = runTest {

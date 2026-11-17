@@ -5,9 +5,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /**
- * T45's core half. The precedence that picks the window is `ContextUsageTest`'s and the token copy
- * is `TokenCountTest`'s; what is pinned here is that Overview's row says what the chip says — the
- * chat's preset and the chat's window — and that a window nobody reported is a blank, not a zero.
+ * The core half of the model-in-use row. The precedence that picks the window is
+ * `ContextUsageTest`'s and the token copy is `TokenCountTest`'s; what is pinned here is that
+ * Overview's row says what the chip says (the chat's preset and the chat's window), and that a
+ * window nobody reported is a blank, not a zero.
  */
 class ModelInUseTest {
 

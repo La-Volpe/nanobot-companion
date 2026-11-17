@@ -7,11 +7,11 @@ import de.arjmandi.nanobot.companion.wire.ModelPreset
 import de.arjmandi.nanobot.companion.wire.SettingsState
 import de.arjmandi.nanobot.companion.wire.Usage
 
-/** Where the gateway is and the secret that opens it (plan.md §2). */
+/** Where the gateway is and the secret that opens it. */
 public data class GatewayProfile(public val url: String, public val secret: String)
 
 /**
- * The connection dot and the banner (plan.md §2, C7.4). Four states, because a user needs to
+ * The connection dot and the banner. Four states, because a user needs to
  * tell "not started" from "starting" from "lost it" from "this will not work".
  */
 public sealed interface ConnectionState {
@@ -31,7 +31,7 @@ public sealed interface ConnectionState {
 }
 
 /**
- * The eight entries of the transport taxonomy as the UI sees them (plan.md §6, C7.4): one copy
+ * The eight entries of the transport taxonomy as the UI sees them: one copy
  * key each, and whether "try again" is an honest offer. The platform owns the sentence.
  */
 public enum class ConnectionFailure(public val copyKey: String, public val retryable: Boolean) {
@@ -51,7 +51,7 @@ public sealed interface ConnectResult {
     /**
      * A refused connect, carrying both the transport's word ([error]) and the state a screen
      * renders ([failure], [detail]). The mapping from one to the other is the core's and stays
-     * internal: a platform that re-derived it would be a second taxonomy to keep in step (C7.4).
+     * internal: a platform that re-derived it would be a second taxonomy to keep in step.
      */
     public data class Failed(
         public val error: CoreError,
@@ -61,10 +61,10 @@ public sealed interface ConnectResult {
 }
 
 /**
- * Whether a chat's stored turns have been read (D46). The socket's `attach` carries no history, so
- * a thread with no rows is two different things: a conversation nobody has sent to, and one whose
+ * Whether a chat's stored turns have been read. The socket's `attach` carries no history, so a
+ * thread with no rows is two different things: a conversation nobody has sent to, and one whose
  * page has not arrived. A screen that draws the first while the second is true says "nothing here"
- * about a conversation it has not looked at yet — which is what this state exists to prevent.
+ * about a conversation it has not looked at yet, which is what this state exists to prevent.
  */
 public enum class HistoryStatus {
     /** The page read is not finished: the thread knows only what the socket showed it. */
@@ -77,7 +77,7 @@ public enum class HistoryStatus {
     Failed,
 }
 
-/** What the composer hands the facade (plan.md C6.1). Media travels as references (C6.6). */
+/** What the composer hands the facade. Media travels as references. */
 public data class OutboundDraft(
     public val text: String,
     public val quote: String? = null,
@@ -94,7 +94,7 @@ public class PickedFile(
     public val bytes: ByteArray,
 )
 
-/** What an upload produced (plan.md C6.6): a reference to put on a message, or why not. */
+/** What an upload produced: a reference to put on a message, or why not. */
 public sealed interface UploadResult {
     public data class Uploaded(public val reference: String) : UploadResult
     public data class Rejected(public val reason: AttachmentRejection) : UploadResult
@@ -107,7 +107,7 @@ public sealed interface SendReceipt {
 }
 
 /**
- * Local refusals, typed so the platform holds the sentence (plan.md §10, C6.1). A send the
+ * Local refusals, typed so the platform holds the sentence. A send the
  * gateway refuses arrives as a turn that fails, not as one of these.
  */
 public enum class SendRejection(public val copyKey: String) {
@@ -119,8 +119,8 @@ public enum class SendRejection(public val copyKey: String) {
 }
 
 /**
- * What a preset pick did (T39). `Sent` is not `Applied`: `/model <preset>` is a turn, and the
- * gateway's answer — its "Switched model preset" message, or its refusal — is that turn's text.
+ * What a preset pick did. `Sent` is not `Applied`: `/model <preset>` is a turn, and the
+ * gateway's answer (its "Switched model preset" message, or its refusal) is that turn's text.
  * What this covers is the half the client owns: a pick with nowhere to go says so.
  */
 public sealed interface PresetResult {
@@ -129,7 +129,7 @@ public sealed interface PresetResult {
 }
 
 public enum class PresetRejection(public val copyKey: String) {
-    /** The chat the gateway minted has no id yet, so `/model` has nowhere to go (C5.3). */
+    /** The chat the gateway minted has no id yet, so `/model` has nowhere to go. */
     NotConnected("preset.notConnected"),
 
     /** The socket refused the frame: the chip must not keep naming a model the chat is not on. */
@@ -137,13 +137,13 @@ public enum class PresetRejection(public val copyKey: String) {
 }
 
 /**
- * The presets a phone offers in the model sheet (T40). The gateway's built-in preset is not a
- * choice — it is what runs when nothing else is configured — and the flag is the payload's own
- * (`/api/settings` `model_presets[].is_default`), not a name this client hard-codes.
+ * The presets a phone offers in the model sheet. The gateway's built-in preset is not a
+ * choice, because it is what runs when nothing else is configured. The flag is the payload's
+ * own (`/api/settings` `model_presets[].is_default`), not a name this client hard-codes.
  *
  * [chosen] is the preset this chat is on when the client knows one, and it becomes the tick:
  * the gateway's `active` flag is about its configuration, and a chat can be on another preset
- * entirely — the owner's chat ran `default` while the sheet ticked `primary` (T37, T39).
+ * entirely: the owner's chat ran `default` while the sheet ticked `primary`.
  */
 public object ModelPresets {
     public fun offered(settings: SettingsState, chosen: String? = null): List<ModelPreset> =
@@ -160,7 +160,7 @@ public object ModelPresets {
             .map { preset -> if (chosen.isNullOrBlank()) preset else preset.copy(active = preset.name == chosen) }
 }
 
-/** What a recording produced (plan.md C6.5): text, a local refusal, or the gateway's reason. */
+/** What a recording produced: text, a local refusal, or the gateway's reason. */
 public sealed interface TranscriptionResult {
     public data class Transcribed(public val text: String) : TranscriptionResult
     public data class Rejected(public val reason: TranscriptionRejection) : TranscriptionResult
@@ -179,18 +179,18 @@ public enum class TranscriptionRejection(public val copyKey: String) {
     NotConnected("transcribe.notConnected"),
 }
 
-/** `set_workspace_scope` takes exactly these two words (plan.md §0, C6.3). */
+/** `set_workspace_scope` takes exactly these two words. */
 public enum class WorkspaceScope(public val wire: String) {
     Default("default"),
     Full("full"),
 }
 
 /**
- * Everything the composer row shows (plan.md §2). `usage` is the ring and
- * `contextWindowTokens` is the ring's denominator; both come from the frames that carry the
- * turn's own usage (D15.4), with the preset's configured window as the fallback and never an
- * invented number (`ContextUsage`, T37). [contextPercent] is computed here so the two phones
- * cannot round the same two numbers differently.
+ * Everything the composer row shows. `usage` is the ring and `contextWindowTokens` is the
+ * ring's denominator; both come from the frames that carry the turn's own usage, with the
+ * preset's configured window as the fallback and never an invented number (`ContextUsage`).
+ * [contextPercent] is computed here so the two phones cannot round the same two numbers
+ * differently.
  */
 public data class ComposerState(
     public val modelPreset: String? = null,
@@ -200,12 +200,12 @@ public data class ComposerState(
     /** `Math.min(100, Math.round(used / window * 100))`, null before there is a window. */
     public val contextPercent: Int? = null,
     public val accessMode: WorkspaceScope = WorkspaceScope.Default,
-    /** What is typed but not sent; a refused send leaves it here (C6.1). */
+    /** What is typed but not sent; a refused send leaves it here. */
     public val draft: String = "",
-    /** `ready.limits`: the composer validates against the gateway's own numbers (C6.1, C6.6). */
+    /** `ready.limits`: the composer validates against the gateway's own numbers. */
     public val limits: Limits? = null,
     /**
-     * The one prompt waiting for the running turn to end (C5.5, I5). Typing while a turn runs
+     * The one prompt waiting for the running turn to end. Typing while a turn runs
      * makes the primary button Send again, and pressing it queues rather than stopping; the
      * chip above the field shows this and the turn's `turn_end` releases it.
      */
@@ -213,9 +213,9 @@ public data class ComposerState(
 )
 
 /**
- * The five things an automation row can do (plan.md C7.2). There is no sixth: an automation
- * is created by asking the agent, and the gateway has no create endpoint to call — so a
- * "new automation" button belongs in the composer, not here (design README).
+ * The five things an automation row can do. There is no sixth: an automation is created by
+ * asking the agent, and the gateway has no create endpoint to call, so a "new automation" button
+ * belongs in the composer, not here.
  */
 public enum class AutomationActionKind(public val wire: String) {
     Enable("automation.enable"),
@@ -236,7 +236,7 @@ public data class AutomationChatChange(
     public val message: String,
 )
 
-/** What one action did, typed per action so the platform can pick the sentence (C7.2). */
+/** What one action did, typed per action so the platform can pick the sentence. */
 public sealed interface AutomationActionResult {
     public data class Done(public val jobs: List<de.arjmandi.nanobot.companion.wire.AutomationJob>) : AutomationActionResult
 

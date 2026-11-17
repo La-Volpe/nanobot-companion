@@ -10,7 +10,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * Secrets on Android (plan.md D5): AES-GCM under a key that never leaves the Android
+ * Secrets on Android: AES-GCM under a key that never leaves the Android
  * Keystore, with the ciphertext and its IV in the app's preferences file. The Keystore
  * needs a device, so [PreferenceStore] and [SecretBox] are the two seams the host test
  * drives; production composes [SharedPreferenceStore] and [KeystoreSecretBox].

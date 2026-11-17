@@ -16,9 +16,9 @@ internal sealed interface SessionListOutcome {
 }
 
 /**
- * `GET /api/sessions` (plan.md C5.1). The write side of this gateway is socket-only, so
- * this is a plain read; it needs the bootstrap `api_token` as a bearer (D15.6), which is
- * why a session list cannot be refreshed without a fresh bootstrap.
+ * `GET /api/sessions`. The write side of this gateway is socket-only, so this is a plain
+ * read; it needs the bootstrap `api_token` as a bearer, which is why a session list cannot
+ * be refreshed without a fresh bootstrap.
  */
 internal class SessionListClient(
     private val http: HttpClient,

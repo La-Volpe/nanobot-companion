@@ -6,7 +6,7 @@ import kotlinx.serialization.json.JsonObject
 /**
  * The slash palette's rows (`GET /api/commands`). The gateway builds them from its command
  * registry (`nanobot/command/application.py` `builtin_command_palette`), so the list is the
- * gateway's, not this client's — a new builtin appears in the sheet without an app release.
+ * gateway's, not this client's: a new builtin appears in the sheet without an app release.
  */
 public data class SlashCommand(
     public val command: String,
@@ -35,7 +35,7 @@ public data class CliAppMention(
     public val entryPoint: String? = null,
 )
 
-/** Payload readers for the two read endpoints the palettes are built from (C6.4). */
+/** Payload readers for the two read endpoints the palettes are built from. */
 public object PalettePayloads {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }

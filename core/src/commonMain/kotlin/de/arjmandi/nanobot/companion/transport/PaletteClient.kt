@@ -17,10 +17,10 @@ internal sealed interface PaletteOutcome {
 }
 
 /**
- * The two reads the palettes need (plan.md C6.4): `/api/commands` and the installed CLI
- * apps. Both take the bootstrap `api_token` as a bearer like every other HTTP read
- * (D15.6), and both are cheap enough to fetch when the sheet opens — the WebUI loads its
- * mention catalogs on demand rather than at connect (`thread-shell.test.tsx:5687`).
+ * The two reads the palettes need: `/api/commands` and the installed CLI apps. Both take
+ * the bootstrap `api_token` as a bearer like every other HTTP read, and both are cheap
+ * enough to fetch when the sheet opens: the WebUI loads its mention catalogs on demand
+ * rather than at connect (`thread-shell.test.tsx:5687`).
  */
 internal class PaletteClient(
     private val http: HttpClient,

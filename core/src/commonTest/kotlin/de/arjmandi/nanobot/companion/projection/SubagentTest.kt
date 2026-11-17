@@ -6,12 +6,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The subagent dock (plan.md I8, parity row `thread.subagents`).
+ * The subagent dock (parity row `thread.subagents`).
  *
  * The shape is the gateway's `SubagentStatus.as_dict()` (`nanobot/agent/subagent_status.py:43-70`),
  * which the WebUI sends as `subagent_task {task: {...}}` while the parent still owns the task
- * (`session_projection.py:40-47`). There is no recorded fixture for this frame yet — parked as
- * P3/P8 — so these assertions are the gateway's own field names and states, not a guess at them.
+ * (`session_projection.py:40-47`). There is no recorded fixture for this frame yet, so these
+ * assertions are the gateway's own field names and states, not a guess at them.
  */
 class SubagentTest {
 

@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The eight failures the UI has to explain (plan.md §6, C7.4). The matrix is the whole point:
+ * The eight failures the UI has to explain. The matrix is the whole point:
  * every transport failure reaches exactly one state, every state has one copy key, and the
  * retryability of each is a decision written down rather than a guess made in a view.
  */
@@ -72,10 +72,10 @@ class ConnectionStateTest {
         assertEquals("1", state.detail?.substringAfter('/'), "and which one this app speaks")
     }
     /**
-     * A failed connect answers with the state a screen renders, not only with the error the
-     * taxonomy was derived from: Swift cannot read the internal `connectionFailure()` mapping
-     * (C8.2), and re-deriving the eight entries in Swift would be a second taxonomy to keep in
-     * step. The result carries both, and they agree.
+     * A failed connect answers with the state a screen renders as well as the error the taxonomy
+     * was derived from: Swift cannot read the internal `connectionFailure()` mapping, and
+     * re-deriving the eight entries in Swift would be a second taxonomy to keep in step. The
+     * result carries both, and they agree.
      */
     @Test
     fun aFailedConnectCarriesTheStateTheScreenRenders() {

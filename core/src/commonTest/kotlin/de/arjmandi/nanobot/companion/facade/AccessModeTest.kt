@@ -24,7 +24,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Access mode is `set_workspace_scope` with `default` or `full` (plan.md C6.3), and the
+ * Access mode is `set_workspace_scope` with `default` or `full`, and the
  * gateway can refuse it: `detail: "workspace_scope_rejected"` (inbound_commands.py:283). A
  * refused switch must put the chip back where it was rather than lie about the sandbox.
  */

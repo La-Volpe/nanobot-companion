@@ -3,7 +3,7 @@ package de.arjmandi.nanobot.companion.projection
 import de.arjmandi.nanobot.companion.wire.Usage
 
 /**
- * What the chat screen renders (plan.md C4.1), as one immutable value. Every field is
+ * What the chat screen renders, as one immutable value. Every field is
  * something a view may show, and the ids are derived from gateway ids rather than from
  * arrival order, so reducing the same frames twice yields the same state.
  */
@@ -16,7 +16,7 @@ public data class ThreadState(
     public val contextWindowTokens: Int? = null,
     public val modelPreset: String? = null,
     public val modelName: String? = null,
-    /** The subtasks this chat's agent is running (`subagent_task`, C7.2's dock in I8). */
+    /** The subtasks this chat's agent is running (`subagent_task`), which the dock lists. */
     public val subagents: List<Subagent> = emptyList(),
 ) {
     public val activeTurn: Turn? get() = turns.lastOrNull { it.id == activeTurnId }
@@ -41,7 +41,7 @@ public data class UserPrompt(
     public val quote: String? = null,
     /** What was sent with it (`user_message.media_urls`), drawn above the text. */
     public val media: List<MediaAttachment> = emptyList(),
-    /** True until `message_accepted` proves the gateway took it (C4.5). */
+    /** True until `message_accepted` proves the gateway took it. */
     public val optimistic: Boolean = false,
     public val createdAtMs: Long? = null,
 )
@@ -50,7 +50,7 @@ public data class AnswerState(
     public val segments: List<StreamSegment> = emptyList(),
     /** The pictures, clips and recordings the answer carries (`message.media_urls`). */
     public val media: List<MediaAttachment> = emptyList(),
-    /** Reasoning is streamed in parallel with the answer and collapses when it ends (C4.3). */
+    /** Reasoning is streamed in parallel with the answer and collapses when it ends. */
     public val reasoning: List<StreamSegment> = emptyList(),
     public val reasoningDone: Boolean = false,
 ) {
@@ -76,7 +76,7 @@ public sealed interface ActivityItem {
         public val detail: String? = null,
     ) : ActivityItem
 
-    /** A write or edit, rendered as a path with a unified diff (C4.4). */
+    /** A write or edit, rendered as a path with a unified diff. */
     public data class FileEdit(
         override val id: String,
         public val path: String,
@@ -116,7 +116,7 @@ public data class Subagent(
 
 public enum class TurnStatus { Running, Complete, Failed }
 
-/** User-facing states that are not part of a turn's answer (C7.3). */
+/** User-facing states that are not part of a turn's answer. */
 public sealed interface Notice {
     public val id: String
 
@@ -133,7 +133,7 @@ public sealed interface Notice {
 
     /**
      * A task the host interrupted. It is offered only while the gateway is waiting for a
-     * decision — `awaiting_user` or `failed` — and `canContinue` is the gateway's own answer
+     * decision (`awaiting_user` or `failed`), and `canContinue` is the gateway's own answer
      * to whether the saved context could be restored (`RecoveryNotice.tsx:41`).
      */
     public data class Recovery(
@@ -167,7 +167,7 @@ public sealed interface Notice {
 
     public data class Failure(override val id: String, public val errorKind: String?, public val message: String?) : Notice
 
-    /** A different model answered than the preset asked for (C6.2, `turn_model_updated.fallback`). */
+    /** A different model answered than the preset asked for (`turn_model_updated.fallback`). */
     public data class PresetFallback(override val id: String, public val modelName: String?) : Notice
 
     /**
@@ -179,7 +179,7 @@ public sealed interface Notice {
 
 /** What went wrong with the sandbox, as the notice sentence is chosen by (copy keys, not copy). */
 public enum class SandboxIssue(public val copyKey: String) {
-    /** `sandbox_launcher_missing` — the launcher binary is not installed. */
+    /** `sandbox_launcher_missing`: the launcher binary is not installed. */
     LauncherMissing("notice.sandbox.missing"),
 
     /** `sandbox_path_not_absolute`, `sandbox_not_executable`, `sandbox_path_unavailable`. */
@@ -188,11 +188,11 @@ public enum class SandboxIssue(public val copyKey: String) {
     /** `sandbox_agent_writable`, `sandbox_unprotected_installation`. */
     Permissions("notice.sandbox.permissions"),
 
-    /** `sandbox_start_failed` — the launcher is there and would not start. */
+    /** `sandbox_start_failed`: the launcher is there and would not start. */
     Startup("notice.sandbox.startup"),
 }
 
-/** Effects are data; the engine executes them (§2). */
+/** Effects are data; the engine executes them. */
 internal sealed interface Effect {
     data class PersistCache(val chatId: String) : Effect
     data class SettleDelivery(val turnId: String, val accepted: Boolean) : Effect

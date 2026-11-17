@@ -26,9 +26,9 @@ import kotlinx.coroutines.test.runTest
 
 /**
  * A phone loses its socket constantly: tunnels, sleep, a gateway restart. Every reconnect
- * must leave nothing behind (plan.md C5.6, §3.7), and the only honest way to show that is a
- * storm — a hundred sockets that each close themselves after three frames, then a count of
- * what is still running.
+ * must leave nothing behind, and the only honest way to show that is a storm: a hundred
+ * sockets that each close themselves after three frames, then a count of what is still
+ * running.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SoakTest {

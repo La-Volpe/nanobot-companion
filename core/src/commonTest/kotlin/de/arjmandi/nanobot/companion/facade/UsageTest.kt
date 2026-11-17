@@ -27,9 +27,9 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 /**
- * The usage ring (plan.md C6.7): the denominator is the context window from
- * `turn_model_updated`, the numerator is `turn_end.usage.context_tokens` (D15.4), and both
- * live on the composer because that is where the ring is drawn.
+ * The usage ring: the denominator is the context window from `turn_model_updated`, the
+ * numerator is `turn_end.usage.context_tokens`, and both live on the composer because that is
+ * where the ring is drawn.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class UsageTest {
@@ -153,10 +153,10 @@ class UsageTest {
     }
 
     /**
-     * T37: a stored turn carries its usage and, when the page was compacted or written by an
-     * older gateway, no window. The WebUI then falls back — usage snapshot, then the thread,
-     * then the preset — and the ring keeps a denominator instead of going blank. The pinned
-     * case: 141 510 of 1 000 000 is **14%**, not the 71% a 200 000 window would print.
+     * A stored turn carries its usage and, when the page was compacted or written by an older
+     * gateway, no window. The WebUI then falls back through the usage snapshot, the thread and the
+     * preset, and the ring keeps a denominator instead of going blank. The pinned case: 141 510 of
+     * 1 000 000 is **14%**, not the 71% a 200 000 window would print.
      */
     @Test
     fun aPresetWindowIsTheDenominatorWhenNoFrameCarriedOne() = runTest {
@@ -202,7 +202,7 @@ class UsageTest {
         assertEquals(14, handle.composer.value.contextPercent, "the late read fills the ring it can fill")
     }
 
-    /** A window a turn did carry is the chat's own model, and nothing may overwrite it (T37). */
+    /** A window a turn did carry is the chat's own model, and nothing may overwrite it. */
     @Test
     fun theWindowATurnCarriedOutranksTheGatewaySetting() = runTest {
         val socket = FakeSocket()

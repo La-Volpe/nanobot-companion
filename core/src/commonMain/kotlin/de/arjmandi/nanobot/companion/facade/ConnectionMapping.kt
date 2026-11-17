@@ -3,7 +3,7 @@ package de.arjmandi.nanobot.companion.facade
 import de.arjmandi.nanobot.companion.transport.CoreError
 
 /**
- * The taxonomy as a screen state (plan.md C7.4). One function, exhaustive over [CoreError], so
+ * The taxonomy as a screen state. One function, exhaustive over [CoreError], so
  * a new failure cannot reach the UI as an unhandled string: the compiler makes the author pick
  * a state and a copy key before it builds.
  */

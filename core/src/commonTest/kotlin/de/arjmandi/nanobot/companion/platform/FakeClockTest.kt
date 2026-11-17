@@ -5,7 +5,7 @@ import kotlin.test.assertEquals
 
 /**
  * Reducers and notice expiry read time through this seam and never through the wall
- * clock (plan.md §2: "time passed in"), so the fake has to advance predictably.
+ * clock ("time passed in"), so the fake has to advance predictably.
  */
 class FakeClockTest {
 

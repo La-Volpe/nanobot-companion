@@ -3,7 +3,7 @@ package de.arjmandi.nanobot.companion.wire
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
-/** `version{current, commit}` — the two lines Overview shows (C7.1, design README). */
+/** `version{current, commit}`: the two lines Overview shows. */
 public data class GatewayVersion(public val current: String, public val commit: String)
 
 /** Where the gateway runs; Overview's "server" line, and the only place it can come from. */
@@ -24,8 +24,8 @@ public data class TranscriptionSettings(
 )
 
 /**
- * One day of `/api/settings/usage`, as far as Overview draws it (T44). The payload carries a dozen
- * more fields per day — the cache split, the request counts, the per-source breakdown — and the
+ * One day of `/api/settings/usage`, as far as Overview draws it. The payload carries a dozen
+ * more fields per day (the cache split, the request counts, the per-source breakdown), and the
  * card draws one bar per day from the day's total, so those are not parsed: a field nobody reads
  * is a field that can silently rot. The card's own window is `UsageWindow`, which needs no more
  * than a date and a number.
@@ -33,9 +33,9 @@ public data class TranscriptionSettings(
 public data class UsageDay(public val date: String, public val totalTokens: Long = 0)
 
 /**
- * `/api/settings/usage`, as far as Overview's card draws it (T44): the days behind the strip, the
- * requests under the headline, and the cache hit rate beside them — the three the design's card
- * shows (design README, `index.html` `.usage-card`). Nothing else from the payload is parsed:
+ * `/api/settings/usage`, as far as Overview's card draws it: the days behind the strip, the
+ * requests under the headline, and the cache hit rate beside them, which are the three figures
+ * the design's usage card shows. Nothing else from the payload is parsed:
  * `providers_30d` (the card's per-model legend) has no reader here, and neither does the year of
  * totals, the streaks or the per-source split.
  */
@@ -47,7 +47,7 @@ public data class UsageTotals(
 )
 
 /**
- * One model preset (plan.md C6.2, I5's model sheet). `/model <preset>` is the switch, so the
+ * One model preset, as the model sheet offers it. `/model <preset>` is the switch, so the
  * sheet needs the names the gateway actually has; `active` and `isDefault` are the gateway's
  * own marks rather than a comparison this client re-derives.
  */
@@ -61,7 +61,7 @@ public data class ModelPreset(
 )
 
 /**
- * Settings → Overview (plan.md C7.1), as one immutable value. Deliberately absent: uptime.
+ * Settings → Overview, as one immutable value. Deliberately absent: uptime.
  * The gateway's payload has no uptime field, and the design says so rather than guessing at
  * one from a process start time this client cannot see.
  */
@@ -74,7 +74,7 @@ public data class SettingsState(
     public val contextWindowTokens: Int? = null,
     public val transcription: TranscriptionSettings? = null,
     public val usage: UsageTotals? = null,
-    /** The presets the model sheet offers, in the gateway's own order (C6.2). */
+    /** The presets the model sheet offers, in the gateway's own order. */
     public val modelPresets: List<ModelPreset> = emptyList(),
     public val loaded: Boolean = false,
 )

@@ -14,7 +14,7 @@ import kotlin.test.assertIs
 import kotlinx.coroutines.test.runTest
 
 /**
- * The bootstrap call is the first thing that can fail (plan.md C3.1), and each failure
+ * The bootstrap call is the first thing that can fail, and each failure
  * has to arrive as a taxonomy entry, because the eight entries are what the onboarding
  * screen shows instead of an exception string.
  */

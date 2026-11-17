@@ -5,7 +5,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
 /**
- * The drawer's rows (plan.md C5.1). Timestamps arrive as ISO-8601 *strings* (D15.2), and
+ * The drawer's rows. Timestamps arrive as ISO-8601 *strings*, and
  * the raw string is kept beside the parsed instant so a row can be shown even if the
  * parser meets a format it does not know.
  */
@@ -21,7 +21,7 @@ public data class SessionRow(
     public val updatedAt: String?,
     public val updatedAtMs: Long?,
     public val recoveryState: String?,
-    /** The stable handle a prompt mentions this chat by; absent on a row the gateway did not mint (C6.4). */
+    /** The stable handle a prompt mentions this chat by; absent on a row the gateway did not mint. */
     public val handleId: String? = null,
     public val handleName: String? = null,
 )
@@ -62,9 +62,9 @@ internal object SessionListParser {
 }
 
 /**
- * ISO-8601 to epoch millis without a date library (plan.md D4). Only the shape the
- * gateway emits — `2026-11-14T03:23:21.667888`, no zone suffix — and a trailing `Z` is
- * treated as UTC, which is what the gateway means.
+ * ISO-8601 to epoch millis without a date library. Only the shape the gateway emits
+ * (`2026-11-14T03:23:21.667888`, no zone suffix); a trailing `Z` is treated as UTC, which is
+ * what the gateway means.
  */
 internal object Iso8601 {
 

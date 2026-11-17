@@ -28,7 +28,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * One reducer, two feeds (plan.md D9). Live frames and replayed history use the same
+ * One reducer, two feeds. Live frames and replayed history use the same
  * vocabulary, so this function serves both, and it is pure: time arrives as [nowMs], and
  * anything the engine must do leaves as [Effect] data instead of a call.
  */
@@ -52,7 +52,7 @@ internal object ThreadReducer {
                 contextWindowTokens = frame.contextWindowTokens ?: state.contextWindowTokens,
             )
             // The preset asked for one model and another answered: that is a notice, not a
-            // silent chip change (C6.2).
+            // silent chip change.
             if (frame.fallback) {
                 addNotice(updated, Notice.PresetFallback(id = FALLBACK_NOTICE, modelName = frame.modelName))
             } else {
@@ -73,7 +73,7 @@ internal object ThreadReducer {
     }
 
     /**
-     * A stream is identified by the gateway's opaque `stream_id` (D15.3). Text always lands
+     * A stream is identified by the gateway's opaque `stream_id`. Text always lands
      * on the last open segment for that id; a delta that arrives after the segment closed
      * opens a new one rather than reopening a settled bubble.
      */
@@ -108,7 +108,7 @@ internal object ThreadReducer {
             val closed = when {
                 // A stream_end with no text and no deltas before it is a placeholder: the live
                 // socket sends one per answer phase and the history page does not store it, so
-                // keeping it would give the turn an empty bubble (found by `watch --verify`, D37).
+                // keeping it would give the turn an empty bubble (found by `watch --verify`).
                 last == null -> if (text.isNullOrEmpty()) {
                     segments
                 } else {
@@ -118,7 +118,7 @@ internal object ThreadReducer {
                 // The recorded history puts the whole text on stream_end when no delta preceded
                 // it. An *empty* stream_end for a stream that carried nothing is a placeholder
                 // the live socket emits and the history page does not store, and rendering it
-                // gives the turn an empty bubble (found by `core-cli watch --verify`, D37).
+                // gives the turn an empty bubble (found by `core-cli watch --verify`).
                 !text.isNullOrEmpty() -> segments + StreamSegment(id = streamId, text = text, closed = true)
                 else -> segments
             }
@@ -144,7 +144,7 @@ internal object ThreadReducer {
      * The socket streams reasoning in deltas and ends the stream with a text-less
      * `reasoning_end`; the history page stores one `reasoning_end` per block carrying the block's
      * whole text (recorded: `fixtures/…/file/history.json`). Both feeds therefore have to land a
-     * bubble, and neither may drop the text the other form carries (C4.3, D35).
+     * bubble, and neither may drop the text the other form carries.
      */
     private fun closeReasoning(state: ThreadState, streamId: String?, turnId: String?, text: String?): ThreadState =
         updateTurn(state, turnId, null) { turn ->
@@ -245,7 +245,7 @@ internal object ThreadReducer {
         return updated
     }
 
-    /** `file_edit` carries one diff per edited file; the finished edit is the one C4.4 renders. */
+    /** `file_edit` carries one diff per edited file; the finished edit is what the activity row draws. */
     private fun addFileEdits(state: ThreadState, frame: FileEditFrame): ThreadState {
         if (frame.edits.isEmpty()) return state
         val items = frame.edits.mapIndexed { index, edit ->
@@ -326,7 +326,7 @@ internal object ThreadReducer {
         }
 
     /**
-     * The bubble the composer puts up before the gateway has answered (C6.1). It is a turn the
+     * The bubble the composer puts up before the gateway has answered. It is a turn the
      * client named, so `message_accepted` can find it and `turn_end` can settle it.
      */
     fun addLocalPrompt(
@@ -350,7 +350,7 @@ internal object ThreadReducer {
         val opened = if (frame.startsTurn) state.copy(notices = state.notices.filterNot { it is Notice.Sandbox }) else state
         val turnId = frame.turnId ?: opened.activeTurnId ?: return opened
         val existing = opened.turn(turnId)
-        // The gateway uses a quote as model-only context and never echoes it (C4.9), so the
+        // The gateway uses a quote as model-only context and never echoes it, so the
         // one this client rendered has to survive the frame that carries the prompt.
         val prompt = UserPrompt(
             text = frame.text.orEmpty(),
@@ -375,7 +375,7 @@ internal object ThreadReducer {
         }
     }
 
-    /** `message_accepted` is the gateway's ack: the optimistic bubble stops being optimistic (C4.5). */
+    /** `message_accepted` is the gateway's ack: the optimistic bubble stops being optimistic. */
     private fun settleOptimisticPrompt(state: ThreadState, frame: MessageAcceptedFrame): ThreadState {
         // A turn that starts is a clean slate for the standing warning (useSandboxNotice.ts:29).
         val clean = if (frame.startsTurn) state.copy(notices = state.notices.filterNot { it is Notice.Sandbox }) else state
@@ -397,7 +397,7 @@ internal object ThreadReducer {
         }
     }
 
-    /** One row per compaction id, and its phase is what changes (C7.3). */
+    /** One row per compaction id, and its phase is what changes. */
     private fun compaction(state: ThreadState, frame: ContextCompactionFrame): ThreadState {
         val phase = frame.phase ?: return state
         val id = frame.compactionId ?: COMPACTION_NOTICE
@@ -476,7 +476,7 @@ internal object ThreadReducer {
             usage = frame.usage ?: settled.usage,
             contextWindowTokens = frame.contextWindowTokens ?: settled.contextWindowTokens,
             // The strip is drawn only while a goal is active, so a settle that says
-            // `active: false` takes it away rather than drawing an empty strip (C7.3).
+            // `active: false` takes it away rather than drawing an empty strip.
             notices = settled.notices.filterNot { it is Notice.Goal } +
                 listOfNotNull(
                     Notice.Goal(id = GOAL_NOTICE, active = true).takeIf { frame.goalState.active },

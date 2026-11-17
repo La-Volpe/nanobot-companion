@@ -9,9 +9,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * T44: Overview draws the usage it already fetched. The window, the gap-filling and the headline
- * are the WebUI's (`settings/TokenUsageCard.tsx:56`), done once here so both phones draw the same
- * chart from the same two numbers — and so a day the gateway never reported is a zero bar rather
+ * Overview draws the usage it already fetched. The window, the gap-filling and the headline are
+ * the WebUI's (`settings/TokenUsageCard.tsx:56`), done once here so both phones draw the same
+ * chart from the same two numbers, and so a day the gateway never reported is a zero bar rather
  * than a missing one.
  */
 class UsageWindowTest {

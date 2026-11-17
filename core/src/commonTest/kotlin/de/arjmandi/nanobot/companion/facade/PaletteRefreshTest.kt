@@ -30,7 +30,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 /**
- * The palettes are read when the sheet opens, not at connect (C6.4): the drawer's sessions
+ * The palettes are read when the sheet opens, not at connect: the drawer's sessions
  * come from the same `GET /api/sessions` the list uses, and the commands and installed apps
  * are two bearer reads of their own. A failed read leaves the previous catalog alone so the
  * sheet can offer a retry instead of an empty list.
