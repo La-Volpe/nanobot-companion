@@ -81,3 +81,70 @@ jobs:
             app/build/test-results/**
           retention-days: 7
 
+  macos:
+    name: iOS (macos)
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Android SDK
+        # The coverage gate aggregates `jvmTest` and `testAndroidHostTest`, so this job needs the Android
+        # SDK as well as Xcode. The macOS image ships none, so the command-line tools are fetched once.
+        run: |
+          set -o pipefail
+          if [ ! -d "$HOME/android-sdk/cmdline-tools/latest" ]; then
+            curl -sSLo /tmp/cmdtools.zip https://dl.google.com/android/repository/commandlinetools-mac-13114758_latest.zip
+            mkdir -p "$HOME/android-sdk/cmdline-tools"
+            unzip -q /tmp/cmdtools.zip -d "$HOME/android-sdk/cmdline-tools"
+            mv "$HOME/android-sdk/cmdline-tools/cmdline-tools" "$HOME/android-sdk/cmdline-tools/latest"
+          fi
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$HOME/android-sdk" >> "$GITHUB_ENV"
+          yes | "$HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_PLATFORM" "$ANDROID_BUILD_TOOLS" >/dev/null
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: the Kotlin/Native half and the coverage gate
+        # `:core:jvmTest` links `core.framework` for the simulator before it runs — the bridge shape test
+        # reads the header Kotlin/Swift interop actually generates — and no Linux host can do that.
+        run: |
+          ./gradlew --stacktrace \
+            :core:jvmTest \
+            :core:iosSimulatorArm64Test \
+            :core:koverVerify
+
+      - name: XCUITest on a simulator
+        # `CODE_SIGNING_ALLOWED=NO` is not AGENTS gotcha 19: that one is about *device* installs, where an
+        # unsigned .app is refused by installd. A simulator test needs no team, and the project's two
+        # DEVELOPMENT_TEAM ids are for device builds.
+        run: |
+          xcodebuild test \
+            -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 17' \
+            -derivedDataPath .ci-derived \
+            -resultBundlePath .ci-results.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: the skip lists, printed rather than asserted
+        # The unit suite carries one opt-in skip (210 = 209 + 1 in the local run) and the UI suite the
+        # environment ones, whose count varies with which live suites have a gateway. Printing them keeps
+        # the numbers honest without pinning a figure the environment owns.
+        if: always()
+        run: |
+          xcrun xcresulttool get test-results summary --path .ci-results.xcresult 2>/dev/null || true
+
+      - name: keep the result bundle when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-xcresult
+          path: .ci-results.xcresult
+          retention-days: 7
+
