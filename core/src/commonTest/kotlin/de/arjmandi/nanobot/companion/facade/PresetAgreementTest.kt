@@ -199,6 +199,34 @@ class PresetAgreementTest {
     }
 
     /**
+     * The chat the gateway's own row puts on another preset, reopened the next morning: no turn has
+     * run on this socket, so no frame names a model, and the row is the only evidence there is. The
+     * chip must name that preset's model and that preset's window — not the configured `GLM` over a
+     * million (T47).
+     */
+    @Test
+    fun aChatOnAnotherPresetNamesThatPresetsModelAndWindow() = runTest {
+        val socket = FakeSocket()
+        val core = core(socket)
+        connect(core, socket, chat)
+        val handle = core.chat(chat)
+        core.settings.awaitValue(what = "the gateway's settings") { it.loaded }
+
+        sessions = row(chat, "Vision and OCR")
+        core.refreshSessions()
+        readsOf(core, chat, "Vision and OCR")
+        handle.composer.awaitValue(what = "the chip on the chat's own preset") {
+            it.modelPreset == "Vision and OCR"
+        }
+
+        val composer = handle.composer.value
+        assertEquals("Vision and OCR", composer.modelPreset)
+        assertEquals("qwen3-vl", composer.modelName, "the model that preset runs, not the configured GLM")
+        assertEquals(256_000, composer.contextWindowTokens, "and the window that preset has")
+        assertEquals(null, composer.contextPercent, "with no usage yet the ring has nothing to divide")
+    }
+
+    /**
      * The pick the gateway applied: its session row is the confirmation, and it says the same
      * preset the chip does, so the sheet's tick, the chip's name and the ring's window all
      * describe one model.
