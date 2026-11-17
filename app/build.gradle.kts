@@ -55,13 +55,14 @@ android {
 
 androidComponents {
     beforeVariants { variant ->
-        // AGP 9 enables unit tests for debug only, and Compose Preview's per-variant runfiles task
-        // refuses to be created for a variant that has none: `./gradlew :app:tasks` died with
-        // "Unit tests are disabled for this variant (enableUnitTest = false in beforeVariants)"
-        // (T68). The property is not on the public VariantBuilder interface in AGP 9, but it is on the
-        // type the DSL hands us at runtime, which is what this cast names. Release unit tests are never
-        // run by CI, so the cost is a configuration entry, not minutes.
-        (variant as AnalyticsEnabledVariantBuilder).enableUnitTest = true
+        // AGP 9 enables unit tests for debug only, and Compose Preview's per-variant runfiles task refuses
+        // to be created for a variant that has none: `./gradlew :app:tasks` died with "Unit tests are
+        // disabled for this variant (enableUnitTest = false in beforeVariants)" (T68). The property is not
+        // on the public VariantBuilder interface, and the type the DSL hands the lambda differs by
+        // environment — locally an `AnalyticsEnabled…` decorator, on a CI runner a plain
+        // `ApplicationVariantBuilderImpl` — so a cast to either one throws somewhere. The interface-less
+        // route is the only portable one: call the setter if the object has it.
+        variant.javaClass.methods.firstOrNull { it.name == "setEnableUnitTest" }?.invoke(variant, true)
     }
 }
 
