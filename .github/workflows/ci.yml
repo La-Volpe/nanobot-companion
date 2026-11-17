@@ -14,8 +14,8 @@
 #   test (ubuntu)      the suites that need no framework and no device
 #   macos              :core:jvmTest (it links the iOS framework first), the iOS tests, the coverage gate
 #                      (which aggregates the two host suites) and XCUITest
-#   connected          the Compose instrumented suite on an emulator — advisory, because the emulator's
-#                      software keyboard can vanish and only a cold boot brings it back (AGENTS gotcha 28)
+#   connected          the Compose instrumented suite on an emulator — manual dispatch only, because the
+#                      emulator is the flaky part of a hosted runner (three runs, three harness failures)
 #   builds             release APK/AAB and the CLI zip, with the licence and notices asserted inside them
 name: ci
 
@@ -149,11 +149,14 @@ jobs:
           retention-days: 7
 
   connected:
-    name: Android connected (advisory)
-    # Advisory by design: the emulator's software keyboard can stop appearing (`mInputShown=false`,
-    # AGENTS gotcha 28) and only a cold AVD boot revives it, so a red here is information, not a gate.
-    # Deliberately not triggered by `push`, so a merge to main cannot be blocked by that flake.
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    name: Android connected (manual)
+    # Manual only, on purpose. Three pull_request runs produced three different harness failures — the
+    # emulator action's adb server fighting a pinned ANDROID_SERIAL, an AVD that needed a cold boot before
+    # its software keyboard would appear (AGENTS gotcha 28), and one boot that produced no test results at
+    # all. None of them were the app, so none of them belong in the signal a merge depends on: this job is
+    # here for the day somebody wants Android's UI suite checked on a clean machine, with
+    # `gh workflow run ci.yml`. The suites that do gate a PR are `test`, `macos` and `builds`.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     continue-on-error: true
