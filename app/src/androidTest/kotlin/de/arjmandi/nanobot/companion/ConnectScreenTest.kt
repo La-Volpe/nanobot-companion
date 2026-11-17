@@ -104,7 +104,10 @@ class ConnectScreenTest {
     fun theScreenSaysPlainlyWhoThisAppIsNot() {
         screen()
 
+        // Scrolled to, then asserted: a hosted emulator's screen is smaller than this machine's AVD, and a
+        // sentence a reader can reach by scrolling is displayed in the only sense the app promises.
         compose.onNodeWithTag("connect.disclaimer")
+            .performScrollTo()
             .assertIsDisplayed()
             .assertTextEquals("Not affiliated with HKUDS/nanobot.")
     }
