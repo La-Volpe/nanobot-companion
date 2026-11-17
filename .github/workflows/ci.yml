@@ -1,5 +1,9 @@
 # Continuous integration.
 #
+# DISABLED 2026-11-17 at the owner's request — Actions minutes and limits, pending an alternative.
+# Nothing in this file runs any more. Re-enable with `gh workflow enable ci.yml` after the billing question is
+# settled; the definitions and every run they produced are unchanged.
+##
 # The policy, in one place and repeated in the README's testing section (T67):
 #
 #   No gateway secret, API key or device credential ever reaches a hosted runner. The five instruments that

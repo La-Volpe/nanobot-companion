@@ -141,7 +141,11 @@ cd iosApp && xcodebuild -scheme iosApp -destination 'platform=iOS Simulator,name
 
 ### What CI runs, and what it deliberately does not
 
-GitHub Actions runs the parts that need nothing but a machine with a toolchain:
+**CI is disabled as of 2026-11-17** at the owner's request, because of Actions minutes and limits; both workflows
+(`ci.yml`, `probe.yml`) are in the repo and can be switched back on with `gh workflow enable ci.yml`. What they last
+proved, before they were switched off, is in `tasks.md` and in the run IDs below.
+
+GitHub Actions ran the parts that need nothing but a machine with a toolchain:
 
 | job | what it proves |
 |---|---|

@@ -1,5 +1,9 @@
 # T62: the questions only a runner can answer.
 #
+# DISABLED 2026-11-17 at the owner's request — Actions minutes and limits, pending an alternative.
+# Nothing in this file runs any more. Re-enable with `gh workflow enable probe.yml` after the billing question is
+# settled; the definitions and every run they produced are unchanged.
+##
 # Everything in ci.yml pins a version or an image label, and none of those can be read from a
 # developer's Mac: which macOS image is current, which Xcode and iOS simulator runtime it carries,
 # whether the SDK platform this repo compiles against is installable, and which system image the
