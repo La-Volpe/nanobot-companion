@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import iosApp
 
-/// Attachments and voice (plan.md I6). The limits are the gateway's own numbers (4 files,
+/// Attachments and voice. The limits are the gateway's own numbers (4 files,
 /// 6 MiB each, 24 MiB total, one video ≤ 20 MiB) and the refusals are the core's typed reasons;
 /// this suite owns the copy each reason gets and the two voice gestures.
 @MainActor
@@ -97,9 +97,10 @@ struct AttachmentViewModelTests {
         #expect(model.lastRejection != nil)
     }
 
-    /// P13's other half: a card is a promise about the chat it was picked in. The shell used to
+    /// The other half of that rule: a card is a promise about the chat it was picked in. The shell
+    /// used to
     /// keep one card list across every chat, so a photo uploaded in one chat stayed on screen in
-    /// the next — shown, sent nowhere, and cleared by that chat's own send.
+    /// the next: shown, sent nowhere, and cleared by that chat's own send.
     @Test func cardsBelongToTheChatTheyWerePickedIn() async {
         let uploader = FakeUploader()
         let model = AttachmentViewModel(driver: uploader, limits: limits)
@@ -145,7 +146,7 @@ struct AttachmentViewModelTests {
                 "the attach sheet's second line is the real limit, not a description of one")
     }
 
-    // MARK: - the attach sheet's hand-off (T50)
+    // MARK: - the attach sheet's hand-off
 
     /// A row's tap says what to open and waits. iOS will not present a second sheet while the
     /// composer's sheet is still up, so the request made in the same tap was the tap that did
@@ -176,8 +177,8 @@ struct AttachmentViewModelTests {
         #expect(model.takeHandoff(cameraRefusal: nil) == nil)
     }
 
-    /// A camera that is off in Settings is a sentence on the composer, never a black cover — and
-    /// the sentence is a parameter, because `AVFoundation` is the screen's business, not this
+    /// A camera that is off in Settings is a sentence on the composer, never a black cover, and
+    /// the sentence is a parameter because `AVFoundation` is the screen's business and not this
     /// model's.
     @Test func aRefusedCameraHandsOnTheReasonInsteadOfTheCamera() {
         let model = model(FakeUploader())
@@ -189,7 +190,7 @@ struct AttachmentViewModelTests {
     }
 }
 
-/// Hold to talk (T48, the iOS twin of `VoiceViewModelTest`): the press records the instant it
+/// Hold to talk, the iOS twin of `VoiceViewModelTest`: the press records the instant it
 /// lands, a release under 800 ms is a discard that asks the gateway nothing, a release at or above
 /// it transcribes, and a drag up locks the recording so Send and Cancel own it instead of the
 /// finger.
@@ -241,7 +242,7 @@ struct VoiceViewModelTests {
         #expect(model.elapsedMs == 0)
     }
 
-    /// T48's floor: 799 ms is a tap, so nothing at all goes to the gateway.
+    /// The 800 ms floor: 799 ms is a tap, so nothing at all goes to the gateway.
     @Test func aReleaseUnder800msSendsNothing() async {
         let recorder = Recorder()
         let transcriber = Transcriber()
@@ -274,7 +275,7 @@ struct VoiceViewModelTests {
         #expect(VoiceLimits.discardMs > VoiceLimits.floorMs)
     }
 
-    /// A tap explains the gesture once and never again — Android's "tapping does nothing" answered
+    /// A tap explains the gesture once and never again: Android's "tapping does nothing" answered
     /// with a sentence instead of a second recording mode.
     @Test func aTapSaysHoldToTalkOnce() async {
         let hints = InMemoryVoiceHints()

@@ -2,8 +2,8 @@ import Foundation
 import Testing
 @testable import iosApp
 
-/// The drawer's branches (plan.md I2): what a query does to the rows, and which of the three
-/// empty states it lands in. The plan's red line is `searchFiltersAndShowsNoMatchState`.
+/// The drawer's branches: what a query does to the rows, and which of the three
+/// empty states it lands in. The rule worth pinning is `searchFiltersAndShowsNoMatchState`.
 @MainActor
 struct DrawerViewModelTests {
 

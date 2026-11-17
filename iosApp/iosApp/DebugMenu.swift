@@ -1,11 +1,11 @@
 #if DEBUG
 import SwiftUI
 
-/// The debug menu I8 and G2 ask for: every one of the eight connection failures, plus the chat
+/// The debug menu: every one of the eight connection failures, plus the chat
 /// states the design's chips inject, reachable by hand rather than only by launch environment.
 ///
 /// It is DEBUG-only, so a release build has no way to reach it. It injects the same state the
-/// real path produces — the banner, the dot and the notice rows are the app's own views — so
+/// real path produces (the banner, the dot and the notice rows are the app's own views), so
 /// what a person sees here is what a real failure looks like.
 struct DebugMenu: View {
     @ObservedObject var states: StatesViewModel

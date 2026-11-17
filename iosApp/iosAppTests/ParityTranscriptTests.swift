@@ -3,14 +3,14 @@ import Testing
 import core
 @testable import iosApp
 
-/// G3's third item, the iOS half (plan.md §8): the app opens the *same stored chat* the CLI
+/// The iOS half of the parity check: the app opens the *same stored chat* the CLI
 /// already has and prints the thread it holds as the CLI's plain lines, so
 /// `tools/parity-check.sh` can diff the two mechanically instead of putting a phone and a
 /// simulator side by side and looking at them.
 ///
 /// This is the twin of Android's `LiveSessionTest.theSameStoredChatReadsBackAsTheTranscript`,
 /// down to the line format: the socket's reduction in `core-cli watch`, the gateway's own page
-/// through `HistoryReplay` in the app — one core, so a difference is an app-path bug.
+/// through `HistoryReplay` in the app. One core, so a difference is an app-path bug.
 ///
 /// Opt-in, like the live trio: without the three variables it is skipped rather than failed, so
 /// the ordinary simulator suite needs no gateway. The lines go to `NANOBOT_PARITY_OUT` because
@@ -40,7 +40,7 @@ struct ParityTranscriptTests {
         defer { chat.stopObserving() }
 
         // The app's own way in: attach, then the WebUI's page read replayed through the same
-        // reducer (D46). Nothing here reaches around the facade to the gateway's HTTP API.
+        // reducer. Nothing here reaches around the facade to the gateway's HTTP API.
         await chat.open()
         let deadline = Date().addingTimeInterval(90)
         while thread.turns.isEmpty && Date() < deadline {

@@ -21,19 +21,19 @@ import de.arjmandi.nanobot.companion.projection.TaskNotice
 import de.arjmandi.nanobot.companion.projection.TaskOutcome
 
 /**
- * A local notification, which is the only kind the gateway can produce (plan.md D8). The channel
+ * A local notification, which is the only kind the gateway can produce. The channel
  * is created once with the app's own name and no importance tricks: the design promises an alert
  * while the app is away, not a push service.
  *
- * A banner names no conversation text, no chat title and no model error — the WebUI's own rule
- * for a lock screen (`lib/browser-notifications.ts`). The chat it belongs to travels in the
+ * A banner names no conversation text, no chat title and no model error, which is the WebUI's own
+ * rule for a lock screen (`lib/browser-notifications.ts`). The chat it belongs to travels in the
  * intent, not in the words.
  */
 class AndroidNotifier(private val context: Context) : Notifying, BannerPosting {
 
     /**
      * The permission as the app can tell it. API 33 asks; below that the app is allowed unless the
-     * user turned notifications off, and a dialog was never shown at all — which is why the
+     * user turned notifications off, and a dialog was never shown at all, which is why the
      * "asked" flag is kept (a refusal must not be re-asked, `NotificationPrompt`).
      */
     override fun permission(): NotificationPermission {
@@ -101,7 +101,7 @@ class AndroidNotifier(private val context: Context) : Notifying, BannerPosting {
         }
     }
 
-    /** The reader's own switch, read at post time so a change applies to the next banner (T34). */
+    /** The reader's own switch, read at post time so a change applies to the next banner. */
     private fun soundEnabled(): Boolean =
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
             .getBoolean(SettingsViewModel.KEY_NOTIFICATION_SOUND, true)
@@ -118,7 +118,7 @@ class AndroidNotifier(private val context: Context) : Notifying, BannerPosting {
             .setContentIntent(tapIntent(chatId))
             .setAutoCancel(true)
             // `setSilent` is the per-notification switch the channel leaves to the app: the
-            // channel's importance is the reader's system setting, this is the app's own (T34).
+            // channel's importance is the reader's system setting, this is the app's own.
             .setSilent(!soundEnabled())
             .build()
         return runCatching {

@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
 /**
- * The media rows' two resting failures (A9): a picture that will not load says so and offers a
+ * The media rows' two resting failures: a picture that will not load says so and offers a
  * retry, and a recording that will not play does the same. A spinner that never stops is the bug
  * these states exist to prevent, so no phase here may still be `Loading` once a call returned.
  *

@@ -33,7 +33,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * A7's screens (the Compose half): the four sections, Overview's rows with no uptime line, the
+ * The settings screens: the four sections, Overview's rows with no uptime line, the
  * notification switches and the local test alert, the appearance choices, and the disconnect that
  * asks first and then forgets the gateway. The rules are `SettingsViewModelTest`'s; this is what
  * only a composition proves.
@@ -100,7 +100,7 @@ class SettingsScreenTest {
     private fun model(credentials: Credentials = Credentials(), notifier: Notifier = Notifier()) =
         SettingsViewModel(credentials, notifier, Memory, disconnectGateway = {})
 
-    /** The card's numbers as the bridge builds them from a read: one full day, 29 stubs (T44). */
+    /** The card's numbers as the bridge builds them from a read: one full day, 29 stubs. */
     private fun usage(hasUsage: Boolean = true) = UsageSnapshot(
         headline = if (hasUsage) "505K" else "0",
         totalTokens = if (hasUsage) 505_134 else 0,
@@ -151,7 +151,7 @@ class SettingsScreenTest {
     }
 
     /**
-     * T45: with no chat open there is no model in use, and the row says so instead of printing the
+     * With no chat open there is no model in use, and the row says so instead of printing the
      * gateway's `agent.model`, which is a configuration and not the model answering.
      */
     @Test
@@ -167,11 +167,11 @@ class SettingsScreenTest {
     }
 
     /**
-     * T43: the switches gate the notices they name, so a tap has to write the key the poster reads
-     * — not only move a switch on screen.
+     * The switches gate the notices they name, so a tap has to write the key the poster reads
+     * and not only move a switch on screen.
      */
     /**
-     * T44: `/api/settings/usage` was fetched and parsed into nothing. It is now the card the design
+     * `/api/settings/usage` was fetched and parsed into nothing. It is now the card the design
      * puts first: the headline, the gateway's own counts, and a bar per day.
      */
     @Test
@@ -217,7 +217,7 @@ class SettingsScreenTest {
     }
 
     /**
-     * T34: the sound is a switch of the reader's own, beside the permission state, and the choice
+     * The sound is a switch of the reader's own, beside the permission state, and the choice
      * is the key the notifier reads (so the next banner obeys it).
      */
     @Test

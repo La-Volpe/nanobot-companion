@@ -1,9 +1,9 @@
 import Foundation
 
 /// The thread as a Swift view model can reason about it: plain values, no framework types.
-/// The adapter layer maps `core.ThreadState` onto this (plan.md D9: one reducer fills it,
-/// whether the frames came from the live socket or from a replayed history).
-/// Whether the stored page has been read (D46). The socket's `attach` carries no history, so a
+/// The adapter layer maps `core.ThreadState` onto this: one reducer fills it,
+/// whether the frames came from the live socket or from a replayed history.
+/// Whether the stored page has been read. The socket's `attach` carries no history, so a
 /// thread with no rows is either a conversation nobody has used or one whose page has not
 /// arrived, and the screen has to draw those two differently.
 enum ThreadHistory: Equatable { case loading, loaded, failed }
@@ -13,9 +13,9 @@ enum ThreadPlaceholder: Equatable { case none, skeleton, failed, empty }
 
 struct ChatThreadState: Equatable {
     var turns: [ChatTurnState] = []
-    /// The notices the core reduced (C7.3), owned by `StatesViewModel` on screen.
+    /// The notices the core reduced, owned by `StatesViewModel` on screen.
     var notices: [ThreadNotice] = []
-    /// The subtasks this chat's agent owns (I8's dock).
+    /// The subtasks this chat's agent owns, drawn as the dock.
     var subagents: [SubagentRow] = []
     /// The page read's state. A driver with no socket behind it starts `loaded`: it has nothing
     /// to load, so its empty thread really is empty.
@@ -52,12 +52,12 @@ struct ChatThreadState: Equatable {
 struct ChatTurnState: Equatable {
     let id: String
     let prompt: String?
-    /// True until `message_accepted` proves the gateway has the turn (C6.1).
+    /// True until `message_accepted` proves the gateway has the turn.
     let promptPending: Bool
     let answer: String
     let answerStreaming: Bool
     let running: Bool
-    /// What nanobot did on the way to the answer (I4), drawn as one cluster above it.
+    /// What nanobot did on the way to the answer, drawn as one cluster above it.
     var activity: [ChatActivityItem] = []
     /// The core's local compose time, which is the only start time a turn has.
     var startedAtMs: Int64? = nil
@@ -65,7 +65,7 @@ struct ChatTurnState: Equatable {
     var media: [MediaRow] = []
     /// What the prompt was sent with (`user_message.media_urls`).
     var promptMedia: [MediaRow] = []
-    /// The answer as the core parsed it (I5). Empty means the adapter has not parsed yet, and
+    /// The answer as the core parsed it. Empty means the adapter has not parsed yet, and
     /// the row falls back to the plain text so a test can build a turn without a document.
     var blocks: [ReadingBlock] = []
 
@@ -113,7 +113,7 @@ final class NoopChat: ChatDriving {
     func stop() async {}
 }
 
-/// What the chat screen needs from a chat: one command each way (plan.md §7). The adapter's
+/// What the chat screen needs from a chat: one command each way. The adapter's
 /// `CoreChat` implements it over a `ChatHandle`; tests and the debug menu answer directly.
 @MainActor
 protocol ChatDriving: AnyObject {
@@ -121,6 +121,6 @@ protocol ChatDriving: AnyObject {
     func open() async
     /// Send a prompt. Returns the turn id the core gave it, or nil when the send was refused.
     func send(_ text: String) async -> String?
-    /// Stop is the `/stop` message on the running turn (C5.5).
+    /// Stop is the `/stop` message on the running turn.
     func stop() async
 }

@@ -20,13 +20,13 @@ data class ChatTurnView(
     val answer: String,
     val answerStreaming: Boolean,
     val running: Boolean,
-    /** What nanobot thought, ran and changed on the way to the answer (A4), drawn as one cluster. */
+    /** What nanobot thought, ran and changed on the way to the answer, drawn as one cluster. */
     val activity: List<ActivityItemView> = emptyList(),
     /** The core's local compose time, which is the only start time a turn has. */
     val startedAtMs: Long? = null,
-    /** The answer as the core parsed it (A5); empty means the row falls back to one paragraph. */
+    /** The answer as the core parsed it; empty means the row falls back to one paragraph. */
     val blocks: MarkdownView = MarkdownView(emptyList()),
-    /** What the answer carries: pictures, clips and recordings (`message.media_urls`, A9). */
+    /** What the answer carries: pictures, clips and recordings (`message.media_urls`). */
     val media: List<MediaRow> = emptyList(),
     /** What the prompt was sent with (`user_message.media_urls`). */
     val promptMedia: List<MediaRow> = emptyList(),
@@ -41,21 +41,21 @@ data class ChatTurnView(
 }
 
 /**
- * Whether the stored page has been read (D46). The socket's `attach` carries no history, so a
+ * Whether the stored page has been read. The socket's `attach` carries no history, so a
  * thread with no rows is either a conversation nobody has used or one whose page has not
- * arrived — and the screen must draw those two differently.
+ * arrived, and the screen must draw those two differently.
  */
 enum class ThreadHistory { Loading, Loaded, Failed }
 
 /** What an empty thread draws: the read in flight, the read that failed, or a genuinely empty chat. */
 enum class ThreadPlaceholder { None, Skeleton, Failed, Empty }
 
-/** What the thread draws (A3; A4 adds the activity rows on top, A8 the notices and the dock). */
+/** What the thread draws: the turns, the activity rows, the notices and the dock. */
 data class ChatThreadView(
     val turns: List<ChatTurnView> = emptyList(),
-    /** The notices the core reduced (C7.3), owned by `StatesViewModel` on screen. */
+    /** The notices the core reduced, owned by `StatesViewModel` on screen. */
     val notices: List<de.arjmandi.nanobot.companion.states.ThreadNotice> = emptyList(),
-    /** The subtasks this chat's agent owns (A8's dock). */
+    /** The subtasks this chat's agent owns, drawn as the dock. */
     val subagents: List<de.arjmandi.nanobot.companion.states.SubagentRow> = emptyList(),
     /**
      * The page read's state. A driver with no socket behind it starts `Loaded`: it has nothing to
@@ -65,14 +65,14 @@ data class ChatThreadView(
 )
 
 /**
- * One chat as the screen drives it (plan.md A3). The core owns the thread and the reducer; this is
+ * One chat as the screen drives it. The core owns the thread and the reducer; this is
  * the view of it a view model can hold without a socket, which is what lets the streaming, the
  * button rule and the optimistic bubble be tested off-device.
  */
 interface ChatDriver {
     val thread: StateFlow<ChatThreadView>
 
-    /** Open the chat: the core attaches and replays the stored history (D46). */
+    /** Open the chat: the core attaches and replays the stored history. */
     suspend fun open(chatId: String?)
 
     /** Returns the turn id the core accepted, or null when the send was refused. */
@@ -80,7 +80,7 @@ interface ChatDriver {
 
     suspend fun stop()
 
-    /** The subtask dock's stop control (A8). A driver with no socket answers nothing. */
+    /** The subtask dock's stop control. A driver with no socket answers nothing. */
     suspend fun cancelSubagent(id: String) = Unit
 }
 

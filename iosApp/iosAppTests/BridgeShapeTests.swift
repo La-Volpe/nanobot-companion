@@ -3,8 +3,8 @@ import Testing
 import core
 @testable import iosApp
 
-/// What Swift really gets from the Kotlin framework (C8.2, D38). `BridgeShapeTest` asserts the
-/// header's shape; this asserts the other half — that the shape compiles and behaves when a
+/// What Swift really gets from the Kotlin framework. `BridgeShapeTest` asserts the header's
+/// shape; this asserts the other half, that the shape compiles and behaves when a
 /// Swift file uses it the way the app will. A toolchain upgrade that changes interop fails here
 /// before a screen does.
 @MainActor
@@ -37,7 +37,7 @@ struct BridgeShapeTests {
         #expect(seen.first is ConnectionStateIdle)
     }
 
-    /// The eight taxonomy entries are switched on by their lowercased Swift names (D38). This is
+    /// The eight taxonomy entries are switched on by their lowercased Swift names. This is
     /// the switch the connect screen writes, and the copy key is what it looks the sentence up by.
     @Test func theEightTaxonomyEntriesSwitchOnTheirSwiftNames() {
         let entries: [ConnectionFailure] = [
@@ -85,9 +85,9 @@ struct BridgeShapeTests {
     }
 
     /// A refused connection is the cheapest real call: no gateway, no timeout, and it proves the
-    /// completion handler surfaces the typed result rather than trapping (D38.2).
+    /// completion handler surfaces the typed result rather than trapping.
     /// The switch is a parameter of the one call that builds the client, so a screen cannot
-    /// open a stack and forget to pass the user's decision (C3.2, D21).
+    /// open a stack and forget to pass the user's decision.
     @Test func theTrustSwitchReachesTheFactory() {
         let trusting = CompanionBridgeKt.openCompanion(
             baseUrl: "https://home.lan:8443",
@@ -99,7 +99,7 @@ struct BridgeShapeTests {
     }
 
     /// The picker asks the gateway's whitelist before it re-encodes a photo, and it asks through
-    /// the core rather than keeping a second copy of the list (I6). An iPhone photo is HEIC, and
+    /// the core rather than keeping a second copy of the list. An iPhone photo is HEIC, and
     /// the gateway's `UPLOAD_MIME_ALLOWED` has no HEIC in it.
     @Test func theUploadWhitelistIsTheCoresAnswerAndNotTheApps() {
         #expect(UploadWhitelist.takes("image/jpeg"))

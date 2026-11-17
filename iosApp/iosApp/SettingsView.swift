@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// Settings (plan.md I7): a grouped list that pushes into Overview, Notifications and
+/// Settings: a grouped list that pushes into Overview, Notifications and
 /// Appearance, with the gateway row as the way out. The view draws `SettingsViewModel`'s rows
 /// and calls one command per tap.
 struct SettingsView: View {
     @ObservedObject var model: SettingsViewModel
     @ObservedObject var holder: CoreHolder
-    /// The open chat's model, handed down by the shell (T45): Overview names this, never the
+    /// The open chat's model, handed down by the shell: Overview names this, never the
     /// gateway's configured default. Nil is "no chat open".
     let modelInUse: SettingsViewModel.CurrentModel?
     @Environment(\.dismiss) private var dismiss
@@ -62,7 +62,7 @@ struct SettingsView: View {
             await refresh()
         }
         // A `/model` switch behind the sheet changes the model in use, and the row follows it
-        // rather than describing the one the sheet was opened with (T45).
+        // rather than describing the one the sheet was opened with.
         .onChange(of: modelInUse) { _, current in
             model.update(modelInUse: current)
         }
@@ -138,7 +138,7 @@ struct SettingsView: View {
             }
         case .loaded:
             // The card the design puts first (design of record, `.usage-card`): the total, the
-            // gateway's own request count and cache rate, then one bar per day (T44). It used to be
+            // gateway's own request count and cache rate, then one bar per day. It used to be
             // fetched and parsed into nothing.
             if let usage = model.snapshot.usage {
                 Section {
@@ -184,7 +184,7 @@ struct SettingsView: View {
             )
             .frame(minHeight: Design.minimumTarget)
             .accessibilityIdentifier("settings.permission")
-            // The sound is the reader's own choice, and it sits next to the state it modifies (T34).
+            // The sound is the reader's own choice, and it sits next to the state it modifies.
             Toggle(isOn: Binding(
                 get: { model.notificationSound },
                 set: { model.setNotificationSound($0) }
@@ -277,7 +277,7 @@ extension SettingsViewModel.Snapshot {
 extension SettingsViewModel.Usage {
     /// A scripted launch has no usage read, so the card is seeded with the dev gateway's own day
     /// (505 134 tokens). One full bar and 29 stubs is what that recording is: a tap proves the
-    /// strip and the headline draw, which an all-zero window would not (T44).
+    /// strip and the headline draw, which an all-zero window would not.
     static let scripted = SettingsViewModel.Usage(
         headline: "505K",
         totalTokens: 505_134,
@@ -295,7 +295,7 @@ extension SettingsViewModel.Usage {
 
 extension SettingsViewModel.CurrentModel {
     /// A scripted launch has no composer flow, so Overview's model row is seeded: the chat's own
-    /// preset and window, which is what the row must name (T45).
+    /// preset and window, which is what the row must name.
     static let scriptedChat = SettingsViewModel.CurrentModel(
         name: "deepseek-v4.1-flash:cloud",
         preset: "primary",
@@ -304,7 +304,7 @@ extension SettingsViewModel.CurrentModel {
     )
 }
 
-/// Overview's token card (T44), drawn as the design draws it: the 30-day total and its unit, the
+/// Overview's token card, drawn as the design draws it: the 30-day total and its unit, the
 /// gateway's own request count and cache hit rate, then a bar per day scaled to the window's peak
 /// with the biggest day solid (design of record, `.spark i.hi`). Every number arrives computed and
 /// worded by the core; this draws them and invents nothing.

@@ -11,11 +11,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * The composer's state and the rules that decide what its one button does (plan.md A5).
+ * The composer's state and the rules that decide what its one button does.
  *
  * The button rule is the WebUI's, transcribed rather than invented
  * (`showStopButton = isStreaming && !canSend`): while a turn runs an empty field is a Stop button,
- * and typing turns it back into Send — which queues the prompt instead of stopping the turn.
+ * and typing turns it back into Send, which queues the prompt instead of stopping the turn.
  * Everything else here is a sheet, a chip, a confirmation or the bar's one overflow.
  */
 class ComposerViewModel(
@@ -88,7 +88,7 @@ class ComposerViewModel(
     /**
      * What the one button is. A recording outranks everything, then the stop rule, then text,
      * then the microphone. A *locked* recording has no finger on it any more, so the same button
-     * finishes it and reads Send (T48).
+     * finishes it and reads Send.
      */
     fun primaryState(recording: Boolean, locked: Boolean = false): PrimaryState = when {
         recording && locked -> PrimaryState.Send
@@ -99,7 +99,7 @@ class ComposerViewModel(
 
     /**
      * The ring's percent, as the core resolved it: the WebUI's rounding over the WebUI's choice
-     * of window (T37). Null before there is a window, because a percentage of nothing is a lie.
+     * of window. Null before there is a window, because a percentage of nothing is a lie.
      */
     val usagePercent: Int? get() = snapshot.contextPercent
 
@@ -151,7 +151,7 @@ class ComposerViewModel(
         val text = draft.trim()
         if (streaming) {
             driver.enqueue(text)
-            // The chip shows it, so the field is empty again — the core keeps the text.
+            // The chip shows it, so the field is empty again, and the core keeps the text.
             draft = ""
             snapshot = snapshot.copy(queued = listOfNotNull(snapshot.queued, text).joinToString("\n"))
             return
@@ -159,7 +159,7 @@ class ComposerViewModel(
         draft = ""
         lastRefusalRes = null
         if (!driver.sendPrompt(text)) {
-            // A refused send gives the text back rather than losing it (C6.1).
+            // A refused send gives the text back rather than losing it.
             draft = text
             lastRefusalRes = de.arjmandi.nanobot.companion.R.string.chat_send_refused
         }
@@ -236,7 +236,7 @@ class ComposerViewModel(
     }
 
     /**
-     * The sheet's list comes from the settings read the gateway already answers (C6.2). A read that
+     * The sheet's list comes from the settings read the gateway already answers. A read that
      * refuses answers null, which is a different screen from a gateway with no presets: the sheet
      * says it could not read them and offers the read again rather than showing an empty list.
      */
@@ -253,7 +253,7 @@ class ComposerViewModel(
     }
 
     /**
-     * A pick either applies or the reader is told it did not (T39): the chip already shows the
+     * A pick either applies or the reader is told it did not: the chip already shows the
      * choice, so a silence would leave it naming a model the chat is not on.
      */
     suspend fun pick(preset: ChatModelPreset) {
@@ -266,7 +266,7 @@ class ComposerViewModel(
 
     suspend fun pick(access: WorkspaceAccess) {
         sheet = null
-        // The chip shows the choice at once and goes back if the gateway refuses it (C6.3).
+        // The chip shows the choice at once and goes back if the gateway refuses it.
         snapshot = snapshot.copy(access = access)
         driver.setWorkspaceScope(access)
     }
@@ -274,7 +274,7 @@ class ComposerViewModel(
     // Palettes.
 
     /**
-     * Ask for the sheet the current text opens, if any (C6.4). The core decides; this only carries
+     * Ask for the sheet the current text opens, if any. The core decides; this only carries
      * the answer to the screen.
      */
     suspend fun refreshPalette() {

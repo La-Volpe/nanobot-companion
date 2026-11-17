@@ -38,11 +38,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * One media row on a turn (A9): a picture, a clip, a recording or a file card.
+ * One media row on a turn: a picture, a clip, a recording or a file card.
  *
  * The three shapes are the WebUI's own (`webui/src/components/AttachmentTile.tsx:33`): an image is
  * inline, a video is a framed player, and everything else is a card. Android draws the picture and
- * the recording with what the platform ships — `BitmapFactory` on a coroutine, `MediaPlayer` — so
+ * the recording with what the platform ships (`BitmapFactory` on a coroutine, `MediaPlayer`), so
  * the app has no image-loading library and no player dependency.
  */
 @Composable
@@ -57,7 +57,7 @@ fun MediaRowView(row: MediaRow, modifier: Modifier = Modifier) {
 
 /**
  * An inline picture. Loading is a skeleton at the row's own height, a failure is the sentence and
- * a retry — never a spinner that never stops, and never an empty frame.
+ * a retry, never a spinner that never stops and never an empty frame.
  */
 @Composable
 private fun MediaImageView(row: MediaRow, modifier: Modifier = Modifier) {
@@ -134,7 +134,7 @@ internal fun MediaFailureCard(
 
 /**
  * A clip. The row opens the player over the thread, as the iOS row opens
- * `AVPlayerViewController` in a sheet — the same tap, the same dismissal back to the turn. The
+ * `AVPlayerViewController` in a sheet: the same tap, the same dismissal back to the turn. The
  * state the row holds is only "is the sheet up"; everything about the clip is `VideoPlayerModel`'s.
  */
 @Composable

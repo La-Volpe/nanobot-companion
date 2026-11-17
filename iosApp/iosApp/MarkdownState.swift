@@ -1,6 +1,6 @@
 import Foundation
 
-/// The markdown tree the chat draws (plan.md D6, C4.7), in Swift's own words. The core parses
+/// The markdown tree the chat draws, in Swift's own words. The core parses
 /// and this is the adapter's translation of it: rendering decisions stay on this side, and no
 /// view sees a framework type.
 indirect enum ReadingBlock: Equatable {

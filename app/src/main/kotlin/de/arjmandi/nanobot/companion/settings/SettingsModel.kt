@@ -4,14 +4,14 @@ import de.arjmandi.nanobot.companion.projection.NoticeCategory
 import de.arjmandi.nanobot.companion.projection.NoticeSwitches
 
 /**
- * Settings (plan.md A7), as the app's own shapes. The bridge fills [SettingsSnapshot] from the
+ * Settings, as the app's own shapes. The bridge fills [SettingsSnapshot] from the
  * gateway's settings read; nothing here invents a field the gateway does not send.
  */
 
 /**
  * The gateway facts Overview shows. Deliberately no uptime: the payload has none, and deliberately
  * no model either: `agent.model` is what the gateway is configured for, so Overview names the model
- * in use instead — the open chat's composer ([ChatModelInUse], T45).
+ * in use instead: the open chat's composer ([ChatModelInUse]).
  */
 data class SettingsSnapshot(
     val version: String? = null,
@@ -21,17 +21,17 @@ data class SettingsSnapshot(
     val transcriptionProvider: String? = null,
     val transcriptionModel: String? = null,
     val presets: List<String> = emptyList(),
-    /** The `/api/settings/usage` read drawn as the card's own numbers (T44); null is "not read". */
+    /** The `/api/settings/usage` read drawn as the card's own numbers; null is "not read". */
     val usage: UsageSnapshot? = null,
 )
 
 /**
- * Overview's token card (T44): the headline, the gateway's own 30-day counts, and the daily strip.
+ * Overview's token card: the headline, the gateway's own 30-day counts, and the daily strip.
  * The window, the gap-filling and the compact copy are the core's (`UsageWindow`); this is the value
  * the card draws.
  */
 data class UsageSnapshot(
-    /** `505K`, `1.5M` — `formatCompactTokenCount`, the WebUI's own headline. */
+    /** `505K`, `1.5M`: `formatCompactTokenCount`, the WebUI's own headline. */
     val headline: String,
     val totalTokens: Long,
     val requests: Int,
@@ -49,7 +49,7 @@ data class UsageSnapshot(
 }
 
 /**
- * The model the open chat is running (T45), as the composer row knows it: the chip's name and
+ * The model the open chat is running, as the composer row knows it: the chip's name and
  * preset and the ring's denominator. The core resolves and words it (`ModelInUse`), so both phones'
  * rows agree; null in [SettingsViewModel.modelInUse] is "no chat open", not an empty model.
  */
@@ -58,7 +58,7 @@ data class ChatModelInUse(
     val preset: String? = null,
     /** The row's second line, already worded by the core: `Preset primary`. */
     val presetLabel: String? = null,
-    /** `1M`, `200K`, `32.8K`: the core's token copy (T36), without the unit the row adds. */
+    /** `1M`, `200K`, `32.8K`: the core's token copy, without the unit the row adds. */
     val windowLabel: String? = null,
 )
 
@@ -73,7 +73,7 @@ data class SettingsRow(val label: String, val detail: String?, val value: String
 
 /**
  * One notification switch: the category it gates, the words on the row, and the reader's answer.
- * The category carries the store key and the default (T43), so the row that is drawn and the flag
+ * The category carries the store key and the default, so the row that is drawn and the flag
  * the poster checks cannot be two different things.
  */
 data class SettingsToggle(
@@ -83,7 +83,7 @@ data class SettingsToggle(
 )
 
 /**
- * The reader's switches as the poster reads them at post time (T43): the store is the phone's, the
+ * The reader's switches as the poster reads them at post time: the store is the phone's, the
  * keys and defaults are the core's, and one read gives all three so a notice cannot be checked
  * against a category whose key nobody wrote.
  */
@@ -134,7 +134,7 @@ interface SettingsStoring {
     fun set(key: String, value: Boolean)
 }
 
-/** The notifier, as a seam: `NotificationManager` in the app, a recorder in a test (D8). */
+/** The notifier, as a seam: `NotificationManager` in the app, a recorder in a test. */
 interface Notifying {
     suspend fun requestAuthorisation(): Boolean
     suspend fun send(title: String, body: String)

@@ -10,7 +10,7 @@ import android.content.Intent
  * What arrives is a prefill of the one encrypted store, never a store of its own: a connect made
  * through a live launch has to survive the next one, because the icon on the home screen carries no
  * extras. The extras are read in `onCreate`, so a script must stop the app first
- * (`adb shell am force-stop de.arjmandi.nanobot.companion`) — a `singleTop` relaunch of a running
+ * (`adb shell am force-stop de.arjmandi.nanobot.companion`). A `singleTop` relaunch of a running
  * activity has its intent delivered to `onNewIntent`, which is the banner tap's path, not a new
  * launch's.
  */

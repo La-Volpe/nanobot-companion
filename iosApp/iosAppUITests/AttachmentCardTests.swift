@@ -1,6 +1,6 @@
 import XCTest
 
-/// The composer's attachment cards, on screen and in their states (plan.md I6).
+/// The composer's attachment cards, on screen and in their states.
 ///
 /// The system photo picker and the camera cannot be driven by XCUITest, so what a tap proves here
 /// is the half after the pick: the card appears with a preview, a card whose upload failed keeps

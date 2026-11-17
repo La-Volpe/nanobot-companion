@@ -1,6 +1,6 @@
 import XCTest
 
-/// The settings flow a tap can prove (plan.md I7's gate): the four destinations, Overview's
+/// The settings flow a tap can prove: the four destinations, Overview's
 /// version/commit with no uptime line, the notifications copy and its real local test
 /// notification, the two appearance choices, and the gateway row's disconnect.
 final class SettingsTests: XCTestCase {
@@ -42,13 +42,13 @@ final class SettingsTests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.overview"].exists, "Overview")
         XCTAssertTrue(app.buttons["settings.notifications"].exists, "Notifications")
         XCTAssertTrue(app.buttons["settings.appearance"].exists, "Appearance")
-        // T44: the version appears once, on Overview, beside the commit and the server it belongs
+        // The version appears once, on Overview, beside the commit and the server it belongs
         // with. The list used to carry a second copy under "About".
         XCTAssertFalse(
             app.staticTexts["0.4.1"].exists,
             "the version is drawn once, not twice. Tree:\n\(app.debugDescription)"
         )
-        // The row names the address and its state, or says there is none — never nothing.
+        // The row names the address and its state, or says there is none. It is never blank.
         let connected = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "connected")).count
         XCTAssertTrue(
             app.staticTexts["No gateway"].exists || connected > 0,
@@ -61,7 +61,7 @@ final class SettingsTests: XCTestCase {
 
         app.buttons["settings.overview"].tap()
 
-        // T44: the usage the client already fetched is drawn, first, above the version it belongs
+        // The usage the client already fetched is drawn, first, above the version it belongs
         // with. The headline's accessibility label is the exact number, the way the WebUI labels it.
         XCTAssertTrue(
             app.staticTexts["settings.usage.headline"].waitForExistence(timeout: 5),
@@ -73,7 +73,7 @@ final class SettingsTests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["nanobot Gateway"].exists)
         XCTAssertFalse(app.staticTexts["Uptime"].exists, "the payload has no uptime field")
-        // T45: the model rows describe the open chat, not `agent.model` from `/api/settings`.
+        // The model rows describe the open chat, not `agent.model` from `/api/settings`.
         // A scripted launch has no composer, so the chat's model is seeded by the shell.
         XCTAssertTrue(app.staticTexts["Current model"].exists, "the model row is drawn")
         XCTAssertTrue(
@@ -122,7 +122,7 @@ final class SettingsTests: XCTestCase {
         app.tap()
     }
 
-    /// T34: the notification sound is a switch of the reader's own, next to the permission state,
+    /// The notification sound is a switch of the reader's own, next to the permission state,
     /// and the choice outlives the app (the banners read the same preference).
     func testTheNotificationSoundCanBeTurnedOffAndStaysOff() {
         let app = openSettings()
@@ -153,7 +153,7 @@ final class SettingsTests: XCTestCase {
         waitForExpectations(timeout: 5)
     }
 
-    /// T43: a switch is a preference, not a drawing of one. Flipping it outlives the app, and it is
+    /// A switch is a preference, not a drawing of one. Flipping it outlives the app, and it is
     /// the key the poster reads at post time, so the row and the banner cannot disagree.
     func testTheNoticeSwitchesOutliveTheApp() {
         let app = openSettings()

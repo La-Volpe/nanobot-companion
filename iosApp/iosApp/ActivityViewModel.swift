@@ -1,6 +1,6 @@
 import Foundation
 
-/// The activity cluster per turn (I4): what nanobot thought, ran and changed, folded into one
+/// The activity cluster per turn: what nanobot thought, ran and changed, folded into one
 /// row that opens on a tap.
 ///
 /// Two rules live here rather than in the view. A running turn shows its work and a finished
@@ -16,8 +16,8 @@ final class ActivityViewModel: ObservableObject {
     private let now: () -> Int64
     /// Turns the reader deliberately opened or closed; theirs, until the turn ends.
     private var overrides: [String: Bool] = [:]
-    /// Rows whose details the reader opened, by row id. A row starts folded — one line, like the
-    /// web's `ActivityStep` — and a tap is what shows the arguments and the output.
+    /// Rows whose details the reader opened, by row id. A row starts folded, one line, like the
+    /// web's `ActivityStep`, and a tap is what shows the arguments and the output.
     private var openRows: Set<String> = []
 
     init(now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }) {
@@ -120,7 +120,7 @@ final class ActivityViewModel: ObservableObject {
 struct ActivityCluster: Equatable {
     let turnId: String
     let headline: String
-    /// `running`, `done` or `failed` — the design's own three words.
+    /// `running`, `done` or `failed`: the design's own three words.
     let statusText: String
     let items: [ChatActivityItem]
     let isOpen: Bool

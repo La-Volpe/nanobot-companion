@@ -111,7 +111,7 @@ struct ReadingDiagramBlock: View {
                 .accessibilityIdentifier("diagram.source")
         } else {
             // The web view is mounted in preview because it is what measures the diagram; until it
-            // answers, the source stands in for it — the same bargain the WebUI makes, and the
+            // answers, the source stands in for it: the same bargain the WebUI makes, and the
             // reason neither platform needs a spinner.
             ZStack(alignment: .top) {
                 if width > 0 {
@@ -163,7 +163,7 @@ enum DiagramCopy {
 }
 
 /// The app's light/dark tokens as the renderer's variables, so a diagram is drawn in the palette the
-/// reader is already looking at — the WebUI's `readPalette`, with `Palette` in its place.
+/// reader is already looking at: the WebUI's `readPalette`, with `Palette` in its place.
 enum DiagramPalette {
     static func tokens(for scheme: ColorScheme) -> [String: String] {
         let traits = UITraitCollection(userInterfaceStyle: scheme == .dark ? .dark : .light)
@@ -192,7 +192,7 @@ enum DiagramPalette {
 
 /// Where the page and the renderer live on disk. One directory holds both, and it is the directory
 /// `loadFileURL(_:allowingReadAccessTo:)` grants: the page can read the renderer beside it and
-/// nothing else — no app resource, no other document, no origin on a network.
+/// nothing else: no app resource, no other document, no origin on a network.
 enum DiagramFiles {
     static let directory: URL? = {
         let base = FileManager.default.temporaryDirectory.appendingPathComponent("nanobot-diagrams", isDirectory: true)

@@ -11,12 +11,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.test.runTest
 
 /**
- * The chat screen's two rules (plan.md A3): the optimistic bubble is on screen before the gateway
+ * The chat screen's two rules: the optimistic bubble is on screen before the gateway
  * answers and is marked pending until it does, and the primary button is Stop only while a turn
- * runs with nothing new to send — the WebUI's own rule, `isStreaming && !canSend`.
+ * runs with nothing new to send, which is the WebUI's own rule, `isStreaming && !canSend`.
  *
- * The streaming case is the one the plan names: deltas arrive many times a second, so what the
- * screen holds is one growth of one bubble per core emission — never a row per character.
+ * The streaming case is the one worth pinning: deltas arrive many times a second, so what the
+ * screen holds is one growth of one bubble per core emission, never a row per character.
  */
 class ChatViewModelTest {
 
@@ -195,7 +195,8 @@ class ChatViewModelTest {
     }
 
     /**
-     * The auto-scroll rule T9 asked for (webui `ThreadViewport.tsx:1002`, `thread-motion.ts:353`):
+     * The auto-scroll rule the owner asked for (webui `ThreadViewport.tsx:1002`,
+     * `thread-motion.ts:353`):
      * the thread follows the stream only while the reader is at the end. A reader who scrolled up
      * keeps their place, and coming back to the end resumes following.
      */

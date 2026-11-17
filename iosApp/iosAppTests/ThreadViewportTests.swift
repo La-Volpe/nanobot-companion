@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import iosApp
 
-/// The rule the owner reported missing (T9), taken from the WebUI rather than invented:
+/// The rule the owner reported missing, taken from the WebUI rather than invented:
 /// `ThreadViewport.tsx:1002` measures the distance from the end and hands it to
 /// `thread-motion.ts:353`, which pauses following anywhere but the tail. The iOS twin of
 /// `ThreadViewportTest` on Android.

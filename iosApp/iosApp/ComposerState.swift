@@ -1,15 +1,15 @@
 import Foundation
 
-/// What the composer row shows (I5), as Swift's own values. The adapter maps the core's
+/// What the composer row shows, as Swift's own values. The adapter maps the core's
 /// `ComposerState` onto this, so no screen or view model holds a framework type.
 struct ComposerSnapshot: Equatable {
     var modelName: String?
     var modelPreset: String?
     var contextWindowTokens: Int?
-    /// `turn_end.usage.context_tokens`: the ring's numerator (D15.4).
+    /// `turn_end.usage.context_tokens`: the ring's numerator.
     var usedTokens: Int?
     /// The core's `Math.min(100, Math.round(used / window * 100))`; the ring draws this, so
-    /// neither phone can round the same two numbers differently (T37).
+    /// neither phone can round the same two numbers differently.
     var contextPercent: Int?
     var access: WorkspaceAccess = .default
     /// The prompt waiting for the running turn to end, if there is one.
@@ -34,7 +34,7 @@ struct ComposerSnapshot: Equatable {
     }
 }
 
-/// `set_workspace_scope` takes exactly these two words (C6.3).
+/// `set_workspace_scope` takes exactly these two words.
 enum WorkspaceAccess: Equatable {
     case `default`
     case full
@@ -43,7 +43,7 @@ enum WorkspaceAccess: Equatable {
 /// Whether the model sheet's list has arrived, failed, or is still coming.
 enum PresetState: Equatable { case loading, loaded, failed }
 
-/// One `/model` preset, as the sheet lists it (C6.2). The gateway marks which one is active,
+/// One `/model` preset, as the sheet lists it. The gateway marks which one is active,
 /// so the checkmark is the gateway's answer rather than a comparison made here.
 struct ChatModelPreset: Identifiable, Equatable {
     let name: String
@@ -51,7 +51,7 @@ struct ChatModelPreset: Identifiable, Equatable {
     let provider: String?
     let contextWindowTokens: Int?
     /// The window as the core's token copy prints it (`1M`, `200K`): the sheet is not the place
-    /// for a third opinion about how a million is written (T36).
+    /// for a third opinion about how a million is written.
     var contextLabel: String? = nil
     let active: Bool
     let isDefault: Bool
@@ -107,23 +107,23 @@ enum ComposerSheet: Equatable {
     case attach
 }
 
-/// What the composer needs from one chat (plan.md §7: one command each way). The adapter's
+/// What the composer needs from one chat: one command each way. The adapter's
 /// `CoreChat` implements it over a `ChatHandle`; tests and the debug menu answer directly.
 @MainActor
 protocol ComposerDriving: AnyObject {
-    /// Send a prompt on an idle chat, with the uploads the composer is showing (P13). False when
+    /// Send a prompt on an idle chat, with the uploads the composer is showing. False when
     /// the gateway did not take it.
     func sendPrompt(_ text: String, media: [SentAttachment]) async -> Bool
-    /// Queue what was typed while a turn runs (C5.5).
+    /// Queue what was typed while a turn runs.
     func enqueue(_ text: String)
     func stop() async
     /// Send the queued prompt now: a steer on the running turn.
     func sendQueuedNow() async
     func discardQueued()
-    /// False when the `/model` command never reached the socket, so the pick can say so (T39).
+    /// False when the `/model` command never reached the socket, so the pick can say so.
     func setModelPreset(_ preset: String) async -> Bool
     func setWorkspaceScope(_ access: WorkspaceAccess) async
-    /// The slash or mention sheet for this text, or nil when neither is open (C6.4).
+    /// The slash or mention sheet for this text, or nil when neither is open.
     func loadPalette(text: String, cursor: Int) async -> PaletteSheet?
 }
 
@@ -135,13 +135,13 @@ final class NoopComposer: ComposerDriving {
     func stop() async {}
     func sendQueuedNow() async {}
     func discardQueued() {}
-    /// False when the `/model` command never reached the socket, so the pick can say so (T39).
+    /// False when the `/model` command never reached the socket, so the pick can say so.
     func setModelPreset(_ preset: String) async -> Bool { false }
     func setWorkspaceScope(_ access: WorkspaceAccess) async {}
     func loadPalette(text: String, cursor: Int) async -> PaletteSheet? { nil }
 }
 
-/// The primary button's job for the press in progress (T31). The button is one control with
+/// The primary button's job for the press in progress. The button is one control with
 /// three jobs, and its job changes under the finger: a send empties the field, which turns Send
 /// into the microphone before the touch is over. This is the transcription of that rule, so the
 /// gesture asks it instead of re-reading a state that has already moved.
@@ -164,8 +164,8 @@ struct PrimaryPress: Equatable {
     }
 
     /// The button's own action ran during this press: it sent, queued or stopped, so whatever the
-    /// state became afterwards, this finger is not recording (T31). An action that lands after
-    /// the finger is up belongs to a press that is over and is ignored — the next press is a new
+    /// state became afterwards, this finger is not recording. An action that lands after
+    /// the finger is up belongs to a press that is over and is ignored; the next press is a new
     /// question.
     mutating func acted() {
         guard open else { return }

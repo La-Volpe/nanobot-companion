@@ -47,7 +47,7 @@ import de.arjmandi.nanobot.companion.ui.Design
 import de.arjmandi.nanobot.companion.ui.scaledReadingStyle
 
 /**
- * The markdown an answer draws (plan.md A5, D6/D7): prose, bullets, tables that scroll inside
+ * The markdown an answer draws: prose, bullets, tables that scroll inside
  * their own box, and code with a language chip, line numbers on a multiline block and Copy with
  * the design's 1.5 s confirmation. v1's subset: no math, no diagrams, which is the design's own
  * line.

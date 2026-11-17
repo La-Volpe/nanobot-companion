@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The app's screen: onboarding, then the shell that holds the drawer and (from I3) the thread.
+/// The app's screen: onboarding, then the shell that holds the drawer and the thread.
 struct RootView: View {
     let container: Container
 
@@ -53,7 +53,7 @@ struct RootView: View {
         _chat = StateObject(wrappedValue: ChatViewModel(chat: NoopChat()))
         _activity = StateObject(wrappedValue: ActivityViewModel())
         // The composer sends what the cards show, so the two models are introduced once here
-        // rather than at the tap (P13).
+        // rather than at the tap.
         let attachmentModel = AttachmentViewModel(driver: NoopAttachments())
         _attachments = StateObject(wrappedValue: attachmentModel)
         _composer = StateObject(wrappedValue: {
@@ -169,11 +169,11 @@ struct RootView: View {
                         // Settings → Gateway is the way out: one closure, set once the shell exists.
                         settings.disconnectGateway = { disconnect() }
                         // The banner's "Try again" had no owner until now, which is why it did
-                        // nothing: it is the same reconnect the foreground uses (C3.4).
+                        // nothing: it is the same reconnect the foreground uses.
                         states.onRetryConnection = { Task { await retryConnection() } }
                         // A successful retry mints a new api_token and a socket that has not heard
                         // of the chat on screen, so the drawer is read again and the chat is
-                        // attached again — no second history replay (D46).
+                        // attached again, with no second history replay.
                         recovery.reload = {
                             try? await holder.refreshSessions()
                             await reattachChat()
@@ -185,21 +185,21 @@ struct RootView: View {
                     }
                     // `.onChange` only sees changes this view was on screen for, and the socket
                     // opens while onboarding is: a shell that appears after a connect or a
-                    // reconnect starts from what the holder already holds (P9).
+                    // reconnect starts from what the holder already holds.
                     .task {
                         states.update(connection: holder.connectionStatus, wasConnected: holder.everConnected)
                     }
                     // The scene phase the shell *starts* in is not a change, so `onChange` below
                     // never fired for it: a launch that came straight into the app told the core
                     // it was away, and every turn finishing in the chat on screen became a banner
-                    // for that same chat (T32).
+                    // for that same chat.
                     .task { holder.setForeground(scenePhase == .active) }
                     // iOS suspends a backgrounded app and the socket dies with it, so the return
                     // to the foreground is where a chat client earns its keep. What the failure
                     // meant is the taxonomy's answer and the banner says it; nothing here decides.
                     .onChange(of: scenePhase) { _, phase in
                         // Half of the notice rule: away from the app, a settled turn is worth a
-                        // banner; in front of it, the chat on screen is worth nothing (D8).
+                        // banner; in front of it, the chat on screen is worth nothing.
                         holder.setForeground(phase == .active)
                         guard phase == .active else { return }
                         Task {
@@ -244,7 +244,7 @@ struct RootView: View {
                         ),
                         // The attach sheet's rows hand their picker over here, not at the tap: a
                         // second sheet cannot be presented over one that is still up, so the
-                        // request was dropped until the overlay was closed by hand (T50).
+                        // request was dropped until the overlay was closed by hand.
                         onDismiss: { handOffAttachRow() }
                     ) {
                         ComposerSheets(
@@ -274,7 +274,7 @@ struct RootView: View {
                     }
                     .fullScreenCover(isPresented: $cameraPresented) {
                         // The camera is the phone's, and the picture lands in the same cards as a
-                        // picked photo, so the upload path stays one path (P13).
+                        // picked photo, so the upload path stays one path.
                         CameraPicker { picked in
                             Task { await attachments.add(picked) }
                         }
@@ -322,8 +322,8 @@ struct RootView: View {
         }
     }
 
-    /// The model Overview may name (T45): the open chat's composer, which is the same value the
-    /// chip prints and the ring divides by. Nil is "no chat open" — the sheet says so in words
+    /// The model Overview may name: the open chat's composer, which is the same value the
+    /// chip prints and the ring divides by. Nil is "no chat open", and the sheet says so in words
     /// rather than printing the gateway's configured default.
     private var modelInUse: SettingsViewModel.CurrentModel? {
         #if DEBUG
@@ -333,7 +333,7 @@ struct RootView: View {
         return composer.snapshot.currentModel
     }
 
-    /// The attach sheet is gone: now the picker can be presented. One request, one dismissal — a
+    /// The attach sheet is gone: now the picker can be presented. One request, one dismissal: a
     /// swipe down or another sheet closing opens nothing. The camera's permission is read here
     /// because it is the phone's answer, and a refusal is a sentence rather than a black cover.
     private func handOffAttachRow() {
@@ -358,7 +358,7 @@ struct RootView: View {
     }
 
     /// Opening a chat: one attach, then the stored history the core reads and reduces into the
-    /// same thread the live socket fills (D9, D46).
+    /// same thread the live socket fills.
     private func openChat() async {
         chatDriver?.stopObserving()
         let driver: ChatDriving
@@ -374,7 +374,7 @@ struct RootView: View {
             chatDriver = nil
             chat.attach(scripted)
             // The scripted chat answers the composer's commands too, so a tap proves the
-            // button rule and the queue without a gateway (I8's debug menu does the same).
+            // button rule and the queue without a gateway, as the debug menu does.
             composer.attach(ScriptedComposer(chat: scripted))
             attachments.use(
                 ScriptedUploader(failingName: container.scriptedAttachments ? "attachment_policy.py" : nil),
@@ -455,7 +455,7 @@ struct RootView: View {
     private func loadPresets() async -> [ChatModelPreset]? {
         // Nil is "the read did not answer", which the sheet draws differently from an empty list.
         guard await holder.refreshSettings() else { return nil }
-        // The tick follows the chat's own preset, which is what a tap changes (T39).
+        // The tick follows the chat's own preset, which is what a tap changes.
         return holder.presets(for: composer.snapshot.modelPreset)
     }
 
@@ -495,7 +495,7 @@ struct RootView: View {
     }
 }
 
-/// What I3 replaces with the thread. It says what it is rather than pretending to be a chat.
+/// The stand-in the thread replaced. It says what it is rather than pretending to be a chat.
 struct ChatShellPlaceholder: View {
     let disconnect: () -> Void
 

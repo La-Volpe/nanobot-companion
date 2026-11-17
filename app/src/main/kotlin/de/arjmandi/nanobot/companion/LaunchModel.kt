@@ -9,8 +9,8 @@ import kotlinx.coroutines.launch
 /**
  * Which screen a launch opens on, and why (the Android twin of iOS's `LaunchModel`). The store is
  * the reason a second launch is not a second setup: a gateway the device already holds puts the app
- * in the shell, and a gateway that no longer answers is that shell's banner — with its own "Try
- * again" — rather than the address and key questions again.
+ * in the shell, and a gateway that no longer answers is that shell's banner, with its own "Try
+ * again", rather than the address and key questions again.
  *
  * A model rather than a `LaunchedEffect` on the screen, for the usual reason: the rule is worth a
  * test, and a rule inside a composable cannot be asked which screen it chose.
@@ -42,7 +42,7 @@ class LaunchModel(
         /** Nothing on this device can be reopened: the address and the key are the user's to type. */
         Onboarding,
 
-        /** The shell, whether or not the socket is up — the banner says the rest. */
+        /** The shell, whether or not the socket is up. The banner says the rest. */
         Shell,
     }
 

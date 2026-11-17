@@ -2,8 +2,8 @@ import Foundation
 import Testing
 @testable import iosApp
 
-/// I8's states: one connection banner, one row per notice, one dock, one goal strip, one
-/// delivery failure — and each of them owned by exactly one place. The plan's red line is that
+/// The states: one connection banner, one row per notice, one dock, one goal strip, one
+/// delivery failure, with each of them owned by exactly one place. The rule worth pinning is that
 /// ownership: two surfaces showing the same state is how a chat screen starts contradicting
 /// itself.
 @MainActor
@@ -33,7 +33,7 @@ struct StatesViewModelTests {
         StatesViewModel(now: { 5_000 })
     }
 
-    /// The plan's red line: every state has one owner, and the order is the precedence table.
+    /// Every state has one owner, and the order is the precedence table.
     @Test func eachStateHasOneOwner() {
         let model = model()
 
@@ -89,7 +89,7 @@ struct StatesViewModelTests {
 
     /// One sentence per kind, from the taxonomy. A socket iOS suspended in the background fails
     /// as `unreachable` or `timeout`, and telling its owner the token expired sends them hunting
-    /// for a key that is fine (C7.4).
+    /// for a key that is fine.
     @Test func theBannerIsTheFailuresOwnSentence() {
         for kind in ConnectionFailureKind.allCases {
             for detail in [nil, "503"] as [String?] {

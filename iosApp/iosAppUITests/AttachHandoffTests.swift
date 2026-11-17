@@ -1,6 +1,6 @@
 import XCTest
 
-/// The attach sheet's three rows each open their own picker from one tap (T50).
+/// The attach sheet's three rows each open their own picker from one tap.
 ///
 /// The bug the owner reported: every row closed the composer sheet and asked for the picker in
 /// the same tap, and iOS will not present a second sheet while the first is still dismissing, so
@@ -9,7 +9,7 @@ import XCTest
 ///
 /// The rows are proved as far as a simulator allows. Photos and Files present the system's own
 /// sheets, which XCUITest sees inside the app's tree. The camera is the simulator's simulated
-/// camera — a lens, a shutter, no real sensor — so what is proved here is that the cover opens;
+/// camera (a lens, a shutter, no real sensor), so what is proved here is that the cover opens;
 /// a photo taken with a real lens is the owner's phone.
 final class AttachHandoffTests: XCTestCase {
 

@@ -3,14 +3,14 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// The attach sheet (I6), the cards the picked files become, and the lightbox images open in.
-/// The artifact's three rows — Photo or video, Camera, Files — are the three ways in, and each
+/// The attach sheet, the cards the picked files become, and the lightbox images open in.
+/// The artifact's three rows (Photo or video, Camera, Files) are the three ways in, and each
 /// one lands in `AttachmentViewModel.add`, which asks the core whether the gateway will take it.
 
 struct AttachSheet: View {
     let model: AttachmentViewModel
     /// The row that was tapped. It is a request, not a presentation: the picker opens when this
-    /// sheet is gone (T50).
+    /// sheet is gone.
     let onPick: (AttachRow) -> Void
 
     /// The lens *and* the permission: a camera that is off in Settings is not an option.
@@ -361,7 +361,7 @@ enum AttachmentImage {
 }
 
 /// The pickers, as one modifier so the composer stays a layout: Photos and Files are the system's
-/// own sheets, which is why a UI test cannot drive them — it asserts the rows and the state after.
+/// own sheets, which is why a UI test cannot drive them; it asserts the rows and the state after.
 ///
 /// Both loaders read their bytes in a detached task. `loadTransferable` and `Data(contentsOf:)`
 /// on the main actor meant a 12-megapixel HEIC froze the composer for as long as it took to
@@ -488,7 +488,7 @@ enum PickReader {
         return own ?? "application/octet-stream"
     }
 
-    /// A picker's photo has no filename, so it gets one the gateway can keep — and one whose
+    /// A picker's photo has no filename, so it gets one the gateway can keep, and one whose
     /// extension follows the bytes it actually carries.
     private static func name(for type: UTType?) -> String {
         let stamp = UUID().uuidString.prefix(8)

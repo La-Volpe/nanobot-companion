@@ -39,7 +39,7 @@ interface GatewayConnecting {
     fun disconnect()
 }
 
-/** The connection as the bar and the banner draw it (A1, A8). */
+/** The connection as the bar and the banner draw it. */
 enum class ConnectionStatus { Idle, Connecting, Open, Offline, Failed }
 
 /** The connection plus whether it has ever been open: a dropped socket reconnects, a cold one does not. */
@@ -50,7 +50,7 @@ data class ConnectionView(
     val detail: String? = null,
 )
 
-/** One drawer row, as Android needs it: the title to search and the preview to show (A2). */
+/** One drawer row, as Android needs it: the title to search and the preview to show. */
 data class SessionSummary(
     val key: String,
     val chatId: String,
@@ -62,7 +62,7 @@ data class SessionSummary(
     val displayTitle: String get() = title.ifEmpty { "Untitled session" }
 }
 
-/** The drawer's rows, as the list draws them (A2). */
+/** The drawer's rows, as the list draws them. */
 data class SessionListView(
     val rows: List<SessionSummary> = emptyList(),
     val loaded: Boolean = false,
@@ -71,7 +71,7 @@ data class SessionListView(
 )
 
 /**
- * The one object in the app that holds a `NanobotCore` (plan.md §8, the Android twin of iOS's
+ * The one object in the app that holds a `NanobotCore` (the Android twin of iOS's
  * `CoreHolder`). Everything the screens can show is a `StateFlow` here; the screens read these and
  * send commands, and no composable ever touches the facade.
  *
@@ -94,7 +94,7 @@ class CoreHolder(
     private var stack: Companion? = null
     private val observing = mutableListOf<Job>()
 
-    /** A chat handle for the thread (A3). Null before a gateway is open. */
+    /** A chat handle for the thread. Null before a gateway is open. */
     fun chat(id: String?): ChatHandle? = stack?.core?.chat(chatId = id)
 
     /**
@@ -120,7 +120,7 @@ class CoreHolder(
 
 
     /**
-     * One chat as the screens drive it (A3, A5): the thread's driver, the composer's commands, and
+     * One chat as the screens drive it: the thread's driver, the composer's commands, and
      * the composer's own state. Null before a gateway is open, which is how a screen knows it has
      * nothing behind it rather than a handle that answers nothing.
      */
@@ -141,7 +141,7 @@ class CoreHolder(
     var automationsReadFailed: Boolean = false
         private set
 
-    /** The automations page's read (A7). */
+    /** The automations page's read. */
     suspend fun refreshAutomations() {
         val core = stack?.core ?: run {
             automationsReadFailed = true
@@ -164,7 +164,7 @@ class CoreHolder(
     }
 
     /**
-     * Settings → Overview, from the same read the model sheet uses (C7.1). No uptime: there is none.
+     * Settings → Overview, from the same read the model sheet uses. No uptime: there is none.
      * Null when the read did not answer, so the section says so instead of drawing blank values.
      */
     suspend fun settingsSnapshot(): de.arjmandi.nanobot.companion.settings.SettingsSnapshot? {
@@ -185,7 +185,7 @@ class CoreHolder(
     }
 
     /**
-     * The usage card's numbers (T44). The core owns the window, the gap-filling and the compact
+     * The usage card's numbers. The core owns the window, the gap-filling and the compact
      * copy; the one thing only the phone knows is what day it is where the reader is holding it.
      */
     private fun usageSnapshot(usage: UsageTotals): de.arjmandi.nanobot.companion.settings.UsageSnapshot {
@@ -206,7 +206,7 @@ class CoreHolder(
     }
 
     /**
-     * The model sheet's list, from the settings read the gateway already answers (C6.2). Null when
+     * The model sheet's list, from the settings read the gateway already answers. Null when
      * the read did not answer: the sheet says so instead of showing a list that is empty because
      * nobody looked.
      */
@@ -222,7 +222,7 @@ class CoreHolder(
     /**
      * A second handshake on the stack that is already open, which is what "Try again" and a phone
      * returning to the foreground both need: the core bootstraps a fresh single-use token on every
-     * `connect()`, so this is a reconnect and not a resume (C3.4). A failure leaves the stack open,
+     * `connect()`, so this is a reconnect and not a resume. A failure leaves the stack open,
      * so the banner keeps the taxonomy's sentence and a second tap can try again.
      */
     suspend fun reconnect(): Boolean {
@@ -263,7 +263,7 @@ class CoreHolder(
         runCatching { core.refreshSessions() }
     }
 
-    /** Settings → Overview and the model sheet both read this (A5); nothing branches here. */
+    /** Settings → Overview and the model sheet both read this; nothing branches here. */
     suspend fun refreshSettings() {
         val core = stack?.core ?: return
         runCatching { core.refreshSettings() }
@@ -323,7 +323,7 @@ class CoreHolder(
 }
 
 /**
- * One chat's two bridges and the composer state they publish (A3, A5). The screens hold this
+ * One chat's two bridges and the composer state they publish. The screens hold this
  * bundle, so a chat that has a gateway has both halves and a chat that does not has neither.
  */
 data class ChatSession(

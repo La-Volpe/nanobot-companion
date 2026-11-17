@@ -5,8 +5,8 @@ import core
 ///
 /// This is the adapter's whole job here: `LayeringTests` keeps `import core` inside `Adapter/`, so a
 /// view that could ask the framework directly would break the one arrow the project draws. Which
-/// half of a diagram a block shows — source while the turn arrives, the picture once it has ended,
-/// source when the renderer refuses it — is therefore asked for here and answered by `:core`.
+/// half of a diagram a block shows (source while the turn arrives, the picture once it has ended,
+/// source when the renderer refuses it) is therefore asked for here and answered by `:core`.
 enum Diagrams {
 
     static func isDiagram(language: String?) -> Bool {

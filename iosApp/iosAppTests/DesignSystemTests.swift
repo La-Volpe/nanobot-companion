@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 @testable import iosApp
 
-/// The third G2 item has to be checkable, not claimed: the reading face is bundled and really
+/// The mapping has to be checkable, not claimed: the reading face is bundled and really
 /// registers with CoreText, the interface face is the system's, and no control is under 44 pt.
 struct DesignSystemTests {
 
@@ -39,7 +39,7 @@ struct DesignSystemTests {
 
     /// The voice numbers are the platform's: the drag that locks a recording is a distance, and
     /// the discard floor sits above the gateway's own refusal so it never asks about a recording
-    /// the gateway would reject (T48).
+    /// the gateway would reject.
     @Test func theVoiceThresholdsAreBothTheDesigns() {
         #expect(Design.lockDragDistance >= Design.minimumTarget, "the lock is a deliberate drag, not a wobble")
         #expect(VoiceLimits.discardMs > VoiceLimits.floorMs, "800 ms is above the 650 ms the gateway refuses")

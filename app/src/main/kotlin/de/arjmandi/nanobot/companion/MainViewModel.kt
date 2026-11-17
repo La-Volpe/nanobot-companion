@@ -22,14 +22,14 @@ import de.arjmandi.nanobot.companion.voice.VoiceHints
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * The shell's own state (plan.md A1–A3): whether onboarding or the shell is on screen, which chat
+ * The shell's own state: whether onboarding or the shell is on screen, which chat
  * the thread is showing, and whether the drawer is open. The connection, the drawer's rows and the
  * thread itself are flows from the holder, so there is exactly one owner per piece of state and
  * this class never copies one.
  */
 class MainViewModel(
     val holder: CoreHolder,
-    /** Where the voice hint's "shown once" lives: the phone's store in the app (T48). */
+    /** Where the voice hint's "shown once" lives: the phone's store in the app. */
     private val voiceHints: VoiceHints = InMemoryVoiceHints(),
     /** Both bridges for one chat: the real pair in the app, scripted ones in a test. */
     private val session: (chatId: String?) -> ChatSession,
@@ -40,7 +40,7 @@ class MainViewModel(
         private set
 
     /**
-     * Settings (A7), attached by the composition root once the shell exists: its disconnect calls
+     * Settings, attached by the composition root once the shell exists: its disconnect calls
      * back into [disconnect], so the two are built in that order rather than in one constructor.
      */
     var settings: SettingsViewModel? = null
@@ -49,24 +49,24 @@ class MainViewModel(
     var settingsOpen by mutableStateOf(false)
         private set
 
-    /** The automations page (A7): its own screen, opened from the drawer's pinned row. */
+    /** The automations page: its own screen, opened from the drawer's pinned row. */
     var automationsOpen by mutableStateOf(false)
         private set
 
     val automations: AutomationsViewModel by lazy { AutomationsViewModel(CoreAutomations(holder)) }
 
-    /** The DEBUG menu (A8): reachable in a debug build only, and it injects the state objects. */
+    /** The DEBUG menu: reachable in a debug build only, and it injects the state objects. */
     var debugOpen by mutableStateOf(false)
         private set
 
     /**
-     * The banner's "Try again" (A8), attached by the composition root for the same reason Settings
+     * The banner's "Try again", attached by the composition root for the same reason Settings
      * is: one owner for the socket, and no chat model reaching for the stack.
      */
     private var recovery: ConnectionRecovery? = null
 
     /**
-     * The connection as the states surfaces draw it (A8). One value, pushed to the chat's own states
+     * The connection as the states surfaces draw it. One value, pushed to the chat's own states
      * whenever the holder emits, so the bar's dot and the chat's banner cannot disagree.
      */
     var connectionView by mutableStateOf(ConnectionView(ConnectionStatus.Idle))
@@ -161,7 +161,7 @@ class MainViewModel(
     /**
      * Opening a chat: one command, which the shell runs when it appears and when a row is picked.
      * The core attaches and replays the stored history, which is what makes a resumed session show
-     * its turns (D46, P9).
+     * its turns.
      */
     suspend fun openChat(chatId: String?) {
         val model = chats.getOrPut(chatId) {
@@ -179,7 +179,7 @@ class MainViewModel(
             )
         }
         chat = model
-        // The chat's states start from the connection the shell already knows (P9's lesson).
+        // The chat's states start from the connection the shell already knows.
         model.states.update(connectionView)
         // The chat on screen is the one a banner must not announce (the rule is the core's):
         // `null` is a chat whose id the gateway has not minted yet, which the core resolves.
@@ -189,7 +189,8 @@ class MainViewModel(
 
     /**
      * A notification's tap: the chat it came from, on the shell that is already running. An id the
-     * drawer does not have is still opened — the notification named it, so the gateway knows it.
+     * drawer does not have is still opened, because the notification named it and the gateway
+     * knows it.
      */
     suspend fun openNotifiedChat(chatId: String) {
         drawer.rows.firstOrNull { it.chatId == chatId }?.let { selected = it }
@@ -232,7 +233,7 @@ class MainViewModel(
 
     /**
      * The model sheet's list: the gateway's presets, read when the sheet opens, ticked for the
-     * preset this chat is on rather than for the gateway's configured one (T39).
+     * preset this chat is on rather than for the gateway's configured one.
      */
     suspend fun presets(chosen: String?): List<de.arjmandi.nanobot.companion.composer.ChatModelPreset>? =
         holder.presets(chosen)

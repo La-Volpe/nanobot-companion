@@ -6,7 +6,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * A8's states (the Android twin of iOS's `StatesViewModelTests`): the connection dot and banner, the
+ * The states (the Android twin of iOS's `StatesViewModelTests`): the connection dot and banner, the
  * notices as rows, the goal as a strip and never a row, the subtask dock, a delivery that failed,
  * and the one snackbar above the composer with a precedence two sources cannot argue about.
  *
@@ -26,7 +26,7 @@ class StatesViewModelTest {
     private fun compaction(id: String = "c1", phase: String = "succeeded") =
         ThreadNotice.Compaction(id = id, phase = phase, reason = null)
 
-    /** The plan's named red line: one snackbar, and the precedence decides which. */
+    /** One snackbar, and the precedence decides which. */
     @Test
     fun snackbarPrecedence() {
         val model = model(now = 0)

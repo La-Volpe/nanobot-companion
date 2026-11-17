@@ -1,6 +1,6 @@
 import XCTest
 
-/// The simulator half of G2's 20-minute session: the app, on the iPhone simulator, against the
+/// The simulator half of the 20-minute session: the app, on the iPhone simulator, against the
 /// real dev gateway, over a real socket. Connect, send, stream, stop, then a reconnect and a
 /// resume through the app's own way out (Settings → Gateway → Disconnect → sign in again).
 ///
@@ -76,7 +76,7 @@ final class LiveSessionTests: XCTestCase {
         composer.tap()
         // Long enough that the turn is still composing when the tap lands: a 200-line list is
         // finished by a fast model inside the second the button takes to settle, and then there
-        // is nothing to stop — a race in this instrument, not in the app.
+        // is nothing to stop. That is a race in this instrument, not in the app.
         composer.typeText("Write a detailed 1200-word explanation of WebSocket framing, with headings and examples.")
         XCTAssertTrue(app.buttons["chat.send"].waitForExistence(timeout: 10))
         app.buttons["chat.send"].tap()
@@ -94,9 +94,9 @@ final class LiveSessionTests: XCTestCase {
     }
 
     func testAReconnectResumesTheSameChat() throws {
-        // P9's reproduction, now the assertion: after Settings → Gateway → Disconnect and a
+        // The reproduction, now the assertion: after Settings → Gateway → Disconnect and a
         // second connect, the app shows the shell with the connection dot reading connected
-        // and the session it re-opens replaying its stored history (D46). The core's own
+        // and the session it re-opens replaying its stored history. The core's own
         // reconnect is proven by `core-cli session` (`beat reconnect`, `beat resume`); this is
         // the screen above it.
         let app = try liveApp()
@@ -141,7 +141,7 @@ final class LiveSessionTests: XCTestCase {
         // session from the drawer replays its history through the same reducer.
         //
         // The dot first: it was idle after a reconnect because the shell only listened for
-        // changes it was on screen to see (P9).
+        // changes it was on screen to see.
         let dot = app.descendants(matching: .any).matching(identifier: "states.dot").firstMatch
         XCTAssertTrue(
             dot.waitForExistence(timeout: 10),
@@ -177,7 +177,7 @@ final class LiveSessionTests: XCTestCase {
     }
 
     /// The owner's bug, on a real socket: a banner appears, and "Try again" asks the core for a
-    /// new handshake — a fresh single-use token, a new socket, a real `ready`. The debug menu
+    /// new handshake: a fresh single-use token, a new socket, a real `ready`. The debug menu
     /// raises the banner without touching the connection, so the banner can only clear if the
     /// button actually reconnected: no other path sets the state back to open.
     func testTheBannersTryAgainReconnectsOnTheLiveGateway() throws {

@@ -5,7 +5,7 @@ import UIKit
 ///
 /// The values are the design system's tokens (`webui/design-handoff/DESIGN.md`, gateway
 /// revision 28d73b69): a white canvas with warm neutrals in light mode, charcoal
-/// `hsl(0 0% 19%)` in dark mode, and the brand orange held back for identity — the design
+/// `hsl(0 0% 19%)` in dark mode, and the brand orange held back for identity: the design
 /// says primary actions are monochrome, so nothing here paints a button orange.
 ///
 /// Icons are not SF Symbols. They come from the WebUI itself: `tools/webui-icons.py` writes

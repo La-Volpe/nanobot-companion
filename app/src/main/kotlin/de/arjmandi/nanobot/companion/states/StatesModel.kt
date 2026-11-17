@@ -3,7 +3,7 @@ package de.arjmandi.nanobot.companion.states
 import de.arjmandi.nanobot.companion.facade.ConnectionFailure
 
 /**
- * The states that are not part of an answer (plan.md A8, C7.3), as the app's own values: the
+ * The states that are not part of an answer, as the app's own values: the
  * connection dot and banner, the notices, the goal strip, the subtask dock, a delivery that failed,
  * and the one snackbar above the composer.
  */

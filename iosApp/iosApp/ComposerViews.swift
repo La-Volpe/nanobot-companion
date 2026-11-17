@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The composer zone (I5): the chips above the field, the meta row (access, context ring,
+/// The composer zone: the chips above the field, the meta row (access, context ring,
 /// model), the field, and the one button whose job the model decides.
 ///
 /// Layout follows the artifact: `.quoted-chip`/`.queue-chip` above `.meta-row`, then
@@ -23,7 +23,7 @@ struct ComposerBar: View {
     @State private var suppressClick = false
     /// Which job the press in progress belongs to. The button becomes the microphone the moment
     /// a send empties the field, and the gesture that belonged to the send must not follow it
-    /// there (T31: the owner's send started a recording).
+    /// there, because the owner's send once started a recording.
     @State private var press = PrimaryPress()
 
     var body: some View {
@@ -44,7 +44,7 @@ struct ComposerBar: View {
                 )
             }
             // The wait is written as well as drawn: the button's arc says something is happening,
-            // and this says what (T48).
+            // and this says what.
             if voice.phase == .transcribing {
                 Text("Transcribing…")
                     .font(.system(size: Design.Interface.microSize))
@@ -82,8 +82,8 @@ struct ComposerBar: View {
             }
         }
         // The meter counts and the transcribing arc turns on the screen's clock: the model takes
-        // times as arguments and owns no timer. Both loops end — the recording one with the
-        // gesture, the arc's after a fixed number of ticks — because XCUITest waits for the app to
+        // times as arguments and owns no timer. Both loops end (the recording one with the
+        // gesture, the arc's after a fixed number of ticks), because XCUITest waits for the app to
         // go quiet and an endless animation never gets there.
         .task(id: voice.phase) {
             switch voice.phase {
@@ -216,12 +216,12 @@ struct ComposerBar: View {
         }
     }
 
-    /// One button, three jobs: hold it to record, tap it to send, tap it to stop — and once a drag
+    /// One button, three jobs: hold it to record, tap it to send, tap it to stop, and once a drag
     /// up has locked a recording, the same button finishes it as Send. Which one it is is
     /// `ComposerViewModel.primaryState`, not a branch here.
     ///
     /// While the gateway transcribes, the voice job is the one thing the button cannot do, so it
-    /// goes inactive and a light arc circles it (T48). The composer around it keeps working: the
+    /// goes inactive and a light arc circles it. The composer around it keeps working: the
     /// field stays editable, and typed text can still be sent.
     private var primaryButton: some View {
         let inactive = voice.transcribing && primary == .voice
@@ -258,14 +258,13 @@ struct ComposerBar: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         // The state is read *through* the press, not from the button as it is now,
-                        // so a send that empties the field cannot hand its press to the microphone
-                        // (T31).
+                        // so a send that empties the field cannot hand its press to the microphone.
                         if holdStartedAt == nil {
                             guard press.down(primary), !voice.transcribing else { return }
                             suppressClick = true
                             let now = Self.nowMs()
                             holdStartedAt = now
-                            // The finger is the start: the recording is open before it moves (T48).
+                            // The finger is the start: the recording is open before it moves.
                             voice.beginHold(nowMs: now)
                             return
                         }
@@ -326,7 +325,7 @@ struct ComposerBar: View {
         await model.primaryAction()
     }
 
-    /// The transcript lands after whatever was typed; the core appends it to the draft (C6.5).
+    /// The transcript lands after whatever was typed; the core appends it to the draft.
     private func applyTranscript() async {
         guard let text = voice.pendingTranscript, !text.isEmpty else { return }
         model.draft += (model.draft.isEmpty ? "" : " ") + text
@@ -399,7 +398,7 @@ struct ComposerSheets: View {
     @ObservedObject var attachments: AttachmentViewModel
     let loadPresets: () async -> [ChatModelPreset]?
     /// The attach sheet's rows hand their picker over instead of presenting it: the sheet has to be
-    /// gone first (T50).
+    /// gone first.
     let onAttachRow: (AttachRow) -> Void
 
     var body: some View {
@@ -542,8 +541,8 @@ struct SheetRow: View {
 }
 
 /// The recording meter (artifact: `#voice-meter`): the elapsed clock and the bars, the words for
-/// what the finger still has to do, and — once a drag up has locked the recording — the one control
-/// that throws it away (T48).
+/// what the finger still has to do, and, once a drag up has locked the recording, the one control
+/// that throws it away.
 ///
 /// The bars do not animate. A `repeatForever` on this row is what makes XCUITest wait for an app
 /// that never goes quiet; the timer beside them is the movement, and it is the model's clock.

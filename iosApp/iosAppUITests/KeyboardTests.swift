@@ -37,9 +37,9 @@ final class KeyboardTests: XCTestCase {
     /// The distinction matters. An absent keyboard and a keyboard that does not push the layout are
     /// different failures with the same symptom, and only one of them is the app's. Measured here:
     /// the keyboard element exists with a plausible 402×233 frame but sits at y=952 in an 874-tall
-    /// window, so nothing is on screen and the composer never moves. That is the simulator — it
+    /// window, so nothing is on screen and the composer never moves. That is the simulator:
     /// reports a hardware keyboard attached (`HardwareKeyboardLastSeen=1`), and iOS then draws
-    /// nothing — so the case skips with the numbers in the reason instead of failing as if the
+    /// nothing, so the case skips with the numbers in the reason instead of failing as if the
     /// inset logic had regressed.
     private func focusComposer(_ app: XCUIApplication) throws -> CGRect {
         let field = app.textFields["chat.composer"]
@@ -78,10 +78,10 @@ final class KeyboardTests: XCTestCase {
     /// A tap in the conversation, away from the composer and the navigation bar. A coordinate
     /// rather than a label: the thread's answer text flips between `StaticText` and `Other` from
     /// one tree read to the next (XCUITest's legacy-attribute quirk), so a test that waited on the
-    /// type would be waiting on the framework, and the row a tap lands on does not matter — a
+    /// type would be waiting on the framework, and the row a tap lands on does not matter: a
     /// control still does its own job, which is the point.
     /// The thread's scroll view. Not `firstMatch`: the composer's field is a vertical-axis
-    /// `TextField`, which is a `UITextView`, which is a scroll view too — and it is the one
+    /// `TextField`, which is a `UITextView`, which is a scroll view too, and it is the one
     /// `firstMatch` hands back once the keyboard is up. The tallest match is the transcript.
     private func threadScroll(_ app: XCUIApplication) -> XCUIElement {
         app.scrollViews.allElementsBoundByIndex.max { $0.frame.height < $1.frame.height }
@@ -93,8 +93,8 @@ final class KeyboardTests: XCTestCase {
     /// Two earlier attempts read absolute frames and both landed on the keyboard (y=437 with the
     /// keyboard starting at y=238): after a rotation XCUITest keeps answering element queries with
     /// pre-rotation geometry for a while, so a frame-derived point is a point on the wrong screen.
-    /// A normalised offset rides whatever frame the query hands back — on a stale 874-tall window
-    /// it is y=218, on a fresh 402-tall landscape window y=100 — and both are transcript, because
+    /// A normalised offset rides whatever frame the query hands back: on a stale 874-tall window
+    /// it is y=218, on a fresh 402-tall landscape window y=100, and both are transcript, because
     /// the keyboard owns the bottom of the screen in either orientation and 0.25 is never in it.
     private func transcriptPoint(_ app: XCUIApplication) -> XCUICoordinate {
         app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
@@ -178,7 +178,7 @@ final class KeyboardTests: XCTestCase {
         let reasoning = app.buttons["activity.reasoning"]
         XCTAssertTrue(
             reasoning.waitForExistence(timeout: 5),
-            "the cluster's own disclosure still opens — the dismissal must not swallow it. Tree:\n\(app.debugDescription)"
+            "the cluster's own disclosure still opens, so the dismissal must not swallow it. Tree:\n\(app.debugDescription)"
         )
         assertKeyboardIsGone(app, "a tap on a tool row")
 
@@ -200,7 +200,7 @@ final class KeyboardTests: XCTestCase {
     /// Rotation is a layout question, not a dismissal one: this case asserts the composer rides
     /// above the keyboard in landscape and comes home to its resting frame afterwards. It does not
     /// tap in landscape, because XCUITest resolves `screenPoint` through pre-rotation geometry
-    /// there — measured: a coordinate 0.25 down a window reported as (0,0,874,402) resolved to
+    /// there. Measured: a coordinate 0.25 down a window reported as (0,0,874,402) resolved to
     /// y=437 with the keyboard starting at y=238, so the "tap the transcript" step landed on a
     /// keyboard key and every later assertion in the case failed behind it. Dismissal by tap has
     /// its own case in the orientation where the framework's geometry is trustworthy.

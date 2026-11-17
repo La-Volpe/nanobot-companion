@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Onboarding (plan.md I1). Every control reads one state and calls one command; the branch
+/// Onboarding. Every control reads one state and calls one command; the branch
 /// logic lives in `ConnectViewModel`, and the layout follows the design artifact's
 /// `data-view="onboarding"`: kicker, title, a reading-scale paragraph, two fields, the
 /// unverified-certificate switch, one filled primary button.
@@ -148,7 +148,7 @@ struct ConnectView: View {
     }
 
     /// The switch that makes a self-signed home gateway usable. Off by default, and turning it
-    /// on does not retry: the user decides, then presses Connect (C3.2, D21).
+    /// on does not retry: the user decides, then presses Connect.
     private var trustToggle: some View {
         Toggle(isOn: Binding(
             get: { model.allowUnverifiedCertificate },

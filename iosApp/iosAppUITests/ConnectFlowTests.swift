@@ -1,9 +1,8 @@
 import XCTest
 
-/// The onboarding flow a tap can prove (plan.md I1's gate). The app launches against a
-/// scripted gateway (DEBUG only, `NANOBOT_SCENARIO`), so the run needs no network, no key and
-/// no Keychain — and the eight error states are reachable exactly the way the debug menu will
-/// reach them.
+/// The onboarding flow a tap can prove. The app launches against a scripted gateway (DEBUG only,
+/// `NANOBOT_SCENARIO`), so the run needs no network, no key and no Keychain, and the eight error
+/// states are reachable exactly the way the debug menu reaches them.
 final class ConnectFlowTests: XCTestCase {
 
     private func launch(_ scenario: String) -> XCUIApplication {
@@ -31,9 +30,9 @@ final class ConnectFlowTests: XCTestCase {
         XCTAssertTrue(app.textFields["chat.composer"].waitForExistence(timeout: 10), "a successful connect leaves onboarding for the chat")
     }
 
-    /// T52: the name and the day/night mark stay, so the screen says plainly what the app is not.
-    /// The sentence is the same one `res/values/strings.xml` carries, and `tools/parity_copy.py`
-    /// compares the two tables — this proves the line is on the screen, not just in the table.
+    /// The name and the day/night mark stay, so the screen says plainly what the app is not. The
+    /// sentence is the same one `res/values/strings.xml` carries, and `tools/parity_copy.py`
+    /// compares the two tables; this proves the line is on the screen, not only in the table.
     func testOnboardingSaysPlainlyWhoThisAppIsNot() {
         let app = launch("connected")
 

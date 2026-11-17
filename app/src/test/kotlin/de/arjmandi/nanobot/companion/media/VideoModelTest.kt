@@ -11,7 +11,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 /**
- * A clip's states (A9's video half): tap the row, the player opens and plays; pause holds the
+ * A clip's states: tap the row, the player opens and plays; pause holds the
  * frame; a clip that will not play is a sentence with a retry, never a spinner; and a sheet the
  * reader dismissed stops the sound instead of leaving it in their pocket.
  *

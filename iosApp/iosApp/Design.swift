@@ -2,8 +2,8 @@ import Foundation
 import SwiftUI
 
 /// The design system's platform mapping in one place (design README, "Platform adaptation"),
-/// so a screen never spells a point size or a radius out of thin air and the third G2 item has
-/// something concrete to point at.
+/// so a screen never spells a point size or a radius out of thin air, and the mapping is
+/// asserted by a test rather than claimed.
 ///
 /// - interface type is the system stack at 15 / 13 / 11,
 /// - reading type is Open Sans at 17 with a 1.5 line height (bundled, see `Resources/`),
@@ -21,7 +21,7 @@ enum Design {
     /// The design's 44 pt rule, used by every tappable row and control.
     static let minimumTarget: CGFloat = 44
 
-    /// The warm orange from the design system: identity only — the mark, the Full-access
+    /// The warm orange from the design system: identity only, the mark, the Full-access
     /// warning and status accents. It is never a primary button and never a glow. The value is
     /// the token itself (`#ef8e30`), shared with `Palette` so there is one orange in the app.
     static let brand = Palette.brandOrange
@@ -30,8 +30,8 @@ enum Design {
     static let composerBottomPadding: CGFloat = 12
 
     /// How far up a hold has to travel before it locks: past this the finger may leave the screen
-    /// and the button becomes Send (T48). A distance, not a delay — nothing about starting a
-    /// recording waits for a clock any more.
+    /// and the button becomes Send. A distance, not a delay: nothing about starting a recording
+    /// waits for a clock any more.
     static let lockDragDistance: CGFloat = 64
 
     /// The attachment grid's thumbnail (artifact: `.img-thumb` is 124 px wide; the phone's
@@ -63,7 +63,7 @@ enum Design {
         /// A tool row is a row a thumb can land on, like every other row here.
         static let rowHeight: CGFloat = 44
 
-        /// The design picks the glyph by the tool's name, not by its arguments — and the glyph is
+        /// The design picks the glyph by the tool's name and not by its arguments, and the glyph is
         /// the WebUI's own drawing (`tools/webui-icons.py`), never an SF Symbol for a tool the web
         /// draws (`ic_webui_terminal`, `ic_webui_globe`, `ic_webui_activity`).
         static func icon(forTool name: String) -> String {

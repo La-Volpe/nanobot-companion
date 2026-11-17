@@ -1,8 +1,8 @@
 import Foundation
 
-/// The eight sentences a failed connect can show (plan.md C7.4, D29 §9), plus the three local
-/// refusals that never leave the phone. The keys are the core's copy keys, so a Swift string
-/// and a Kotlin taxonomy entry cannot drift apart silently — `CopyTests` asserts the pairing.
+/// The eight sentences a failed connect can show, plus the three local refusals that never leave
+/// the phone. The keys are the core's copy keys, so a Swift string and a Kotlin taxonomy entry
+/// cannot drift apart silently: `CopyTests` asserts the pairing.
 ///
 /// This file deliberately imports nothing but Foundation: it is the copy, not the framework.
 enum ConnectionCopy {
@@ -23,7 +23,7 @@ enum ConnectionCopy {
         case .missingField:
             "The gateway's answer was incomplete. Check its version."
         case .serverError:
-            // 5xx may be a bad minute; a 4xx is the same answer every time (D29 §9).
+            // 5xx may be a bad minute; a 4xx is the same answer every time.
             switch detail.flatMap(Int.init) {
             case let status? where status >= 500: "The gateway refused the request. Try again in a moment."
             default: "The gateway refused the request."

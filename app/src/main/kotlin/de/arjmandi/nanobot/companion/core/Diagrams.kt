@@ -11,8 +11,8 @@ import de.arjmandi.nanobot.companion.markdown.DiagramMode
  * The diagram rules, which are the core's (`MarkdownDiagrams.kt`), in the app's own names.
  *
  * `MarkdownBlocks` draws `MdBlock`s and never a facade type, so the one file that translates
- * between the two is where the question is asked: which half of a diagram a block shows — source
- * while the turn arrives, the picture once it has ended, source when the renderer refuses it — and
+ * between the two is where the question is asked: which half of a diagram a block shows (source
+ * while the turn arrives, the picture once it has ended, source when the renderer refuses it), and
  * what the WebView loads. One implementation, in the core, called through here.
  */
 internal object Diagrams {

@@ -1,6 +1,6 @@
 import Foundation
 
-/// One row inside a turn's activity cluster (I4), as Swift's own values. The core reduced the
+/// One row inside a turn's activity cluster, as Swift's own values. The core reduced the
 /// frames into `ActivityItem`; the adapter maps each case here and nothing else branches on it.
 struct ChatActivityItem: Identifiable, Equatable {
     enum Kind: Equatable {

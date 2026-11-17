@@ -2,8 +2,8 @@
 <resources>
     <string name="app_name">nanobot Companion</string>
 
-    <!-- The eight connection failures (docs/decisions.md D29 §9). The name after the underscore
-         is the core's copy key, so `ConnectionCopyTest` can pair them one for one. -->
+    <!-- The eight connection failures. The name after the underscore is the core's copy key, so
+         `ConnectionCopyTest` can pair them one for one. -->
     <string name="connection_authFailed">That key was refused. Check the gateway\'s key and try again.</string>
     <string name="connection_tlsRejected">This gateway\'s certificate is not trusted. If it is your own, allow it in this gateway\'s settings.</string>
     <string name="connection_unreachable">No gateway at that address. Check the address and that the gateway is running.</string>
@@ -35,13 +35,13 @@
     <string name="connect_submit">Connect</string>
     <string name="connect_connecting">Connecting</string>
     <string name="connect_footer">The key is encrypted on this device and renews the session token, which expires in minutes.</string>
-    <!-- The name and the day/night mark are nanobot's, kept on purpose (T52): the app says plainly
-         what it is not, where a reader would look for provenance. Worded identically on iOS. -->
+    <!-- The name and the day/night mark are nanobot's, kept on purpose: the app says plainly what
+         it is not, where a reader would look for provenance. Worded identically on iOS. -->
     <string name="connect_disclaimer">Not affiliated with HKUDS/nanobot.</string>
     <string name="connect_connected_to">Connected to %1$s</string>
     <string name="connect_connected">Connected</string>
 
-    <!-- Drawer (A2): brand, search, the two sections, and the states search can be in. -->
+    <!-- Drawer: brand, search, the two sections, and the states search can be in. -->
     <string name="drawer_open">Open the session list</string>
     <string name="drawer_brand">nanobot</string>
     <string name="drawer_new_chat">New chat</string>
@@ -55,7 +55,7 @@
     <string name="drawer_settings">Settings</string>
     <string name="drawer_session_actions">Session actions</string>
 
-    <!-- Chat (A3). -->
+    <!-- Chat. -->
     <string name="chat_composer_hint">Type a message…</string>
     <string name="chat_send">Send</string>
     <string name="chat_stop">Stop</string>
@@ -76,7 +76,7 @@
     <string name="chat_connection_disconnected">Connection: disconnected</string>
     <string name="chat_connection_error">Connection: error</string>
 
-    <!-- Activity (A4): the cluster head, the three status words, and the row labels. The head is a
+    <!-- Activity: the cluster head, the three status words, and the row labels. The head is a
          sentence built from clauses here rather than from a string in a view model, so the copy is
          translatable and the model stays a pure value. -->
     <string name="activity_thinking">Thinking</string>
@@ -99,7 +99,7 @@
     <string name="activity_output">Output</string>
     <string name="activity_sources">%1$d sources</string>
 
-    <!-- Composer (A5): the chips, the meta row, the sheets and the bar's one overflow. -->
+    <!-- Composer: the chips, the meta row, the sheets and the bar's one overflow. -->
     <string name="composer_access_default">Default</string>
     <string name="composer_access_full">Full</string>
     <string name="composer_access_title">Workspace access</string>
@@ -132,7 +132,7 @@
     <string name="chat_action_new_chat">New chat</string>
     <string name="chat_overflow">Session actions</string>
 
-    <!-- Markdown (A5): the fence's language chip, its default label when the fence names none,
+    <!-- Markdown: the fence's language chip, its default label when the fence names none,
          and Copy's 1.5 s confirmation. -->
     <string name="markdown_code">code</string>
     <string name="markdown_copy">Copy</string>
@@ -142,8 +142,8 @@
     <!-- One sentence above the fence's source, when the renderer refused the diagram. -->
     <string name="diagram_failed">This diagram could not be drawn, so its source is shown.</string>
 
-    <!-- Attachments (A6): the sheet, the cards, and one sentence per typed refusal from the
-         core's `AttachmentRejection.copyKey` (plan.md §9's limits row). -->
+    <!-- Attachments: the sheet, the cards, and one sentence per typed refusal from the core's
+         `AttachmentRejection.copyKey`. -->
     <string name="attach_photos">Photos</string>
     <string name="attach_files">Files</string>
     <string name="attach_remove">Remove</string>
@@ -157,7 +157,7 @@
     <string name="attach_unsupported">That file type is not one the gateway accepts.</string>
     <string name="attach_unreachable">The upload did not reach the gateway.</string>
 
-    <!-- Voice (A6): the two gestures, the wait, and the one sentence a gesture can produce. -->
+    <!-- Voice: the two gestures, the wait, and the one sentence a gesture can produce. -->
     <string name="voice_transcribing">Transcribing…</string>
     <string name="voice_release_to_send">Release to send</string>
     <string name="voice_send_to_finish">Tap Send to finish</string>
@@ -171,7 +171,7 @@
     <string name="voice_notice_dismiss">Dismiss</string>
     <string name="settings_notification_sound">Sound</string>
 
-    <!-- Settings (A7): the four sections, the one honest notification promise, and the way out. -->
+    <!-- Settings: the four sections, the one honest notification promise, and the way out. -->
     <string name="settings_title">Settings</string>
     <string name="settings_overview_loading">Loading gateway settings</string>
     <string name="settings_overview_failed">Could not read the gateway settings.</string>
@@ -198,7 +198,7 @@
     <string name="settings_notifications_allow">Allow alerts</string>
     <string name="settings_notifications_system">Open system settings</string>
 
-    <!-- States (A8): the banner's lines, the notice rows, the goal strip, the dock and the one
+    <!-- States: the banner's lines, the notice rows, the goal strip, the dock and the one
          snackbar above the composer for the transient ones. The sandbox sentences are named after
          the core's own copy keys (notice.sandbox.*), so a drift is a key that no longer exists. -->
     <string name="states_connecting">Connecting…</string>
@@ -231,13 +231,13 @@
     <string name="states_debug_failures">The eight failures</string>
     <string name="states_debug_chats">Chat states</string>
     <string name="states_debug_clear">Clear every injected state</string>
-    <!-- Automations (A7): the page lists, runs, pauses and deletes; the agent creates. -->
+    <!-- Automations: the page lists, runs, pauses and deletes; the agent creates. -->
     <string name="automations_title">Automations</string>
     <string name="automations_back">Back</string>
     <string name="automations_group">Scheduled</string>
     <string name="automations_loading">Loading automations</string>
     <string name="automations_empty">No automations yet. Ask nanobot in a chat and it schedules one.</string>
-    <string name="automations_help">nanobot creates these when you ask in a chat. This page lists, runs, pauses and deletes them; it does not invent schedules behind your back.</string>
+    <string name="automations_help">nanobot creates these when you ask in a chat. This page lists, runs, pauses and deletes them; it never creates one on its own.</string>
     <string name="automations_ask">Ask nanobot to create one</string>
     <string name="automations_run_now">Run now</string>
     <string name="automations_pause">Pause</string>
@@ -249,7 +249,7 @@
     <string name="automations_cancel">Cancel</string>
     <string name="automations_system">System</string>
 
-    <!-- Media rows on a turn (A9): what a picture, a clip, a recording and a file card say. -->
+    <!-- Media rows on a turn: what a picture, a clip, a recording and a file card say. -->
     <string name="media_imageFailed">Could not load this image.</string>
     <string name="media_audioFailed">Could not play this recording.</string>
     <string name="media_videoFailed">Could not play this video.</string>

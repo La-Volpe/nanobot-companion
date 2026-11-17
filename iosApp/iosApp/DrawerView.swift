@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The session drawer (plan.md I2): brand, search, the session list, the archived row and the
+/// The session drawer: brand, search, the session list, the archived row and the
 /// automations entry pinned at the bottom. The view reads `DrawerViewModel` and calls two
 /// commands; nothing here branches on data.
 struct DrawerView: View {

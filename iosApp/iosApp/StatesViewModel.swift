@@ -1,6 +1,6 @@
 import Foundation
 
-/// The states that are not part of an answer (plan.md I8, C7.3): the connection dot and banner,
+/// The states that are not part of an answer: the connection dot and banner,
 /// the notices, the goal strip, the subtask dock and a delivery that failed.
 ///
 /// One owner per state is the rule this file exists for. The banner belongs to the connection
@@ -250,7 +250,7 @@ final class StatesViewModel: ObservableObject {
             dot = .failed
             // The sentence is the taxonomy's, one per kind: a socket the system suspended fails as
             // `unreachable` or `timeout`, and one generic "token expired" would send the owner
-            // hunting for a key that is fine (C7.4). "Try again" stays on every failure because
+            // hunting for a key that is fine. "Try again" stays on every failure because
             // the design draws it under every failed handshake; whether the retry can succeed is
             // the taxonomy's answer, and onboarding is the screen that reads it (`offersRetry`).
             banner = ConnectionBanner(text: ConnectionCopy.text(for: kind, detail: detail), showsRetry: true)
@@ -377,7 +377,7 @@ final class StatesViewModel: ObservableObject {
     }
 }
 
-/// What the DEBUG menu can put the app into. G2 asks for the eight failures to be reachable by
+/// What the DEBUG menu can put the app into. The eight failures have to be reachable by
 /// hand, not only by launch environment, so this is the list the menu draws.
 enum DebugState {
 
@@ -402,7 +402,7 @@ enum DebugState {
     ]
 
     /// The chat states the artifact's sixteen chips inject, minus the ones this phase does not
-    /// draw (diagram, preview, temporary chat: not in v1 by plan D7 and the design README).
+    /// draw (diagram, preview, temporary chat: not in v1, per the design README).
     enum ChatState: String, CaseIterable, Identifiable {
         case offline
         case reconnecting

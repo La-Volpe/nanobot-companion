@@ -5,13 +5,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * The two ways the phone asks for a socket it has lost (A8): the banner's "Try again", and coming
+ * The two ways the phone asks for a socket it has lost: the banner's "Try again", and coming
  * back to the foreground after Android backgrounded the app. Both come through here because both
- * have the same two rules — one attempt at a time, and nothing to recover on a socket that was
+ * have the same two rules: one attempt at a time, and nothing to recover on a socket that was
  * never up (the Android twin of iOS's `ConnectionRecovery`).
  *
- * What makes the retry worth offering: the core's `connect()` bootstraps a fresh single-use token
- * on every call, so a retry is a real handshake, never a replay of a dead one (C3.4).
+ * The retry is worth offering because the core's `connect()` bootstraps a fresh single-use token
+ * on every call, so a retry is a real handshake and never a replay of a dead one.
  */
 class ConnectionRecovery(
     /** The core's connect on the stack that is already open; true when the gateway greeted it. */
@@ -31,8 +31,8 @@ class ConnectionRecovery(
 
     /**
      * "Try again": the button exists only under a banner that says the socket is lost, and the
-     * user asked, so the state must not talk them out of it. The one thing it will never do is
-     * race a connect already in flight — two bootstraps is two sockets and a token burned twice.
+     * user asked, so the state must not talk them out of it. What it will never do is race a
+     * connect already in flight, because two bootstraps is two sockets and a token burned twice.
      */
     fun retry(status: ConnectionStatus) {
         if (status == ConnectionStatus.Connecting) return

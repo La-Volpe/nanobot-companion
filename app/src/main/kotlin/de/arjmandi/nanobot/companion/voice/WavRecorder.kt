@@ -8,7 +8,7 @@ import java.io.ByteArrayOutputStream
 import kotlin.concurrent.thread
 
 /**
- * The microphone, through `AudioRecord` (A6): 16 kHz mono PCM, wrapped in a WAV header on stop
+ * The microphone, through `AudioRecord`: 16 kHz mono PCM, wrapped in a WAV header on stop
  * because the transcription frame carries WAV bytes and not a raw stream (`transcription_ws.py`).
  *
  * A reader thread drains the buffer while the recording runs, so a long hold does not lose audio to

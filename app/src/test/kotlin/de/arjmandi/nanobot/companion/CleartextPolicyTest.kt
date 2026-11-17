@@ -6,10 +6,10 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Cleartext is a dev-gateway affordance, not a property of the app (T27). The design's own hint is
+ * Cleartext is a dev-gateway affordance, not a property of the app. The design's own hint is
  * a gateway on the home network over `http`, and Android refuses that by default since targetSdk
- * 28 — so the debug build needs the exception. A release build must not: an `http://` address a
- * user types, or one a redirect leads to, would then be sent in the clear.
+ * 28, so the debug build needs the exception. A release build must not have it: an `http://`
+ * address a user types, or one a redirect leads to, would then be sent in the clear.
  *
  * This reads the two files a build actually merges rather than the merged output of the build
  * running the test, because the merged output is always the debug one.

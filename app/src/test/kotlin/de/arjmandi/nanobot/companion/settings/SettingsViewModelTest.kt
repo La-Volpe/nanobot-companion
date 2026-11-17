@@ -11,10 +11,10 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
 /**
- * Settings (plan.md A7, the Android twin of iOS's `SettingsViewModelTests`): Overview says what the
+ * Settings (the Android twin of iOS's `SettingsViewModelTests`): Overview says what the
  * gateway is and never invents an uptime line, Notifications is honest about there being no push
  * transport and proves itself with a real local notification, Appearance owns the theme and the
- * reading size, and Gateway is the way out — a disconnect that forgets the address and the key.
+ * reading size, and Gateway is the way out: a disconnect that forgets the address and the key.
  */
 class SettingsViewModelTest {
 
@@ -90,7 +90,7 @@ class SettingsViewModelTest {
         presets = listOf("default", "primary"),
     )
 
-    /** The open chat's model as the shell hands it over: the core words the two lines (T45). */
+    /** The open chat's model as the shell hands it over: the core words the two lines. */
     private fun chat(
         preset: String = "primary",
         name: String = "glm-5.3-flash:cloud",
@@ -129,7 +129,7 @@ class SettingsViewModelTest {
     }
 
     /**
-     * T36 and T45 together: the window row is the *chat's* window, and a million is `1M` — the unit
+     * The window row is the *chat's* window, and a million is `1M`: the unit
      * stays, because a bare `1M` next to a version string reads like one. The label itself is the
      * core's (`ModelInUseTest` pins 1 000 000 -> 1M).
      */
@@ -160,7 +160,7 @@ class SettingsViewModelTest {
         assertTrue(model.overviewRows.none { it.label == "Context window" }, "${model.overviewRows}")
     }
 
-    /** The plan's red line: notifications are local, and the model never pretends otherwise. */
+    /** Notifications are local, and the model never pretends otherwise. */
     @Test
     fun testNotificationIsLocalOnly() = runTest {
         val notifier = FakeNotifier()
@@ -207,7 +207,7 @@ class SettingsViewModelTest {
         assertEquals(SettingsNotice.NotificationsOff, model.notice)
     }
 
-    /** The plan's red line: a disconnect forgets both the address and the key. */
+    /** A disconnect forgets both the address and the key. */
     @Test
     fun disconnectClearsKeystore() = runTest {
         val credentials = FakeCredentials()
@@ -274,7 +274,7 @@ class SettingsViewModelTest {
     }
 
     /**
-     * T45: the owner's rule — every name and size on screen describes the model in use, never the
+     * The owner's rule: every name and size on screen describes the model in use, never the
      * gateway's configured default. `/api/settings` `agent.model` is a configuration (the WebUI's
      * own Overview row prints it, `OverviewSettings.tsx:78`); with no chat open there is no model
      * in use, and the row says so instead of naming one that is not answering.
@@ -297,7 +297,7 @@ class SettingsViewModelTest {
     }
 
     /**
-     * T43: the switches used to be local state that persisted nowhere and gated nothing. Each one is
+     * The switches used to be local state that persisted nowhere and gated nothing. Each one is
      * stored under the core's own key (`NoticeCategory.preferenceKey`), which is the key the poster
      * reads at post time.
      */

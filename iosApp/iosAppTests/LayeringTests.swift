@@ -1,13 +1,13 @@
 import Foundation
 import Testing
 
-/// The two rules a hand-written Xcode project otherwise has to be trusted for (plan.md §7):
+/// The two rules a hand-written Xcode project otherwise has to be trusted for:
 /// only the adapter layer touches the Kotlin framework, and every source file is actually in
-/// the project — a file missing from `project.pbxproj` does not fail a build, it just silently
+/// the project: a file missing from `project.pbxproj` does not fail a build, it just silently
 /// never compiles, which is the worst way to find out a test does not exist.
 struct LayeringTests {
 
-    /// The adapter layer from C8.2: `Adapter/` is the one folder allowed to import the module.
+    /// The adapter layer: `Adapter/` is the one folder allowed to import the module.
     /// It was written as a single file when `CoreHolder` was the only adapter; the notification
     /// plumbing needs the same access, and a directory is what the rule always meant.
     private static let bridgeFolder = "Adapter"
@@ -24,7 +24,7 @@ struct LayeringTests {
     }
 
     /// Every Swift file under a folder, subfolders included: a first version scanned only the
-    /// top level, which quietly exempted `Adapter/` — the one directory that is allowed to
+    /// top level, which quietly exempted `Adapter/`, the one directory that is allowed to
     /// import the framework, and therefore the one a mistake would hide in.
     private static func swiftFiles(in directory: String) throws -> [String] {
         let root = projectDirectory.appendingPathComponent(directory)
@@ -54,12 +54,12 @@ struct LayeringTests {
 
         #expect(
             offenders.isEmpty,
-            "the Kotlin framework is the adapter's only; a screen that imports it is a review defect (plan.md §7): \(offenders)"
+            "the Kotlin framework is the adapter's only; a screen that imports it is a review defect: \(offenders)"
         )
     }
 
     /// The project lists folders, not files (Xcode 16 and later synchronise a directory into a
-    /// target). That is what makes adding a Swift file free — and what this asserts, so a
+    /// target). That is what makes adding a Swift file free, and what this asserts, so a
     /// hand-edit that quietly switches back to an explicit file list fails here rather than
     /// leaving a new screen out of the build.
     @Test func everySourceFolderIsSynchronisedWithItsTarget() throws {

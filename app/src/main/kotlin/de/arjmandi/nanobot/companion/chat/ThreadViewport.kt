@@ -11,7 +11,7 @@ package de.arjmandi.nanobot.companion.chat
 data class ThreadViewport(val following: Boolean = true) {
 
     /**
-     * The reader's own scroll landed [distanceFromBottomPx] from the end — whether they scrolled
+     * The reader's own scroll landed [distanceFromBottomPx] from the end, whether they scrolled
      * there or the gesture settled there. The end resumes the follow; anywhere else pauses it.
      */
     fun scrolled(distanceFromBottomPx: Int): ThreadViewport =

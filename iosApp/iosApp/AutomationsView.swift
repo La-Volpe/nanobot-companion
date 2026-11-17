@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The automations page (I2b), following the design's `data-view="automations"`: a short title
+/// The automations page, following the design's `data-view="automations"`: a short title
 /// bar, a "Scheduled" group of cards, the sentence that says where these come from, and one
 /// button that asks the agent to create another. Each card opens the design's action sheet.
 struct AutomationsView: View {
@@ -59,7 +59,7 @@ struct AutomationsView: View {
                             .accessibilityIdentifier("automations.message")
                     }
 
-                    Text("nanobot creates these when you ask in a chat. This page lists, runs, pauses and deletes them; it does not invent schedules behind your back.")
+                    Text("nanobot creates these when you ask in a chat. This page lists, runs, pauses and deletes them; it never creates one on its own.")
                         .font(.system(size: Design.Interface.microSize))
                         .foregroundStyle(Palette.mutedForeground)
                         .fixedSize(horizontal: false, vertical: true)
@@ -138,7 +138,7 @@ struct AutomationsView: View {
     }
 
     /// The design's card: glyph, name, schedule, what it is doing, and either a switch or the
-    /// System flag — never a switch that the gateway would answer with a 403.
+    /// System flag, never a switch that the gateway would answer with a 403.
     private func card(_ row: AutomationRow) -> some View {
         Button {
             actionsFor = row

@@ -2,7 +2,7 @@
 import Foundation
 
 /// A gateway that answers what it is told to answer, for the flows a tap can prove
-/// (`ConnectFlowTests`) and for the debug menu G2 asks for — the eight error states each
+/// (`ConnectFlowTests`) and for the debug menu: the eight error states each
 /// reachable without a broken gateway, a wrong key or a certificate that expired.
 ///
 /// Compiled only in Debug: a release build has no way to reach it.

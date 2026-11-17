@@ -2,9 +2,9 @@
 import Foundation
 import UIKit
 
-/// A chat that answers without a gateway, for the flows a tap can prove and for the debug menu
-/// G2 asks for (plan.md I8). It streams the way the real one does — a pending prompt, an
-/// accepted one, then answer chunks — so the screen's states are the same states.
+/// A chat that answers without a gateway, for the flows a tap can prove and for the debug menu.
+/// It streams the way the real one does (a pending prompt, an accepted one, then answer chunks),
+/// so the screen's states are the same states.
 @MainActor
 final class ScriptedChat: ChatDriving {
     private let onChange: (ChatThreadState) -> Void
@@ -38,7 +38,7 @@ final class ScriptedChat: ChatDriving {
     }
 
     /// One answer holding every construct the matrix covers, in the order a reader meets them:
-    /// a table (the row still arriving mid-stream), a nested list, task items, then the fences —
+    /// a table (the row still arriving mid-stream), a nested list, task items, then the fences:
     /// a code block, a mermaid diagram that draws, and a mermaid diagram that cannot.
     static let document = """
     ## Limit table
@@ -218,7 +218,7 @@ final class ScriptedComposer: ComposerDriving {
         queued = nil
     }
 
-    /// A scripted chat takes the pick, the way the gateway takes `/model` (T39).
+    /// A scripted chat takes the pick, the way the gateway takes `/model`.
     func setModelPreset(_ preset: String) async -> Bool { true }
 
     func setWorkspaceScope(_ access: WorkspaceAccess) async {}
@@ -244,7 +244,7 @@ final class ScriptedComposer: ComposerDriving {
 final class ScriptedUploader: AttachmentDriving {
     private var uploads = 0
     /// One named file fails its first upload and lands on the second, so a flow test can see the
-    /// card that keeps a reason and a Retry *and* watch the retry change it — without cutting
+    /// card that keeps a reason and a Retry *and* watch the retry change it, without cutting
     /// the network.
     private let failingName: String?
     private var failedOnce = false
@@ -295,8 +295,8 @@ final class ScriptedRecorder: AudioRecording {
 }
 
 /// A transcriber that answers the way the gateway does, after a visible moment of "Transcribing…".
-/// Four seconds, because that wait is the state a flow test has to look at — the button inactive,
-/// its arc turning, and the composer still working — and a query takes about a second (T48).
+/// Four seconds, because that wait is the state a flow test has to look at (the button inactive,
+/// its arc turning, and the composer still working), and a query takes about a second.
 @MainActor
 final class ScriptedVoice: VoiceDriving {
     func transcribe(pcm: Data, durationMs: Int) async -> VoiceOutcome {

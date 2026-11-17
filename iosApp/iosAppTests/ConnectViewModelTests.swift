@@ -2,8 +2,8 @@ import Foundation
 import Testing
 @testable import iosApp
 
-/// Onboarding's branches (plan.md I1): what is refused locally, what each failure says, and the
-/// rule the unverified-certificate switch exists for — the app never turns it on itself.
+/// Onboarding's branches: what is refused locally, what each failure says, and the rule the
+/// unverified-certificate switch exists for, which is that the app never turns it on itself.
 @MainActor
 struct ConnectViewModelTests {
 
@@ -47,7 +47,7 @@ struct ConnectViewModelTests {
         #expect(gateway.disconnects == 1, "a failed attempt does not leave a client behind")
     }
 
-    /// The plan's red line for I1: a certificate the phone will not verify is the user's
+    /// A certificate the phone will not verify is the user's
     /// decision to make, so the app points at the switch instead of quietly trusting it.
     @Test func unverifiedCertRequiresExplicitToggle() async {
         let (model, gateway, _) = model(.failed(.tlsRejected, detail: nil))
@@ -171,7 +171,7 @@ struct ConnectViewModelTests {
 }
 
 /// The copy and the core's taxonomy have to stay in step: the keys are asserted here, and the
-/// framework-side mapping is asserted by `BridgeShapeTests` (D38).
+/// framework-side mapping is asserted by `BridgeShapeTests`.
 struct ConnectionCopyTests {
 
     @Test func theEightKeysAreTheCores() {

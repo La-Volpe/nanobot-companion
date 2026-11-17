@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The activity cluster (I4): one collapsible row per turn holding what nanobot thought, ran
-/// and changed. The layout follows the artifact's `.activity` block — a head with a chevron,
+/// The activity cluster: one collapsible row per turn holding what nanobot thought, ran
+/// and changed. The layout follows the artifact's `.activity` block: a head with a chevron,
 /// the label and a status word, and a body of reasoning, tool rows, diffs and source chips.
 struct ActivityClusterView: View {
     let cluster: ActivityCluster
@@ -55,10 +55,10 @@ struct ActivityClusterView: View {
     }
 }
 
-/// One row in the cluster's body. Each row is one line — glyph, name, one-line summary, state —
-/// and everything the gateway sent beyond that (arguments, output, the whole reasoning block) is
-/// behind the row's own disclosure, closed until the reader opens it. That is the web's shape
-/// (`ActivityStep.tsx:77`), which the owner reported this screen was missing (T9).
+/// One row in the cluster's body. Each row is one line (glyph, name, a one-line summary, the
+/// state), and everything the gateway sent beyond that (arguments, output, the whole reasoning
+/// block) is behind the row's own disclosure, closed until the reader opens it. That is the web's
+/// shape (`ActivityStep.tsx:77`), which the owner reported this screen was missing.
 struct ActivityRowView: View {
     let item: ChatActivityItem
     var onToggleDetails: (String) -> Void = { _ in }
@@ -190,7 +190,7 @@ struct ActivityRowView: View {
 }
 
 /// One line: the glyph, the name, the summary the core reduced from the arguments, the state.
-/// Nothing here wraps, because a wrapping row is the verbosity T9 reported.
+/// Nothing here wraps, because a wrapping row is the verbosity the owner reported.
 private struct ActivityLine<Trailing: View>: View {
     let icon: String
     let label: String

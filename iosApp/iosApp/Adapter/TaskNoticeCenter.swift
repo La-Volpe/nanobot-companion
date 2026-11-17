@@ -52,7 +52,7 @@ final class TaskNoticeCenter {
 
     private let posting: BannerPosting
 
-    /// The reader's three switches, read at post time (T43) so a change applies to the next banner
+    /// The reader's three switches, read at post time so a change applies to the next banner
     /// rather than to the next launch. Passed in rather than defaulted: a centre nobody wired to
     /// the reader's choices is the switch that gated nothing.
     private let switches: () -> core.NoticeSwitches
@@ -79,8 +79,8 @@ final class TaskNoticeCenter {
 
     @discardableResult
     func deliver(_ notice: core.TaskNotice) async -> Bool {
-        // T43: a switch the reader turned off is not a permission problem and not a memory of this
-        // notice — turning it back on lets the next one through.
+        // A switch the reader turned off is not a permission problem and not a memory of this
+        // notice, and turning it back on lets the next one through.
         guard switches().allows(outcome: notice.outcome) else { return false }
         guard notice.key != announced else { return false }
         announced = notice.key
@@ -112,7 +112,7 @@ final class TaskNoticeCenter {
     }
 }
 
-/// The three switches as the poster reads them (T43): the categories, keys and defaults are the
+/// The three switches as the poster reads them: the categories, keys and defaults are the
 /// core's, the store is the phone's. One read for the three flags, so a notice cannot be checked
 /// against a category whose key nobody wrote.
 enum NoticeSwitchStore {
@@ -143,14 +143,14 @@ enum TaskNoticeCopy {
 }
 
 /// The real one: `UNUserNotificationCenter` behind [BannerPosting], plus the two delegate calls a
-/// local notification needs — a banner while the app is in front, and a tap that names its chat.
+/// local notification needs: a banner while the app is in front, and a tap that names its chat.
 @MainActor
 final class SystemNotificationCentre: NSObject, BannerPosting {
 
     private let centre = UNUserNotificationCenter.current()
 
     /// Where the reader's sound preference lives. The banners and the Settings row read the same
-    /// key through the same store, so the switch silences the very next banner (T34).
+    /// key through the same store, so the switch silences the very next banner.
     private let defaults: SettingsStoring
 
     init(defaults: SettingsStoring = UserDefaults.standard) {
@@ -222,7 +222,7 @@ extension SystemNotificationCentre: UNUserNotificationCenterDelegate {
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
         // The banner always shows; the sound follows the sound the request carries, which is the
-        // reader's own switch (T34) — in front of the app and away from it are one decision.
+        // reader's own switch, because in front of the app and away from it are one decision.
         notification.request.content.sound == nil ? [.banner] : [.banner, .sound]
     }
 
@@ -250,7 +250,7 @@ extension SystemNotificationCentre: Notifying {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
-        // The test notification is a banner like any other, so it obeys the same switch (T34).
+        // The test notification is a banner like any other, so it obeys the same switch.
         content.sound = sound()
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         try? await centre.add(request)

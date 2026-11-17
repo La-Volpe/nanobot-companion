@@ -1,28 +1,28 @@
 package de.arjmandi.nanobot.companion.composer
 
 /**
- * What the composer row shows (plan.md A5), as Kotlin's own values. The bridge maps the core's
+ * What the composer row shows, as Kotlin's own values. The bridge maps the core's
  * `ComposerState` onto this, so no composable or view model holds a facade type.
  */
 data class ComposerSnapshot(
     val modelName: String? = null,
     val modelPreset: String? = null,
     val contextWindowTokens: Int? = null,
-    /** `turn_end.usage.context_tokens`: the ring's numerator (D15.4). */
+    /** `turn_end.usage.context_tokens`: the ring's numerator. */
     val usedTokens: Int? = null,
-    /** The core's `Math.min(100, Math.round(used / window * 100))`; the ring draws this (T37). */
+    /** The core's `Math.min(100, Math.round(used / window * 100))`; the ring draws this. */
     val contextPercent: Int? = null,
     val access: WorkspaceAccess = WorkspaceAccess.Default,
     /** The prompt waiting for the running turn to end, if there is one. */
     val queued: String? = null,
-    /** `ready.limits.attachments`: the composer validates against the gateway's numbers (C3.7). */
+    /** `ready.limits.attachments`: the composer validates against the gateway's numbers. */
     val limits: de.arjmandi.nanobot.companion.attachment.UploadLimits = de.arjmandi.nanobot.companion.attachment.UploadLimits(),
 )
 
-/** `set_workspace_scope` takes exactly these two words (C6.3). */
+/** `set_workspace_scope` takes exactly these two words. */
 enum class WorkspaceAccess { Default, Full }
 
-/** One `/model` preset, as the sheet lists it (C6.2). The gateway marks which one is active. */
+/** One `/model` preset, as the sheet lists it. The gateway marks which one is active. */
 data class ChatModelPreset(
     val name: String,
     val model: String,
@@ -30,7 +30,7 @@ data class ChatModelPreset(
     val contextWindowTokens: Int?,
     val active: Boolean,
     val isDefault: Boolean,
-    /** The window as the core's token copy prints it (`1M`, `200K`): T36. */
+    /** The window as the core's token copy prints it (`1M`, `200K`), the WebUI's own form. */
     val contextLabel: String? = null,
 ) {
     /** The second line of the sheet's row: what the preset actually runs. */
@@ -87,8 +87,8 @@ enum class PresetState { Loading, Loaded, Failed }
 enum class ComposerSheet { Model, Access, Usage, Palette, Attach, MessageList, SessionDetails }
 
 /**
- * The bar's session actions, collapsed into one overflow — the design's Android column, because
- * three glyphs beside the drawer button truncate a session title on a 412 dp screen.
+ * The bar's session actions, collapsed into one overflow. That is the design's Android column,
+ * because three glyphs beside the drawer button truncate a session title on a 412 dp screen.
  */
 enum class SessionAction { MessageList, SessionDetails, NewChat }
 
@@ -96,14 +96,14 @@ enum class SessionAction { MessageList, SessionDetails, NewChat }
 enum class PrimaryState { Voice, Send, Stop }
 
 /**
- * What the composer needs from one chat (plan.md §7: one command each way). The bridge's
+ * What the composer needs from one chat: one command each way. The bridge's
  * `CoreComposerDriver` implements it over a `ChatHandle`; tests answer directly.
  */
 interface ComposerDriving {
     /** Send a prompt on an idle chat. False when the gateway did not take it. */
     suspend fun sendPrompt(text: String): Boolean
 
-    /** Queue what was typed while a turn runs (C5.5). */
+    /** Queue what was typed while a turn runs. */
     fun enqueue(text: String)
 
     suspend fun stop()
@@ -113,12 +113,12 @@ interface ComposerDriving {
 
     fun discardQueued()
 
-    /** False when the `/model` command never reached the socket, so the pick can say so (T39). */
+    /** False when the `/model` command never reached the socket, so the pick can say so. */
     suspend fun setModelPreset(preset: String): Boolean
 
     suspend fun setWorkspaceScope(access: WorkspaceAccess)
 
-    /** The slash or mention sheet for this text, or null when neither is open (C6.4). */
+    /** The slash or mention sheet for this text, or null when neither is open. */
     suspend fun loadPalette(text: String, cursor: Int): PaletteSheet?
 }
 

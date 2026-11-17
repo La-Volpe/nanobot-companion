@@ -3,7 +3,7 @@ import Testing
 
 /// The Swift side of the markdown matrix: `:core` decides what a reply means
 /// (`MarkdownMatrixTest`), and this is only the translation. What it proves is that the marks the
-/// core now produces — a task item's box, strikethrough, and a table row still arriving — reach
+/// core now produces (a task item's box, strikethrough, a table row still arriving) reach
 /// the values the views draw instead of being dropped on the way across.
 struct MarkdownReadingTests {
 

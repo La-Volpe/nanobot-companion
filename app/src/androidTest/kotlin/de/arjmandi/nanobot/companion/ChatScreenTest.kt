@@ -21,7 +21,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * The chat screen's taps (plan.md A3's Compose half): a stored answer is on screen when the chat
+ * The chat screen's taps: a stored answer is on screen when the chat
  * opens, typing swaps the microphone-sized Send for the primary button, sending goes through the
  * view model once, and a streaming turn offers Stop instead. The rules are `ChatViewModelTest`'s;
  * this is what only a composition can prove.

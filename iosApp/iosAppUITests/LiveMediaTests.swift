@@ -1,7 +1,7 @@
 import XCTest
 
 /// The media rows, on the simulator, against the real dev gateway: an answer that carries a
-/// picture, a clip and a recording draws three rows, and the picture is *loaded* — the file the
+/// picture, a clip and a recording draws three rows, and the picture is *loaded*: the file the
 /// gateway signed over `/api/media/<sig>/<payload>` is what the row shows.
 ///
 /// Opt-in like the other live tests: it needs `NANOBOT_LIVE_URL`, `NANOBOT_LIVE_SECRET` and a

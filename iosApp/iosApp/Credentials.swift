@@ -1,8 +1,8 @@
 import Foundation
 
-/// The stored gateway key, as the app sees it (plan.md D5). A seam rather than a call so the
+/// The stored gateway key, as the app sees it. A seam rather than a call so the
 /// launch path and the connect screen can be tested with a fake, and so the Keychain has
-/// exactly one implementation — in the adapter layer, over `:core`'s own store.
+/// exactly one implementation, in the adapter layer, over `:core`'s own store.
 protocol SecretStoring: AnyObject {
     func read() -> String?
     func store(_ secret: String)

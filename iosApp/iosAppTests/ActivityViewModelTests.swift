@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import iosApp
 
-/// I4's activity cluster: reasoning, tool rows, inline diffs and search sources, grouped by the
+/// The activity cluster: reasoning, tool rows, inline diffs and search sources, grouped by the
 /// turn they belong to and collapsed once that turn is over. The core already reduced the
 /// frames (`ActivityTest`, `NoticesTest`); this suite owns the drawing rules only.
 @MainActor
@@ -56,7 +56,7 @@ struct ActivityViewModelTests {
         )
     }
 
-    /// The plan's red line: one cluster per turn, and a turn that has finished folds it.
+    /// The rule this file pins: one cluster per turn, and a turn that has finished folds it.
     @Test func groupsByTurnAndCollapses() {
         let model = ActivityViewModel(now: { 7_000 })
 
@@ -172,8 +172,9 @@ struct ActivityViewModelTests {
         #expect(model.cluster(for: "t1")?.isOpen == false)
     }
 
-    /// T9's first complaint: a row printed its arguments and its output. The web draws one line —
-    /// glyph, name, one-line summary — and keeps the rest behind the row's disclosure, closed by
+    /// The owner's first complaint about this screen: a row printed its arguments and its output.
+    /// The web draws one line (glyph, name, a one-line summary) and keeps the rest behind the row's
+    /// disclosure, closed by
     /// default (`ActivityStep.tsx:77`; the details were a hover tooltip there, a tap here).
     @Test func rowDetailsStartClosed() {
         let model = ActivityViewModel(now: { 0 })

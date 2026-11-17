@@ -36,7 +36,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
- * The composition root (plan.md A1, the Android twin of iOS's `Container`): one holder, one
+ * The composition root (the Android twin of iOS's `Container`): one holder, one
  * connect model, one shell model, and the seam that builds a stack for a gateway. A test swaps the
  * seam; nothing else in the app knows a `NanobotCore` exists.
  */
@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
             prefillKey = debugLaunch.secret,
         )
         // The voice hint is remembered where the settings are: the same store, the same lifetime,
-        // one place a "forget this launch" already knows about (T48).
+        // one place a "forget this launch" already knows about.
         val voiceHints = PreferencesVoiceHints(getSharedPreferences(SETTINGS_PREFERENCES, MODE_PRIVATE))
         main = MainViewModel(holder, voiceHints) { chatId ->
             // A chat the core cannot name yet (no gateway, no greeting) still gets a model: the
@@ -112,7 +112,7 @@ class MainActivity : ComponentActivity() {
         val preferences = SharedPreferencesSettings(getSharedPreferences(SETTINGS_PREFERENCES, MODE_PRIVATE))
         notifier = AndroidNotifier(applicationContext)
         // The switches are the reader's, read at post time from the same store Settings writes:
-        // a switch turned off silences the notices it names (T43).
+        // a switch turned off silences the notices it names.
         delivery = TaskNoticeDelivery(notifier) { preferences.noticeSwitches() }
 
         // One launch decision, made before a screen is drawn: onboarding, or the shell with the
@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
             credentials = credentials,
             notifier = notifier,
             preferences = preferences,
-            // Forgetting the gateway is the owner's decision, so the questions come back — empty,
+            // Forgetting the gateway is the owner's decision, so the questions come back, empty,
             // and staying asked: the launch's second look never walks them back in behind their
             // back, and the connect model's `Connected` phase cannot either.
             disconnectGateway = {
@@ -253,7 +253,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // The first return to the app after a banner it could not show is the moment the
-        // permission is worth asking for — not launch, and not every frame.
+        // permission is worth asking for, which is not launch and not every frame.
         askForNotificationPermission()
     }
 

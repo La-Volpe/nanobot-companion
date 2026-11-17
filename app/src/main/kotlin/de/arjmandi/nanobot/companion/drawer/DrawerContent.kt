@@ -37,8 +37,8 @@ import de.arjmandi.nanobot.companion.ui.Design
 import de.arjmandi.nanobot.companion.ui.SkeletonRows
 
 /**
- * The session drawer (plan.md A2): brand, search, the session list, and the archived row and
- * Settings pinned at the bottom in every state — they are not sessions, so a search never hides
+ * The session drawer: brand, search, the session list, and the archived row and
+ * Settings pinned at the bottom in every state. They are not sessions, so a search never hides
  * them. It reads [DrawerViewModel] and calls commands; nothing here branches on data.
  */
 @Composable

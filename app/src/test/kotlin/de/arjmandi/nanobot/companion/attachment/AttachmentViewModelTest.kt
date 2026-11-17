@@ -7,7 +7,8 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
 /**
- * A6's attachments (the Android twin of iOS's `AttachmentViewModelTests`): a refused pick never
+ * The composer's attachments (the Android twin of iOS's `AttachmentViewModelTests`): a refused
+ * pick never
  * becomes a card, the reason is the core's own typed key, the cards are grouped the way the design
  * draws them (grid, video card, file cards), and the message carries the gateway's references.
  */
@@ -33,7 +34,7 @@ class AttachmentViewModelTest {
 
         assertEquals(1, model.attachments.size)
         assertEquals("ref-1", model.attachments.single().reference)
-        assertEquals(listOf("ref-1"), model.references, "what the send carries is the gateway's reference (C6.6)")
+        assertEquals(listOf("ref-1"), model.references, "what the send carries is the gateway's reference")
         assertNull(model.lastRejection)
     }
 

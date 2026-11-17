@@ -1,12 +1,12 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    // AGP 9 compiles Kotlin itself, so there is no `org.jetbrains.kotlin.android` here (D47).
+    // AGP 9 compiles Kotlin itself, so `org.jetbrains.kotlin.android` is not applied here.
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
 
-// The third and last platform (plan.md §8). It links the same :core the iOS app links, so a
+// The third and last platform. It links the same :core the iOS app links, so a
 // parity bug found here is a screen-layer bug or a core bug, never a new protocol question.
 android {
     namespace = "de.arjmandi.nanobot.companion"
@@ -33,7 +33,7 @@ android {
 
     buildTypes {
         debug {
-            // The DEBUG menu parity the iOS app has: the eight failures by hand (I8, A8).
+            // The DEBUG menu parity the iOS app has: the eight failures by hand.
             buildConfigField("boolean", "DEBUG_MENU", "true")
         }
         release {
@@ -65,7 +65,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    // View models are tested off-device (plan.md A1–A8's unit half); the Compose tests are the
+    // View models are tested off-device; the Compose tests are the
     // taps, and they need a device because a Composable has no host JVM.
     testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.junit)

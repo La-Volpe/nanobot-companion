@@ -6,7 +6,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * The automations page's driver over the real core (A7): the one file here that knows what a
+ * The automations page's driver over the real core: the one file here that knows what a
  * `CoreAutomationJob` is, so the screen and its tests speak [AutomationRow].
  */
 class CoreAutomations(private val holder: CoreHolder) : AutomationsDriving {
@@ -54,7 +54,7 @@ class CoreAutomations(private val holder: CoreHolder) : AutomationsDriving {
         }
     }
 
-    /** The third line: what the job is doing — the next run when healthy, the error when not. */
+    /** The third line: what the job is doing, the next run when healthy, the error when not. */
     private fun detailText(job: de.arjmandi.nanobot.companion.wire.AutomationJob): String {
         val state = job.state
         state.lastError?.takeIf { it.isNotEmpty() }?.let { return it }
@@ -65,13 +65,13 @@ class CoreAutomations(private val holder: CoreHolder) : AutomationsDriving {
         return "No run yet"
     }
 
-    /** Absolute and short — "Fri 08:00". A relative "in 3 h" would need a clock ticking under the
+    /** Absolute and short: "Fri 08:00". A relative "in 3 h" would need a clock ticking under the
      *  screen, and reads worse on a page you open once. */
     private fun stamp(epochMs: Long): String =
         SimpleDateFormat("EEE HH:mm", Locale.getDefault()).format(Date(epochMs))
 
-    /** The gateway's own status, turned into one sentence. A protection is not an apology: it is
-     *  the gateway saying this job is its own. */
+    /** The gateway's own status, turned into one sentence. A protection is the gateway saying this
+     *  job is its own, rather than an apology. */
     private fun refusal(
         result: de.arjmandi.nanobot.companion.facade.AutomationActionResult,
     ): String? = when (result) {

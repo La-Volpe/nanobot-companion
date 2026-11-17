@@ -22,8 +22,8 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * Onboarding's taps (plan.md A1's Compose half). The view model owns the rules —
- * `ConnectViewModelTest` is where those are asserted — and this is the part only a real
+ * Onboarding's taps. The view model owns the rules
+ * (`ConnectViewModelTest` is where those are asserted), and this is the part only a real
  * composition can prove: the button is disabled until there is an address and a key, an address
  * without a scheme raises its sentence without a socket, and the trust switch is on the screen,
  * off until the user turns it on. The content is the screen, not the Activity: a Compose test that
@@ -99,7 +99,7 @@ class ConnectScreenTest {
         }
     }
 
-    /** T52: the name and the day/night mark stay, so the screen says plainly what the app is not. */
+    /** The name and the day/night mark stay, so the screen says plainly what the app is not. */
     @Test
     fun theScreenSaysPlainlyWhoThisAppIsNot() {
         screen()

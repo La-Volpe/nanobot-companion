@@ -43,7 +43,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * T48's voice drawing, the Compose half: the timer on screen while a press records, the transcribing
+ * The voice drawing: the timer on screen while a press records, the transcribing
  * state that leaves the field usable while the button goes inactive, the drag-up lock with its Send
  * and its cancel target, and the one-time "Hold to talk" hint. The gesture machine itself is
  * `VoiceViewModelTest`'s.
@@ -114,7 +114,7 @@ class VoiceScreenTest {
         voiceHints = hints,
     )
 
-    /** The timer the owner could not see: the meter draws the model's clock (T48). */
+    /** The timer the owner could not see: the meter draws the model's clock. */
     @Test
     fun theMeterDrawsTheClockAndTheWords() {
         val model = VoiceViewModel(FakeRecorder(), FakeVoice())
@@ -177,7 +177,7 @@ class VoiceScreenTest {
         assertTrue(model.draft.endsWith("check the write path first"), "the transcript lands after the typing")
     }
 
-    /** A quick tap is a discard with one explanation, and it says nothing on the second tap (T48). */
+    /** A quick tap is a discard with one explanation, and it says nothing on the second tap. */
     @Test
     fun aTapShowsHoldToTalkOnce() {
         val hints = InMemoryVoiceHints()
@@ -185,7 +185,7 @@ class VoiceScreenTest {
         compose.setContent { NanobotTheme { ChatScreen(model = model) } }
 
         // One injection block, so the down and the up are the same press and not two presses
-        // 800 ms apart — a real finger on this emulator can outlast the floor between two calls.
+        // 800 ms apart, and a real finger on this emulator can outlast the floor between two calls.
         compose.onNodeWithTag("chat.voice").performTouchInput {
             down(center)
             up()
@@ -209,7 +209,7 @@ class VoiceScreenTest {
     }
 
     /**
-     * The send tap is a send (T31). The button becomes the microphone the moment the field empties,
+     * The send tap is a send. The button becomes the microphone the moment the field empties,
      * and the press that sent the message must not become a recording.
      */
     @Test

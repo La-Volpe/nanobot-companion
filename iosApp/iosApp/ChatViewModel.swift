@@ -1,9 +1,9 @@
 import Foundation
 
-/// The chat screen's state and its two rules (plan.md I3): the optimistic bubble is on screen
+/// The chat screen's state and its two rules: the optimistic bubble is on screen
 /// before the gateway answers and is marked pending until it does, and the primary button is
-/// Stop only while a turn is running and there is nothing new to send — the WebUI's own rule
-/// (`showStopButton = isStreaming && !canSend`).
+/// Stop only while a turn is running and there is nothing new to send, which is the WebUI's own
+/// rule (`showStopButton = isStreaming && !canSend`).
 @MainActor
 final class ChatViewModel: ObservableObject {
 
@@ -39,7 +39,7 @@ final class ChatViewModel: ObservableObject {
 
     /// What an empty thread should draw (the owner's rule: "not loaded yet" never looks like
     /// "nothing here"). A thread with rows always draws the rows; without them the page read
-    /// decides — a skeleton while it is in flight, the app's failure sentence when it did not
+    /// decides: a skeleton while it is in flight, the app's failure sentence when it did not
     /// answer, and the empty copy only once the gateway has actually been read.
     var placeholder: ThreadPlaceholder {
         if !thread.turns.isEmpty { return .none }
@@ -56,7 +56,7 @@ final class ChatViewModel: ObservableObject {
     var showsStop: Bool { isStreaming && !canSend }
 
     /// Typed text is what makes the button Send again: pressing it queues a steer, it does not
-    /// stop the turn (C5.5).
+    /// stop the turn.
     var canSend: Bool { !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     /// The screen swaps the driver once a gateway is open and the chat has an id.
@@ -73,7 +73,8 @@ final class ChatViewModel: ObservableObject {
     }
 
     /// The optimistic bubble is not invented here: the core's reducer adds it, and this only
-    /// forwards what the send produced (D9 — one reducer, two feeds).
+    /// forwards what the send produced, because the same reducer serves the socket and the
+    /// replayed page.
     func send() async {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isStreaming || canSend else { return }
@@ -83,7 +84,7 @@ final class ChatViewModel: ObservableObject {
         lastRefusal = nil
         let turnId = await chat.send(text)
         if turnId == nil {
-            // A refused send gives the text back rather than losing it (C6.1).
+            // A refused send gives the text back rather than losing it.
             draft = text
             lastRefusal = "The gateway did not take that message."
         }

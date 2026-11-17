@@ -26,13 +26,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /**
- * The chat screen's state and its two rules (plan.md A3, the Android twin of iOS's
+ * The chat screen's state and its two rules (the Android twin of iOS's
  * `ChatViewModel`): the optimistic bubble is on screen before the gateway answers and is marked
  * pending until it does, and the primary button is Stop only while a turn is running and there is
- * nothing new to send — the WebUI's own rule, `showStopButton = isStreaming && !canSend`.
+ * nothing new to send, which is the WebUI's own rule: `showStopButton = isStreaming && !canSend`.
  *
  * The thread itself is the core's. This reads the driver's flow rather than copying it, so there is
- * one thread in the app and no second place for it to drift (plan.md §10, "no hidden state").
+ * one thread in the app and no second place for it to drift.
  */
 class ChatViewModel(
     private val chat: ChatDriver,
@@ -46,12 +46,12 @@ class ChatViewModel(
     voiceDriver: VoiceDriving = EmptyVoiceDriver(),
     recorder: () -> AudioRecording = { WavRecorder() },
     /**
-     * The one hint that outlives a launch ("Hold to talk", T48). Injected because remembering it
+     * The one hint that outlives a launch ("Hold to talk"). Injected because remembering it
      * is the phone's job and the model only decides to say it once.
      */
     voiceHints: VoiceHints = InMemoryVoiceHints(),
     /**
-     * The banner's "Try again" (A8). Injected rather than built here: the reconnect belongs to the
+     * The banner's "Try again". Injected rather than built here: the reconnect belongs to the
      * shell, which is the only place that knows the stack and the chat on screen.
      */
     onRetryConnection: () -> Unit = {},
@@ -75,19 +75,19 @@ class ChatViewModel(
         viewport = viewport.pinned()
     }
 
-    /** What nanobot did on the way to each answer (A4), folded per turn. */
+    /** What nanobot did on the way to each answer, folded per turn. */
     val activity: ActivityViewModel = ActivityViewModel()
 
-    /** The chips, the ring and the one button of the composer row (A5). */
+    /** The chips, the ring and the one button of the composer row. */
     val composer: ComposerViewModel = ComposerViewModel(composerDriver, scope = scope)
 
-    /** The cards, the lightbox and the upload's typed refusals (A6). */
+    /** The cards, the lightbox and the upload's typed refusals. */
     val attachments: AttachmentViewModel = AttachmentViewModel(attachmentDriver)
 
-    /** Hold to talk and the transcribing state (A6, T48). */
+    /** Hold to talk and the transcribing state. */
     val voice: VoiceViewModel = VoiceViewModel(recorder(), voiceDriver, voiceHints)
 
-    /** The banner, the notices, the goal strip, the dock, the delivery retry and the snackbar (A8). */
+    /** The banner, the notices, the goal strip, the dock, the delivery retry and the snackbar. */
     val states: StatesViewModel = StatesViewModel(
         onResend = { text ->
             composer.draft = text
@@ -100,7 +100,7 @@ class ChatViewModel(
         scope.launch {
             flow.collect { snapshot ->
                 composer.update(snapshot)
-                // The gateway's own numbers bound what the picker may send (C3.7).
+                // The gateway's own numbers bound what the picker may send.
                 attachments.limits(snapshot.limits)
             }
         }
@@ -110,7 +110,7 @@ class ChatViewModel(
 
     /**
      * The field's text. It is the composer's, not a copy of it: a draft that a refused send gives
-     * back and a draft the queued chip takes away are the same value (A5).
+     * back and a draft the queued chip takes away are the same value.
      */
     var draft: String
         get() = composer.draft
@@ -118,7 +118,7 @@ class ChatViewModel(
             composer.draft = value
         }
 
-    /** The sentence a refused send shows, as a resource id (A8 turns it into a snackbar). */
+    /** The sentence a refused send shows, as a resource id the shell turns into a snackbar. */
     val lastRefusalRes: Int? get() = composer.lastRefusalRes
 
     val turns: List<ChatTurnView> get() = thread.value.turns
@@ -135,7 +135,7 @@ class ChatViewModel(
     /**
      * What an empty thread should draw (the owner's rule: "not loaded yet" never looks like
      * "nothing here"). A thread with rows always draws the rows; without them the page read
-     * decides — a skeleton while it is in flight, the app's failure sentence when it did not
+     * decides: a skeleton while it is in flight, the app's failure sentence when it did not
      * answer, and the empty copy only once the gateway has actually been read.
      */
     val placeholder: ThreadPlaceholder
@@ -146,7 +146,8 @@ class ChatViewModel(
             else -> ThreadPlaceholder.Empty
         }
 
-    /** The drawer's row, or the greeting's chat when nothing is picked: the core replays the history (D46). */
+    /** The drawer's row, or the greeting's chat when nothing is picked; the core replays its
+        history. */
     suspend fun open(chatId: String?) {
         clearRefusal()
         chat.open(chatId)
@@ -154,7 +155,8 @@ class ChatViewModel(
 
     /**
      * The optimistic bubble is not invented here: the core's reducer adds it, and this only
-     * forwards what the send produced (D9 — one reducer, two feeds).
+     * forwards what the send produced, because the same reducer serves the socket and the replayed
+     * page.
      */
     suspend fun send() {
         if (isStreaming && !canSend) return
@@ -171,8 +173,8 @@ class ChatViewModel(
         if (!streamingBefore && composer.lastRefusalRes == null) attachments.clear()
     }
 
-    /** The transcript lands after whatever was typed; the core appends it to the draft (C6.5). */
-    /** The dock's stop control: one command, and a refusal leaves the task on screen (A8). */
+    /** The transcript lands after whatever was typed; the core appends it to the draft. */
+    /** The dock's stop control: one command, and a refusal leaves the task on screen. */
     suspend fun cancelSubagent(id: String) {
         chat.cancelSubagent(id)
     }

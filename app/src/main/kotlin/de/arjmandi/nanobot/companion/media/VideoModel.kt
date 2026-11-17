@@ -8,8 +8,8 @@ import androidx.compose.runtime.setValue
 enum class VideoPhase { Idle, Preparing, Playing, Paused, Failed }
 
 /**
- * The player a clip drives. `VideoView` is the real one — the platform's own, so no Media3 and no
- * dependency — and a fake is the other, which is how the four resting states and the dismissal
+ * The player a clip drives. `VideoView` is the real one (the platform's own, so no Media3 and no
+ * dependency), and a fake is the other, which is how the four resting states and the dismissal
  * are tested off-device.
  */
 interface VideoTransport {
@@ -29,8 +29,8 @@ interface VideoTransport {
 
 /**
  * A clip's state: idle before the sheet exists, preparing while the first frame travels, playing,
- * paused, or failed with a retry. Nothing here draws and nothing here touches a clock — the sheet
- * ticks it, which is why the whole machine runs in a JVM test.
+ * paused, or failed with a retry. Nothing here draws and nothing here touches a clock, because the
+ * sheet ticks it, which is why the whole machine runs in a JVM test.
  */
 class VideoPlayerModel(private var transport: VideoTransport? = null) {
 
@@ -57,7 +57,7 @@ class VideoPlayerModel(private var transport: VideoTransport? = null) {
     var durationMs: Long by mutableStateOf(0L)
         private set
 
-    /** 0…1, and 0 while nobody has reported a length — never NaN, which no bar can draw. */
+    /** 0…1, and 0 while nobody has reported a length, never NaN, which no bar can draw. */
     val progress: Float
         get() = if (durationMs > 0L) (elapsedMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
 

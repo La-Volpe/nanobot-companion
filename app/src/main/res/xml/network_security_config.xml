@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  A release build sends nothing in the clear (T27). The design's own hint is a gateway on the home
+  A release build sends nothing in the clear. The design's own hint is a gateway on the home
   network over http (http://192.168.1.10:8787), and Android refuses cleartext by default since
-  targetSdk 28 — which is the right answer for an app a user installs. The dev gateway stays
+  targetSdk 28, which is the right answer for an app a user installs. The dev gateway stays
   reachable through `src/debug/res/xml/network_security_config.xml`, which a debug build merges
   over this file; a release build never sees it. https is unchanged: the
   unverified-certificate switch is a decision about the anchor, not a licence to skip TLS.

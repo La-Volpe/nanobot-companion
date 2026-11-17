@@ -1,6 +1,6 @@
 import XCTest
 
-/// Hold to talk, as a thumb would prove it (T48): the recording starts on touch-down and shows its
+/// Hold to talk, as a thumb would prove it: the recording starts on touch-down and shows its
 /// timer, a quick tap is discarded with a one-time "Hold to talk" hint, a drag up locks the
 /// recording so the button becomes Send and a cancel target appears, and while the gateway
 /// transcribes the button is the feedback while the composer keeps working.
@@ -57,7 +57,7 @@ final class VoiceTests: XCTestCase {
     }
 
     /// The timer the owner could not see. A hold locks when it is dragged up, so the finger is
-    /// gone and the meter stays on screen — which is what makes the clock observable at all: an
+    /// gone and the meter stays on screen, which is what makes the clock observable at all: an
     /// XCUITest press blocks until it is released.
     func testTheTimerIsDrawnAndCountsWhileRecording() {
         let app = chatApp()
@@ -136,7 +136,7 @@ final class VoiceTests: XCTestCase {
         waitForExpectations(timeout: 15)
     }
 
-    /// While the gateway transcribes, the button is the feedback — and the composer keeps working,
+    /// While the gateway transcribes, the button is the feedback, and the composer keeps working,
     /// which is the owner's correction to the brief: the field is editable and still sends.
     func testTranscribingLeavesTheComposerUsable() {
         let app = chatApp()

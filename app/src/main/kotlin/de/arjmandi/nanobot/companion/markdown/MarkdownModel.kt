@@ -1,7 +1,7 @@
 package de.arjmandi.nanobot.companion.markdown
 
 /**
- * The markdown tree the chat draws (plan.md A5, D6), in Kotlin's own words. The core parses and
+ * The markdown tree the chat draws, in Kotlin's own words. The core parses and
  * the bridge translates it here: rendering decisions stay on this side, and no composable sees a
  * projection type.
  */

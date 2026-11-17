@@ -23,14 +23,14 @@ import org.junit.Assume.assumeTrue
 import org.junit.runner.RunWith
 
 /**
- * The Android half of G3's scripted session (plan.md §8): the same five beats the iOS
+ * The Android half of the scripted session: the same five beats the iOS
  * `LiveSessionTests` runs, driven through the app's own bridge and view models on the device
- * against the real gateway — connect, send, stream, attach, stop, then reconnect and find the
+ * against the real gateway: connect, send, stream, attach, stop, then reconnect and find the
  * history replayed.
  *
  * Opt-in, like the iOS trio: without `nanobot.live.url` and `nanobot.live.secret` in the
  * instrumentation arguments every case is skipped rather than failed. `tools/android-session.sh`
- * starts a gateway, passes the two arguments and prints one line per beat for GATES.md.
+ * starts a gateway, passes the two arguments and prints one line per beat.
  */
 @RunWith(AndroidJUnit4::class)
 class LiveSessionTest {
@@ -39,7 +39,7 @@ class LiveSessionTest {
     private val url: String? = arguments.getString("nanobot.live.url")?.takeIf { it.isNotEmpty() }
     private val secret: String? = arguments.getString("nanobot.live.secret")?.takeIf { it.isNotEmpty() }
 
-    /** The chat G3's side-by-side run pins: the CLI settles a turn in it, and this reads it back. */
+    /** The chat the side-by-side run pins: the CLI settles a turn in it, and this reads it back. */
     private val chatId: String? = arguments.getString("nanobot.live.chat")?.takeIf { it.isNotEmpty() }
 
     /** A recorder that hands over a short generated WAV: a device test has no way to speak. */
@@ -70,7 +70,7 @@ class LiveSessionTest {
         }
 
     /**
-     * G3's third item, Android half: the app opens the chat the CLI already has, and prints the
+     * The parity check, Android half: the app opens the chat the CLI already has, and prints the
      * thread it holds as the same plain lines. `tools/parity-check.sh` diffs this against
      * `core-cli watch --chat` for the same chat.
      */
@@ -139,7 +139,7 @@ class LiveSessionTest {
             val settled = await(120_000) { model.thread.value.turns.none { it.running } }
             assertTrue(settled, "the turn settled")
             // The gateway names the stored chat in its session list; that is the id a reconnect
-            // re-opens (D48: one chat model per chat, not per greeting).
+            // re-opens, because a chat's model belongs to the chat and not to the greeting.
             holder.refreshSessions()
             storedChatId = await(30_000) { holder.sessions.value.rows.isNotEmpty() }
                 .let { if (it) holder.sessions.value.rows.first().chatId else null }
@@ -159,7 +159,7 @@ class LiveSessionTest {
             assertTrue(attachments.references.isNotEmpty(), "the upload came back with a reference")
 
             // Transcription: the round trip is proven; the transcript itself is the gateway's own
-            // configuration, which on the dev harness has no STT provider (P8).
+            // configuration, which on the dev harness has no STT provider.
             val wav = SilentRecorder().stop()
             when (val voice = session.voice.transcribe(wav, durationMs = 2_000)) {
                 is de.arjmandi.nanobot.companion.voice.VoiceOutcome.Transcribed ->
@@ -180,7 +180,7 @@ class LiveSessionTest {
             assertTrue(stopped, "the running turn settled after /stop")
         }
 
-        // Reconnect: the same gateway, a fresh socket, and the history the core replays (D46).
+        // Reconnect: the same gateway, a fresh socket, and the history the core replays.
         runBlocking {
             holder.disconnect()
             val reopened = holder.connect(address, key, allowUnverified = false)

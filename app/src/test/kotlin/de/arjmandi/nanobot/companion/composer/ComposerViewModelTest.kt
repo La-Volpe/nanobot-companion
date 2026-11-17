@@ -11,7 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 
 /**
- * The composer's rules (plan.md A5, the Android twin of iOS's `ComposerViewModelTests`): which
+ * The composer's rules (the Android twin of iOS's `ComposerViewModelTests`): which
  * button the primary action is, what a queued prompt does, the copy confirmation, the usage ring,
  * the model sheet, the access chip, the one overflow, and the two palettes. Every branch the
  * composable would otherwise hold lives here.
@@ -28,7 +28,7 @@ class ComposerViewModelTest {
         val accesses = mutableListOf<WorkspaceAccess>()
         var palettes = 0
         var paletteSheet: PaletteSheet? = null
-        /** False is a pick the socket refused (T39). */
+        /** False is a pick the socket refused. */
         var presetAccepted = true
 
         override suspend fun sendPrompt(text: String): Boolean {
@@ -100,7 +100,7 @@ class ComposerViewModelTest {
         isDefault = name == "default",
     )
 
-    /** The plan's red line, and the WebUI's own rule: `showStopButton = isStreaming && !canSend`. */
+    /** The WebUI's own rule: `showStopButton = isStreaming && !canSend`. */
     @Test
     fun stopVsSendRule() {
         val model = model()
@@ -121,7 +121,7 @@ class ComposerViewModelTest {
     }
 
     /**
-     * The plan's named red line. The design's Android column says the message list and the session
+     * The design's Android column says the message list and the session
      * actions collapse into one overflow so the title keeps its room: one menu, holding the actions
      * the iOS bar carries as glyphs, and no second place for them to live.
      */
@@ -233,13 +233,13 @@ class ComposerViewModelTest {
     }
 
     /**
-     * T37: the WebUI computes `Math.min(100, Math.round(tokens / window * 100))`
+     * The WebUI computes `Math.min(100, Math.round(tokens / window * 100))`
      * (`thread/ComposerUsagePopover.tsx:78`). Android truncated, so the same two numbers read a
-     * point lower here than on iOS and in the browser — the owner's 141 510 of 200 000 is 71%,
+     * point lower here than on iOS and in the browser: the owner's 141 510 of 200 000 is 71%,
      * and 141 510 of 1 000 000 is 14%.
      */
     /**
-     * T39: the pick the socket refused used to vanish. The chip had already moved, so a silence
+     * The pick the socket refused used to vanish. The chip had already moved, so a silence
      * left it naming a model the chat was not on.
      */
     @Test
@@ -302,7 +302,7 @@ class ComposerViewModelTest {
 
         model.pick(preset("primary"))
 
-        assertEquals(listOf("primary"), driver.presets, "the switch is the /model command on this chat (C6.2)")
+        assertEquals(listOf("primary"), driver.presets, "the switch is the /model command on this chat")
         assertNull(model.sheet, "picking closes the sheet")
     }
 
@@ -314,7 +314,7 @@ class ComposerViewModelTest {
 
         model.pick(WorkspaceAccess.Full)
         assertEquals(listOf(WorkspaceAccess.Full), driver.accesses)
-        assertEquals(WorkspaceAccess.Full, model.snapshot.access, "the chip says Full until the gateway refuses it (C6.3)")
+        assertEquals(WorkspaceAccess.Full, model.snapshot.access, "the chip says Full until the gateway refuses it")
 
         model.openAccessSheet()
         model.pick(WorkspaceAccess.Default)

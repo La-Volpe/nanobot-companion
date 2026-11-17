@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The states I8 draws: the connection dot in the bar and its banner, the notices above the
+/// The states surfaces: the connection dot in the bar and its banner, the notices above the
 /// composer, the goal strip, the subtask dock and a delivery that failed. Every one of them
 /// reads its value from `StatesViewModel`, which is the only owner of that state.
 struct ConnectionDotView: View {
@@ -98,7 +98,7 @@ struct StateRowView: View {
     }
 }
 
-/// The goal strip above the composer: one line, the gateway's own summary (C7.3).
+/// The goal strip above the composer: one line, the gateway's own summary.
 struct GoalStripView: View {
     let text: String
 
@@ -160,7 +160,7 @@ struct SubagentDockView: View {
 }
 
 /// A message the gateway did not take: the row keeps the words and offers the only honest
-/// affordance — sending it again (`ThreadComposer` shows the error kind, not a retry the
+/// affordance, sending it again (`ThreadComposer` shows the error kind, not a retry the
 /// gateway does not have).
 struct DeliveryRowView: View {
     let delivery: DeliveryFailure

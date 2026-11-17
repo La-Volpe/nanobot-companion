@@ -24,7 +24,7 @@ protocol AudioTransport: AnyObject {
     func pause()
 }
 
-/// One audio row's transport, on `AVPlayer` — the framework's own streaming player, which handles
+/// One audio row's transport, on `AVPlayer`, the framework's own streaming player, which handles
 /// a byte-range read of a long recording without downloading the whole file first.
 @MainActor
 final class AVPlayerTransport: AudioTransport {
@@ -61,7 +61,7 @@ enum AudioPlaybackError: Error, Equatable {
 final class AudioPlayerModel: ObservableObject {
     @Published private(set) var phase: AudioPhase = .idle
     @Published private(set) var elapsed: TimeInterval = 0
-    /// 0…1, and 0 for a clip whose length nobody has told us yet — never NaN.
+    /// 0…1, and 0 for a clip whose length nobody has told us yet, never NaN.
     @Published private(set) var progress: Double = 0
 
     private let url: URL

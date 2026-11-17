@@ -5,7 +5,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * The rule the owner reported missing (T9), taken from the WebUI rather than invented:
+ * The rule the owner reported missing, taken from the WebUI rather than invented:
  * `ThreadViewport.tsx:1002` measures the distance from the end of the scroll and hands it to
  * `thread-motion.ts:353`, which pauses following anywhere but the tail. New content only follows
  * a reader who is already there; a reader who scrolled up keeps their place until they come back.
