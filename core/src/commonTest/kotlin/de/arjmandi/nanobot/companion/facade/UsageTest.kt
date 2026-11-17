@@ -6,6 +6,7 @@ import de.arjmandi.nanobot.companion.platform.FakeAppInfo
 import de.arjmandi.nanobot.companion.platform.FakeClock
 import de.arjmandi.nanobot.companion.platform.InMemoryFileStore
 import de.arjmandi.nanobot.companion.platform.InMemorySecureStore
+import de.arjmandi.nanobot.companion.testing.awaitValue
 import de.arjmandi.nanobot.companion.transport.BootstrapOutcome
 import de.arjmandi.nanobot.companion.transport.ConnectionAttempt
 import de.arjmandi.nanobot.companion.transport.FakeSocket
@@ -21,6 +22,7 @@ import io.ktor.http.headersOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
@@ -136,6 +138,14 @@ class UsageTest {
             "context_window_tokens":256000,"active":false,"is_default":false}]}
     """.trimIndent()
 
+    /**
+     * The engine's own count of `/api/settings` reads. `failFirstRead` refuses whichever request
+     * reaches the engine first, and that is not necessarily the connect's: the socket's read runs
+     * beside the pump and a test can outrun it, so a test that needs the connect's read to be the
+     * refused one waits on this instead of on a clock with no opinion about it.
+     */
+    private val settingsReads = MutableStateFlow(0)
+
     private fun settingsEngine(failFirstRead: Boolean = false): MockEngine {
         var reads = 0
         return MockEngine { request ->
@@ -143,6 +153,7 @@ class UsageTest {
                 respond("""{"sessions":[]}""", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
             } else {
                 reads += 1
+                settingsReads.value = reads
                 if (failFirstRead && reads == 1) {
                     respondError(HttpStatusCode.InternalServerError)
                 } else {
@@ -163,7 +174,6 @@ class UsageTest {
         val socket = FakeSocket()
         val core = core(socket, settingsEngine())
         core.refreshSettings()
-        advanceUntilIdle()
         val handle = core.chat(chat)
 
         socket.push("""{"event":"message_accepted","chat_id":"$chat","turn_id":"turn-1"}""")
@@ -193,10 +203,15 @@ class UsageTest {
         socket.push("""{"event":"message_accepted","chat_id":"$chat","turn_id":"turn-1"}""")
         socket.push("""{"event":"turn_end","chat_id":"$chat","turn_id":"turn-1","usage":{"context_tokens":141510}}""")
         advanceUntilIdle()
+        // The connect's read is the one that fails, and a refusal fills no state to wait on, so
+        // the engine's count is the only evidence it happened. Without this the retry races it for
+        // "first" and the test's own read would be the refused one.
+        settingsReads.awaitValue(what = "the settings read the socket starts") { it >= 1 }
         assertEquals(null, handle.composer.value.contextPercent, "nothing has said what the window is yet")
 
         core.refreshSettings()
-        advanceUntilIdle()
+        // The late read republished the row, so the row is what this waits for, not the clock.
+        handle.composer.awaitValue(what = "the ring the late read fills") { it.contextPercent == 14 }
 
         assertEquals(1_000_000, handle.composer.value.contextWindowTokens)
         assertEquals(14, handle.composer.value.contextPercent, "the late read fills the ring it can fill")
@@ -208,7 +223,6 @@ class UsageTest {
         val socket = FakeSocket()
         val core = core(socket, settingsEngine())
         core.refreshSettings()
-        advanceUntilIdle()
         val handle = core.chat(chat)
 
         socket.push(
