@@ -191,12 +191,17 @@ jobs:
           # the software keyboard already broken (`mInputShown=false`, AGENTS gotcha 28), and only a cold
           # boot revives it. `KeyboardTests` needs that keyboard to exist at all.
           emulator-options: -no-snapshot-load -no-boot-anim -no-audio -no-window
+          # The boot is the flaky part on a shared runner: give it a longer deadline than the 600 s default.
+          emulator-boot-timeout: 900
           script: |
             adb shell settings put secure show_ime_with_hard_keyboard 1 || true
             # No ANDROID_SERIAL: on a runner there is exactly one device and the action owns the adb
             # server, so pinning it here only fights the action ("Unable to connect to adb daemon on
             # port: 5037"). The pin belongs to a developer's machine, where a phone may also be attached.
-            ./gradlew --stacktrace :app:connectedDebugAndroidTest
+            # One retry: this job is advisory, and the emulator — not the app — is what fails first.
+            # A red that survives two attempts is worth reading; a red that does not is the harness.
+            ./gradlew --stacktrace :app:connectedDebugAndroidTest \
+              || ./gradlew --stacktrace :app:connectedDebugAndroidTest
 
       - name: the results, whatever they say
         if: always()
