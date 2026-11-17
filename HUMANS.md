@@ -50,7 +50,7 @@ contain only UI.
    `core/src/commonMain/.../facade/NanobotCore.kt` exposes `StateFlow`s and
    `suspend` commands; screens read one state and call one command. A branch
    worth testing lives in a view model, never in a `View`, which is why the iOS
-   suite has 95 model tests and only 29 UI tests.
+   suite has 210 model tests and 57 UI tests.
 
 2. One reducer, two feeds.
    `projection/ThreadReducer.kt` reduces socket frames and the gateway's stored
