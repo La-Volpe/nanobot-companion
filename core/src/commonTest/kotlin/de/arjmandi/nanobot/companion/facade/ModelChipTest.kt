@@ -30,11 +30,11 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 /**
- * The composer's model chip has to name the preset as soon as the app can know it (I5). The
+ * The composer's model chip has to name the preset as soon as the app can know it. The
  * greeting carries no model (`runtime.py` `_connection_loop`) and a compacted thread page stores
  * no `turn_model_updated`, so a chat that has not run a turn on this device knows nothing from
- * the socket — the gateway's own answers to `GET /api/settings` and `GET /api/sessions` are what
- * fill the gap, with the WebUI's precedence (`ThreadShell.tsx` `activeModelPreset`).
+ * the socket. The gateway's own answers to `GET /api/settings` and `GET /api/sessions` fill the
+ * gap, with the WebUI's precedence (`ThreadShell.tsx` `activeModelPreset`).
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ModelChipTest {
@@ -112,7 +112,7 @@ class ModelChipTest {
         val handle = core.chat(chat)
 
         handle.open()
-        // The settings read is the socket's, started at connect (T28), so the chip follows it
+        // The settings read is the socket's, started at connect, so the chip follows it
         // rather than the other way round: waiting on the flow is what a reader sees, and on
         // Kotlin/Native the mock engine's answer lands outside the virtual clock.
         core.settings.first { it.loaded }
@@ -128,7 +128,7 @@ class ModelChipTest {
 
         handle.open()
         // The drawer's rows carry this chat's own preset, and they are a read of their own: the
-        // chip follows the read that names it (the settings read is the socket's, T28).
+        // chip follows the read that names it (the settings read is the socket's).
         core.sessions.first { it.loaded }
 
         assertEquals("cheap", handle.composer.value.modelPreset, "the session row is what this chat runs")
@@ -170,8 +170,8 @@ class ModelChipTest {
         val core = core(engine())
 
         // The shell's fresh chat: no drawer row was picked, so no `open()` of a chat with an id
-        // ever ran. The chip still has to name the gateway's preset (T28 — the device's
-        // screenshot said "Model" on exactly this screen).
+        // ever ran. The chip still has to name the gateway's preset, because the device's
+        // screenshot said "Model" on exactly this screen.
         val handle = core.chat(null)
         // The read runs beside the pump, so the chip follows it rather than the other way round.
         core.settings.first { it.loaded }

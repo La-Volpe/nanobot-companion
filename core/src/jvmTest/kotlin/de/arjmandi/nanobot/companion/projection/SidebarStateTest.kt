@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 
 /**
- * The sidebar's own state (plan.md C5.2). It has to satisfy three consumers at once: the
+ * The sidebar's own state. It has to satisfy three consumers at once: the
  * local file (so the order survives a launch), the `set_sidebar_state` payload (so the
  * WebUI on the same gateway agrees), and the session list (which supplies the keys).
  * The payload's shape is the live gateway's, not the docs': `snake_case`, `schema_version`

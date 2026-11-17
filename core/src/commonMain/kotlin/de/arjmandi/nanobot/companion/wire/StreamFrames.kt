@@ -4,8 +4,8 @@ import kotlinx.serialization.json.JsonObject
 
 /**
  * The answer stream. `delta` and `stream_end` share a stream id; `merge_next` and
- * `resuming` are the gateway's way of saying "this continues the previous segment"
- * (plan.md C4.2), so they are typed here rather than read ad hoc in the reducer.
+ * `resuming` are the gateway's way of saying "this continues the previous segment", so
+ * they are typed here rather than read ad hoc in the reducer.
  */
 internal sealed class StreamFrame : Frame {
     abstract val text: String?
@@ -84,7 +84,7 @@ internal data class ReasoningEndFrame(
     override val event: String get() = "reasoning_end"
 }
 
-/** Which provider actually answered, and whether it was the configured preset (C6.2 fallback notice). */
+/** Which provider actually answered, and whether it was the configured preset: the fallback notice. */
 internal data class ResponseSource(
     val provider: String?,
     val model: String?,

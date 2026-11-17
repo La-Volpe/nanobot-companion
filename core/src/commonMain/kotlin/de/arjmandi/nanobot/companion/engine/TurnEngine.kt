@@ -46,17 +46,17 @@ internal sealed interface EngineOpen {
 
 /**
  * One frame and the writer's verdict on it. A caller that asks "was it sent?" cannot be answered
- * by the queue: the queue takes everything, and the socket is what refuses (T42, where a receipt
- * said `Accepted` about a frame the socket never took).
+ * by the queue: the queue takes everything, and the socket is what refuses. A receipt that said
+ * `Accepted` about a frame the socket never took is what this shape prevents.
  */
 private class Queued(val frame: Outbound) {
     val written: CompletableDeferred<Boolean> = CompletableDeferred()
 }
 
 /**
- * Owns the socket (plan.md §2). One pump reads frames and hands them to the host, one writer
- * drains a single channel onto the socket, and every send goes through that channel — so
- * frame order is the order the caller asked for, and there is exactly one thing writing.
+ * Owns the socket. One pump reads frames and hands them to the host, one writer drains a single
+ * channel onto the socket, and every send goes through that channel, so frame order is the order
+ * the caller asked for and there is exactly one thing writing.
  *
  * Reduction happens in the host: the engine never decides what a frame means, which is why a
  * connect/send/close scenario runs on a fake transport with no reducer at all.
@@ -79,7 +79,7 @@ internal class TurnEngine(
     /** Whether the app is in front of the user; a pocketed phone is not asked anything. */
     private var watched = false
 
-    /** The chat the greeting minted; the heartbeat asks the gateway about it (C5.3). */
+    /** The chat the greeting minted; the heartbeat asks the gateway about it. */
     private var heartbeatChatId: String? = null
 
     val isOpen: Boolean
@@ -90,7 +90,7 @@ internal class TurnEngine(
 
     /**
      * Bootstrap, handshake, and wait for `ready`. A reconnect is a new socket with a token
-     * minted for it (C3.4): the previous one is torn down first, never resumed.
+     * minted for it: the previous one is torn down first, never resumed.
      */
     suspend fun connect(secret: String): EngineOpen {
         close()
@@ -101,9 +101,9 @@ internal class TurnEngine(
     }
 
     /**
-     * Whether anyone is watching. Coming back from away asks the socket at once — the process was
+     * Whether anyone is watching. Coming back from away asks the socket at once (the process was
      * suspended, no timer ran, and a network change in between leaves a connection nobody read
-     * half-open with no FIN to notice — and while the user is here it is asked every interval.
+     * half-open with no FIN to notice), and while the user is here it is asked every interval.
      * Nothing is asked in the background: a phone in a pocket has no timer to keep, and the
      * return is the moment the answer matters.
      */
@@ -114,7 +114,7 @@ internal class TurnEngine(
 
     /**
      * Put one envelope on the wire, and answer what the socket did with it. False means the
-     * socket is not there to carry it — or did not take it, which is the same answer to a caller
+     * socket is not there to carry it, or did not take it, which is the same answer to a caller
      * deciding whether a message landed.
      */
     suspend fun send(frame: Outbound): Boolean {
@@ -122,7 +122,7 @@ internal class TurnEngine(
         val queued = Queued(frame)
         return try {
             channel.send(queued)
-            // The write, not the queue (T42). A socket that never gets to the frame leaves the
+            // The write, not the queue. A socket that never gets to the frame leaves the
             // caller waiting only for this window, and "not sent" is the honest answer.
             withTimeoutOrNull(WRITE_ACK_MS) { queued.written.await() } ?: false
         } catch (failure: CancellationException) {
@@ -166,7 +166,7 @@ internal class TurnEngine(
         connection = job
         outbound = channel
         askNow = asked
-        // A new socket is not subscribed to the previous one's chats (C3.4).
+        // A new socket is not subscribed to the previous one's chats.
         heartbeatChatId = null
         val ready = CompletableDeferred<Unit>()
 
@@ -188,7 +188,7 @@ internal class TurnEngine(
             } finally {
                 // A write that fails means the socket is gone; the pump sees the close and
                 // reports it, so there is nothing to decide here. What is left in the channel
-                // will never be written, so it is settled rather than left waiting (T42).
+                // will never be written, so it is settled rather than left waiting.
                 channel.close()
                 while (true) {
                     val left = channel.tryReceive().getOrNull() ?: break
@@ -243,7 +243,7 @@ internal class TurnEngine(
             } finally {
                 // A pump that ends is an engine with no socket: the writer must stop with
                 // it, sends must be refused, and the host must hear about a socket that
-                // left on its own — but not one the client closed on purpose.
+                // left on its own, but not one the client closed on purpose.
                 outbound = null
                 askNow = null
                 channel.close()
@@ -263,7 +263,7 @@ internal class TurnEngine(
     /**
      * One question on the wire and the time the gateway gets to answer it. A frame that arrived
      * before the question was asked is not an answer to it, so anything already buffered is
-     * dropped first — otherwise a busy socket would look alive for an interval after it died.
+     * dropped first, otherwise a busy socket would look alive for an interval after it died.
      */
     private suspend fun ask(chatId: String, channel: Channel<Queued>, answers: Channel<Unit>): Boolean {
         drain(answers)
@@ -285,9 +285,9 @@ internal class TurnEngine(
     }
 
     /**
-     * The socket stopped answering. Report it the way the pump would have — one banner, the
-     * existing "Try again", no second failure surface — and take the same teardown a close
-     * takes. `closing` is what stops the pump from reporting the same death twice.
+     * The socket stopped answering. Report it the way the pump would have (one banner, the
+     * existing "Try again", no second failure surface) and take the same teardown a close takes.
+     * `closing` is what stops the pump from reporting the same death twice.
      */
     private suspend fun giveUp(channel: Channel<Queued>, answers: Channel<Unit>) {
         closing = true

@@ -27,7 +27,7 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * Voice is server-side: `transcribe_audio {request_id, data_url, duration_ms}` out and
  * `transcription_result {request_id, text}` back (`transcription_ws.py:51`), with 650 ms and
- * 120 s as the gateway's own bounds (plan.md C6.5). Both bounds are refused here, so a held
+ * 120 s as the gateway's own bounds. Both bounds are refused here, so a held
  * tap that never became audio costs nothing.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)

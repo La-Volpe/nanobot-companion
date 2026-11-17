@@ -25,10 +25,10 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Stopping a subtask (plan.md I8's dock, parity row `thread.subagents`).
+ * Stopping a subtask (the dock's stop control, parity row `thread.subagents`).
  *
  * The gateway's one control is `subagent.cancel` over `webui_request` (`ws_http.py:202,931-955`),
- * with the session key and the task id — the same mutation shape as a recovery decision.
+ * with the session key and the task id, the same mutation shape as a recovery decision.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SubagentCancelTest {

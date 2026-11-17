@@ -9,13 +9,13 @@ import de.arjmandi.nanobot.companion.platform.TlsPolicy
 import io.ktor.client.HttpClient
 
 /**
- * The app-level object the SwiftUI layer holds (plan.md C8.2). It exists for two reasons:
- * the facade's constructor wants an `HttpClient`, which no Swift file should have to build,
- * and the client needs an owner that ends it — a `NanobotCore` outlives neither.
+ * The app-level object the SwiftUI layer holds. It exists for two reasons: the facade's
+ * constructor wants an `HttpClient`, which no Swift file should have to build, and the client
+ * needs an owner that ends it, since a `NanobotCore` outlives neither.
  *
  * The stored key is here rather than in Swift for the same reason [productionDeps] is in
- * Kotlin: the Keychain is one implementation (plan.md D5), and a second one in Swift would
- * be a second thing to test.
+ * Kotlin: the Keychain is one implementation, and a second one in Swift would be a second thing
+ * to test.
  */
 public class Companion internal constructor(
     public val core: NanobotCore,
@@ -29,7 +29,7 @@ public class Companion internal constructor(
 }
 
 /**
- * The stored gateway key (plan.md D5). It is a top-level function rather than part of
+ * The stored gateway key. It is a top-level function rather than part of
  * [Companion] because onboarding has to read the key before there is anything to connect to:
  * the launch screen decides between "open this gateway" and "ask for a key" by asking this.
  */
@@ -46,11 +46,11 @@ public fun forgetGatewaySecret() {
 
 /**
  * Builds the whole iOS stack from the three things onboarding collects: the address, the key,
- * and whether the user turned on the unverified-certificate switch for this gateway (C3.2).
+ * and whether the user turned on the unverified-certificate switch for this gateway.
  *
  * The `url` is kept as the user typed it; `GatewayProfile` trims the trailing slash where it
  * builds a request. The trust policy is built from the same string, so the host the certificate
- * must match is the host the user typed and no other (D21, [TlsTrustRule]).
+ * must match is the host the user typed and no other ([TlsTrustRule]).
  */
 public fun openCompanion(
     baseUrl: String,

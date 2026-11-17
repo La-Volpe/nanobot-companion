@@ -7,7 +7,7 @@ import kotlin.test.assertNotSame
 import kotlin.test.assertTrue
 
 /**
- * The model (plan.md C4.1) has to be a value: two reductions of the same frames must be
+ * The model has to be a value: two reductions of the same frames must be
  * equal, or a SwiftUI/Compose view cannot tell a redraw from a change, and nothing is
  * allowed to be mutated behind the StateFlow.
  */

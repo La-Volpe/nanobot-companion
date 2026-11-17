@@ -12,10 +12,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Quoting an earlier reply (plan.md C4.9). Two halves, and both were wrong in the same
- * way — written from the docs rather than from the WebUI:
+ * Quoting an earlier reply. Two halves, and both were wrong in the same
+ * way, both written from the docs rather than from the WebUI:
  *
- * - The envelope's `quoted_context` is a **plain string**. The gateway's
+ * - The envelope's `quoted_context` is a plain string. The gateway's
  *   `normalize_webui_quote` returns `None` for anything that is not `str`, so the object
  *   this client used to send silently dropped every quote.
  * - The gateway does not echo the quote back on `user_message`, so the bubble keeps the

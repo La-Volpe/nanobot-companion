@@ -1,10 +1,10 @@
 package de.arjmandi.nanobot.companion.projection
 
 /**
- * The parser (plan.md C4.7, D6). Two scanners, because the two grammars are different:
+ * The parser. Two scanners, because the two grammars are different:
  * a block scanner consumes whole lines and decides what the next line means, and an
  * inline scanner walks one line's worth of text. Both are pure functions of their input,
- * which is what makes the streaming split (C4.8) an ordinary unit test.
+ * which is what makes the streaming split an ordinary unit test.
  *
  * The subset is the one the WebUI's renderer draws (`MarkdownTextRenderer.tsx`: `remark-gfm`
  * over `streamdown`), so tables, task items, strikethrough and autolinks are in it. What is
@@ -75,7 +75,7 @@ internal object MarkdownParser {
                 val line = input.next()
                 // CommonMark: a closing fence is the same character, at least as long as its
                 // opener, and nothing else on the line. Anything shorter is content, which is
-                // what keeps ```` ```` ```` around a ```` ``` ```` one block (T21).
+                // what keeps ```` ```` ```` around a ```` ``` ```` one block.
                 if (closesFence(line, char, marker)) {
                     closed = true
                     break
@@ -389,8 +389,9 @@ internal object MarkdownParser {
         }
 
         /**
-         * The start of the next run of exactly `run` copies — not the front of a longer run, so
-         * `*italic **bold** inside*` closes where the reader expects and `***both***` opens once.
+         * The start of the next run of exactly `run` copies, and not the front of a longer run,
+         * so `*italic **bold** inside*` closes where the reader expects and `***both***` opens
+         * once.
          */
         private fun findRun(text: String, char: Char, run: Int, from: Int): Int {
             var index = from

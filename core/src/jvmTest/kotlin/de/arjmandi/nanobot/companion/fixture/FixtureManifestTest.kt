@@ -10,8 +10,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * C2.5's gate: the fixtures are evidence only if each one says where it came from
- * and carries no live credential or run-to-run churn (plan.md §3.3).
+ * The fixtures are evidence only if each one says where it came from and carries no live
+ * credential or run-to-run churn.
  *
  * Every assertion here fails today because no fixture set exists yet; the set is
  * produced by `:core-cli record` against a gateway started by tools/nanobot-dev.sh.
@@ -72,7 +72,7 @@ class FixtureManifestTest {
         assertEquals("turn_end", events.last(), "a recording ends when the turn settles")
         assertEquals(events, (Fixtures.manifest()["events"] as JsonArray).map { (it as JsonPrimitive).content })
 
-        // D15.2: this is the order the live gateway emits for one real turn.
+        // This is the order the live gateway emits for one real turn.
         for (required in listOf("message_accepted", "turn_model_updated", "model_request", "delta", "stream_end", "turn_end")) {
             assertTrue(events.contains(required), "recording is missing $required; got $events")
         }
@@ -148,7 +148,7 @@ class FixtureManifestTest {
     }
 
     /**
-     * T55: a committed recording must not carry the machine it was made on. The manifest used to
+     * A committed recording must not carry the machine it was made on. The manifest used to
      * name the gateway outright, `api_key` was not in the redactor's vocabulary, and every session
      * row kept the gateway's title and preview of somebody's conversation.
      */
@@ -168,7 +168,7 @@ class FixtureManifestTest {
         val privateHost = Regex(
             """\b(?:192\.168|10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b|\b[a-z0-9-]+\.(?:local|lan|internal)\b""",
         )
-        // `key` (a session row's id) and `session_key` are the gateway's own identifiers (D15.6).
+        // `key` (a session row's id) and `session_key` are the gateway's own identifiers.
         val notSecrets = setOf("key", "session_key")
 
         for (set in Fixtures.sets) {

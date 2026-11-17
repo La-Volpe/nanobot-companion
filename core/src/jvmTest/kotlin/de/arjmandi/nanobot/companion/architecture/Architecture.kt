@@ -17,7 +17,7 @@ internal data class SourceFile(
 )
 
 /**
- * plan.md §2 read as data. `facade → engine → projection|transport → wire`, with
+ * The layering, as data. `facade → engine → projection|transport → wire`, with
  * `platform` depended on only by `transport` and `engine`. A new layer is one line in
  * [ALLOWED_IMPORTS]; anything else falls foul of the test, including a file with no
  * package.
@@ -33,7 +33,7 @@ internal object Architecture {
         "engine" to setOf("wire", "projection", "transport", "engine", "platform"),
         "facade" to setOf("wire", "projection", "transport", "engine", "facade", "platform"),
         "platform" to setOf("platform"),
-        // The Swift bridge (C8.2) sits above the facade: it wraps the public surface for
+        // The Swift bridge sits above the facade: it wraps the public surface for
         // Object-C interop and adds nothing the facade does not already expose.
         "bridge" to setOf("facade", "wire", "projection", "transport", "engine", "platform", "bridge"),
     )

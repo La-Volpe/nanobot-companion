@@ -15,7 +15,7 @@ import kotlin.test.assertIs
 import kotlinx.coroutines.test.runTest
 
 /**
- * Uploads are the one HTTP write the gateway allows (plan.md C3.6). The capability token
+ * Uploads are the one HTTP write the gateway allows. The capability token
  * from `ready` authorizes exactly this connection, and the gateway refuses a chunked body,
  * so the request has to carry an exact length.
  */

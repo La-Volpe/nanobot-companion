@@ -4,8 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import platform.Foundation.NSBundle
 
 /**
- * The iOS app's composition root. The transport seam (HTTP engine and TLS policy)
- * arrives with C3.2, where its shape is the TLS decision rather than a guess.
+ * The iOS app's composition root: the clock, the Keychain store, the file store, the app's own
+ * version and build, and the dispatchers an engine runs on.
  */
 public fun productionDeps(): CoreDeps = CoreDeps(
     clock = systemClock(),

@@ -6,13 +6,13 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
 /**
- * The history page turned into the thread a user sees (plan.md D9, C4.6). `GET
- * /api/sessions/{key}/webui-thread` replays the same event vocabulary the socket speaks, so
- * this runs the *same* [ThreadReducer] over the stored events — one reducer, two feeds, and
- * a reload can never disagree with what was watched arrive.
+ * The history page turned into the thread a user sees. `GET /api/sessions/{key}/webui-thread`
+ * replays the same event vocabulary the socket speaks, so this runs the *same* [ThreadReducer]
+ * over the stored events: one reducer, two feeds, and a reload can never disagree with what was
+ * watched arrive.
  *
  * Public because both consumers need it: the apps on open, and `core-cli watch --verify`,
- * which diffs this against the live transcript (G1).
+ * which diffs this against the live transcript.
  */
 public object HistoryReplay {
 
@@ -30,7 +30,7 @@ public object HistoryReplay {
     }
 
     /**
-     * The stored page under whatever the socket already showed (D46). Opening a chat reads the
+     * The stored page under whatever the socket already showed. Opening a chat reads the
      * page while the attach is on the wire, so a running turn can arrive first: its live copy is
      * the newer one (the page holds it only up to the last settle), and the stored copy of a turn
      * the socket already has must not appear a second time.

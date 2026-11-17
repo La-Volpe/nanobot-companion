@@ -14,9 +14,8 @@ internal sealed interface ConnectionResult {
 
 /**
  * One connection attempt: bootstrap, then handshake with the token that bootstrap just
- * minted (plan.md C3.4). Attempts are single-shot and never reused — a token that has
- * been through a handshake is dead, so a "reconnect" that skips the bootstrap can only
- * fail silently.
+ * minted. Attempts are single-shot and never reused, because a token that has been through
+ * a handshake is dead, so a "reconnect" that skips the bootstrap can only fail silently.
  */
 internal class ConnectionAttempt(
     private val bootstrap: BootstrapSource,
@@ -43,7 +42,7 @@ internal class ConnectionAttempt(
         }
 }
 
-/** `ws://host:port/?client_id=…&token=…`, the handshake URL shape from D15.5. */
+/** `ws://host:port/?client_id=…&token=…`, the handshake URL shape the greeting answers. */
 internal fun BootstrapPayload.socketUrl(clientId: String): String {
     val separator = if (wsUrl.contains('?')) '&' else '?'
     return "$wsUrl${separator}client_id=$clientId&token=$token"

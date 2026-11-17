@@ -30,10 +30,10 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 /**
- * Settings → Overview (plan.md C7.1): what the gateway is, which model answers, and what it
- * has spent. The design's one hard rule here is a missing field, not a present one — the
- * gateway's settings payload has **no uptime**, so Overview shows version and server instead
- * of inventing a third line (design README, "Honest constraints").
+ * Settings → Overview: what the gateway is, which model answers, and what it has spent. The
+ * design's one hard rule here is a missing field, not a present one: the gateway's settings
+ * payload has **no uptime**, so Overview shows version and server instead of inventing a third
+ * line (the design's "Honest constraints").
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SettingsTest {
@@ -131,7 +131,7 @@ class SettingsTest {
     fun noUptimeFieldIsNotAnError() = runTest {
         // The design's Overview shows version and server *because* the payload carries no
         // uptime. SettingsState has no field for one, so a gateway that grows one must not
-        // break the parse — and a gateway without one is the normal case, not a gap.
+        // break the parse, and a gateway without one is the normal case rather than a gap.
         val core = core(engine(onSettings = { HttpStatusCode.OK to settings }))
         assertNull(core.refreshSettings())
         assertTrue(core.settings.value.version?.current == "0.4.1")
@@ -143,9 +143,9 @@ class SettingsTest {
     }
 
     /**
-     * T44: Overview draws a bar per day and a total over the window, so the parser keeps the day's
-     * date and its tokens. The rest of the payload — the cache split, the request counts, the
-     * per-source breakdown — has no reader, and a field parsed for nobody is one that silently rots.
+     * Overview draws a bar per day and a total over the window, so the parser keeps the day's date
+     * and its tokens. The rest of the payload (the cache split, the request counts, the per-source
+     * breakdown) has no reader, and a field parsed for nobody is one that silently rots.
      */
     @Test
     fun theUsageReadKeepsTheDaysTheCardDraws() = runTest {

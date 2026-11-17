@@ -8,9 +8,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 /**
- * The markdown tree a platform renders (plan.md D6, C4.7, I5). The parser itself is covered by
- * `MarkdownTest`; what this asserts is that the tree is reachable from the facade — a screen
- * cannot import the projection package, so an internal `MarkdownDocument` was a rendering
+ * The markdown tree a platform renders. The parser itself is covered by
+ * `MarkdownTest`; what this asserts is that the tree is reachable from the facade, because a
+ * screen cannot import the projection package, so an internal `MarkdownDocument` was a rendering
  * contract with no way to read it.
  */
 class MarkdownFacadeTest {

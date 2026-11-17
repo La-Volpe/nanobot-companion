@@ -7,7 +7,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * The client → server envelopes (plan.md C2.3). One builder per envelope, no string
+ * The client → server envelopes. One builder per envelope, no string
  * concatenation anywhere: a field name here is the gateway's inbound contract, and the
  * shapes are read from `nanobot/webui/inbound_commands.py` and `forking.py`.
  */
@@ -73,13 +73,13 @@ internal sealed interface Outbound {
     }
 }
 
-/** The reference an upload returns; the message carries the reference, not the bytes (C6.6). */
+/** The reference an upload returns; the message carries the reference, not the bytes. */
 internal data class UploadReference(val reference: String, val name: String? = null)
 
 /**
- * A quoted excerpt of an earlier reply (C4.9). It goes out as a plain string on the
- * envelope — the gateway's `normalize_webui_quote` ignores anything else — and the gateway
- * uses it as model-only context, so the bubble's quote stays a client-side fact.
+ * A quoted excerpt of an earlier reply. It goes out as a plain string on the envelope (the
+ * gateway's `normalize_webui_quote` ignores anything else) and the gateway uses it as
+ * model-only context, so the bubble's quote stays a client-side fact.
  */
 internal data class QuotedContext(val text: String) {
 
@@ -148,7 +148,7 @@ internal object OutboundCodec {
             )
         }
         // A string, not an object: the WebUI's own client sends the trimmed excerpt and the
-        // gateway's normalizer rejects every other type (C4.9, runtime_context.py).
+        // gateway's normalizer rejects every other type (runtime_context.py).
         frame.quotedContext?.let { quote -> put("quoted_context", quote.text) }
         frame.intent?.let { put("intent", it) }
         if (frame.userShell) put("user_shell", true)

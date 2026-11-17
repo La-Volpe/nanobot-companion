@@ -8,7 +8,7 @@ import kotlinx.serialization.json.jsonObject
 internal const val CLIENT_WEBUI_PROTOCOL: Int = 1
 
 /**
- * `GET /webui/bootstrap` (plan.md C2.4): the single-use socket token, the limits the
+ * `GET /webui/bootstrap`: the single-use socket token, the limits the
  * composer validates against, the protocol contract, and the host's action flags.
  */
 internal data class BootstrapPayload(
@@ -24,7 +24,7 @@ internal data class BootstrapPayload(
     val gatewayId: String?,
 )
 
-/** The protocol range and named capabilities from `terminal.webui` (D15.1). */
+/** The protocol range and named capabilities from `terminal.webui`. */
 internal data class WebuiContract(
     val version: String?,
     val minProtocol: Int,
@@ -45,9 +45,9 @@ internal data class WebuiContract(
 }
 
 /**
- * `runtime_capabilities` is a dict of host action flags, not protocol capabilities
- * (D15.1). Settings uses them to decide which buttons exist; nothing in the wire layer
- * may treat them as a version gate.
+ * `runtime_capabilities` is a dict of host action flags, not protocol capabilities.
+ * Settings uses them to decide which buttons exist; nothing in the wire layer may treat
+ * them as a version gate.
  */
 internal data class HostActions(
     val canRestartEngine: Boolean,
@@ -55,7 +55,7 @@ internal data class HostActions(
     val canExportDiagnostics: Boolean,
 )
 
-/** What the composer validates locally before it sends (C6.1); defaults mirror ingress_policy.py. */
+/** What the composer validates locally before it sends; defaults mirror ingress_policy.py. */
 public data class Limits(
     public val maxFrameBytes: Long = 32L * 1024 * 1024,
     public val envelopeReserveBytes: Long = 64L * 1024,
@@ -69,7 +69,7 @@ public data class AttachmentLimits(
     public val maxTotalBytes: Long = 24L * 1024 * 1024,
 )
 
-/** A feature the client can drop when the host does not advertise it (plan.md C2.6). */
+/** A feature the client can drop when the host does not advertise it. */
 internal enum class Feature(val id: String, val capability: String) {
     Core(id = "core", capability = "webui.core.v1"),
     Subagents(id = "subagents", capability = "webui.subagents.v1"),
@@ -148,12 +148,12 @@ internal object BootstrapParser {
     }
 
     /**
-     * `runtime_capabilities`: what the *host* can be asked to do (AGENTS: not `terminal.webui`
-     * capabilities). `canRestartEngine` is read and deliberately unread-by-anything-else (T44): the
-     * owner's Overview scope is the usage totals and the version row, not a restart control, and a
-     * restart button nobody asked for is a way to bounce a gateway from a phone by accident. It
-     * stays parsed because `BootstrapParserTest` pins the host's own flags and a control added
-     * later must read this rather than assume it.
+     * `runtime_capabilities`: what the *host* can be asked to do (AGENTS.md draws the same line:
+     * not `terminal.webui` capabilities). `canRestartEngine` is parsed and deliberately unread by
+     * anything else: the owner's Overview scope is the usage totals and the version row, not a
+     * restart control, and a restart button nobody asked for is a way to bounce a gateway from a
+     * phone by accident. It stays parsed because `BootstrapParserTest` pins the host's own flags,
+     * and a control added later must read this rather than assume it.
      */
     private fun hostActionsOf(flags: JsonObject?): HostActions = HostActions(
         canRestartEngine = flags?.flag("can_restart_engine") ?: false,

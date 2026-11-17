@@ -45,14 +45,12 @@ import platform.Security.kSecReturnData
 import platform.Security.kSecValueData
 
 /**
- * Secrets on iOS (plan.md D5): generic-password Keychain items, one service per
- * namespace.
+ * Secrets on iOS: generic-password Keychain items, one service per namespace.
  *
  * The Keychain itself is reached through [KeychainBackend] because a Kotlin/Native
  * test binary for the simulator is not an app bundle and gets `errSecNotAvailable`
  * from Security.framework. The store's contract and the query marshalling are tested
- * here; the three `SecItem*` calls are covered by the app's own test suite in phase 2
- * (docs/decisions.md D17).
+ * here; the three `SecItem*` calls are covered by the app's own test suite in phase 2.
  */
 public class KeychainSecureStore internal constructor(
     private val backend: KeychainBackend,
@@ -127,7 +125,7 @@ internal class KeychainQuery(private val service: String, private val alias: Str
      *
      * The class is `AfterFirstUnlock*` rather than the default: iOS starts the app before the owner
      * has unlocked it (after a restart, from a background wake), and a when-unlocked item is
-     * unreadable then — the stored gateway looks forgotten and the app asks for it again, which is
+     * unreadable then: the stored gateway looks forgotten and the app asks for it again, which is
      * exactly the report this fixes. The key is still encrypted at rest either way.
      *
      * `ThisDeviceOnly` on top of that, deliberately: without it the item rides an encrypted backup

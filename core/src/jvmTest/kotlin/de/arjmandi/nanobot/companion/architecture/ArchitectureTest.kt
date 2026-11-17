@@ -5,7 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The layering in plan.md §2 is worth only what a test enforces: arrows point one way,
+ * The layering is worth only what a test enforces: arrows point one way,
  * and `commonMain` never mentions a UI toolkit or a platform API. The scan reads the
  * source tree, so a new file is covered the moment it is added.
  */

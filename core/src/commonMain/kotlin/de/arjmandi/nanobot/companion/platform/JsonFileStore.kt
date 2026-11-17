@@ -7,7 +7,7 @@ import kotlinx.serialization.json.Json
 /**
  * Callers pass models, not strings: JSON encoding belongs next to the file it lands in,
  * so a cache format can change in one place. A stored value that no longer parses is
- * treated as absent — a new app version must not crash on an old cache.
+ * treated as absent, because a new app version must not crash on an old cache.
  */
 internal class JsonFileStore(
     private val files: FileStore,

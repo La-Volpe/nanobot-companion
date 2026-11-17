@@ -9,8 +9,8 @@ import kotlinx.coroutines.flow.flowOf
 
 /**
  * A socket in two lists: the envelopes the engine wrote, and the frames a script pushes at
- * it. `opened` and `closed` count what a leak check needs — a socket that was opened and
- * never closed is exactly the failure C5.6 looks for.
+ * it. `opened` and `closed` count what a leak check needs: a socket that was opened and never
+ * closed is exactly the failure a reconnect is looking for.
  */
 internal class FakeSocket : Socket {
 
@@ -26,7 +26,7 @@ internal class FakeSocket : Socket {
 
     /**
      * A socket whose writes fail: Ktor's `send` throws when the connection is gone, and a client
-     * that reports a message as taken anyway is the receipt lying (T42).
+     * that reports a message as taken anyway is the receipt lying.
      */
     var refusesWrites: Boolean = false
 

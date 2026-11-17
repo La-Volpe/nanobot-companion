@@ -47,7 +47,7 @@ class KeychainQueryTest {
      * has unlocked it (a restart, a background wake), and an item written with the default
      * `kSecAttrAccessibleWhenUnlocked` is unreadable then, so the stored gateway looks missing and
      * the app asks for it again. `AfterFirstUnlock` is the class that survives that, and it is
-     * still encrypted at rest — the one thing a gateway key needs.
+     * still encrypted at rest, which is the one thing a gateway key needs.
      *
      * `ThisDeviceOnly` because of what the class also decides: a plain `AfterFirstUnlock` item is
      * carried by an encrypted backup onto the next phone, and a gateway key should die with the

@@ -25,9 +25,9 @@ import kotlinx.coroutines.test.runTest
 /**
  * A reconnect is a new socket, and a socket knows nothing of what the previous one was told: the
  * gateway subscribes per connection (`runtime.py` `_attach`, `_conn_chats`), so the chat on screen
- * has to be attached again. Found by the phone's own path — the owner backgrounds the app, comes
+ * has to be attached again. Found by the phone's own path: the owner backgrounds the app, comes
  * back, and the answer that was streaming never arrives because `open()` believed the dead
- * socket's `attached` still stood (C3.4, C5.4).
+ * socket's `attached` still stood.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ReconnectAttachTest {
@@ -119,7 +119,7 @@ class ReconnectAttachTest {
     /**
      * What makes "Try again" worth offering: every connect bootstraps again, so the retry is a
      * real handshake on a token that has never been used. A cached token would fail the handshake
-     * and the button would be theatre (C3.4, AGENTS.md gotcha 10).
+     * and the button would be theatre (AGENTS.md gotcha 10).
      */
     @Test
     fun everyReconnectBootstrapsAFreshToken() = runTest {

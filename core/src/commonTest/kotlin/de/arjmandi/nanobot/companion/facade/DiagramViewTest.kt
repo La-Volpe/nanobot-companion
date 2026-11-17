@@ -7,8 +7,8 @@ import kotlin.test.assertTrue
 
 /**
  * Which half of a mermaid block a reader sees (the owner's 2026-11-15 decision: a bundled WebView
- * with a preview/source toggle). The default is the WebUI's — source while the turn is arriving,
- * preview once it has ended — and it is asserted here so neither platform can decide it again.
+ * with a preview/source toggle). The default is the WebUI's: source while the turn is arriving,
+ * preview once it has ended. It is asserted here so neither platform can decide it again.
  */
 class DiagramViewTest {
 

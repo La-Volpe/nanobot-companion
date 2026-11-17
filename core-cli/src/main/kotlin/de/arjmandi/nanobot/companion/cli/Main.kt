@@ -3,8 +3,8 @@ package de.arjmandi.nanobot.companion.cli
 import de.arjmandi.nanobot.companion.cli.record.RecordCommand
 
 /**
- * The harness (plan.md C8.3). `record` captures fixtures; the rest drive `:core` against a
- * live gateway, and two of them are the instruments for G1's soak and transcript-parity items.
+ * The harness. `record` captures fixtures; the rest drive `:core` against a live gateway, and
+ * two of them are the instruments for the soak and transcript-parity items.
  */
 fun main(args: Array<String>) {
     when (args.firstOrNull()) {

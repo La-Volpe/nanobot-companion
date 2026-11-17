@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /**
- * The ring's two numbers, and the precedence that picks the denominator (T37). The WebUI's own
+ * The ring's two numbers, and the precedence that picks the denominator. The WebUI's own
  * arithmetic is `Math.min(100, Math.round(tokens / window * 100))`
  * (`thread/ComposerUsagePopover.tsx:78`), and its order for the window is
  * `thread/ContextInspector.tsx:52`.
@@ -40,11 +40,11 @@ class ContextUsageTest {
     }
 
     /**
-     * T37 then T46: the frame's window wins while it is answering for the preset being named, the
-     * preset's own window is next, and the gateway's configured window only when nothing names a
-     * preset at all. What it may never do is hand one preset another's number — a chat on a preset
-     * the gateway does not list has no denominator here, which is a chip with no ring rather than a
-     * ring of the wrong size.
+     * The frame's window wins while it is answering for the preset being named, the preset's own
+     * window is next, and the gateway's configured window only when nothing names a preset at all.
+     * What it may never do is hand one preset another's number: a chat on a preset the gateway
+     * does not list has no denominator here, which is a chip with no ring rather than a ring of
+     * the wrong size.
      */
     @Test
     fun theThreadsOwnWindowWinsThenThePresetThenTheGateway() {
@@ -70,7 +70,7 @@ class ContextUsageTest {
 
     /**
      * The half of the pairing the incident turned on: a pick on `Vision and OCR` while the chat's
-     * last turn reported `primary` must not divide by `primary`'s window (T46).
+     * last turn reported `primary` must not divide by `primary`'s window.
      */
     @Test
     fun aWindowFromAnotherPresetsTurnIsNotReused() {

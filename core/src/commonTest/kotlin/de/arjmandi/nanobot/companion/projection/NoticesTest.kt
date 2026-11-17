@@ -7,7 +7,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The notices that are not part of an answer (plan.md C7.3): context compaction, an
+ * The notices that are not part of an answer: context compaction, an
  * interrupted task with a decision to make, a retry with a clock on it, the goal strip, and
  * the sandbox warning a failing `exec` produces.
  *

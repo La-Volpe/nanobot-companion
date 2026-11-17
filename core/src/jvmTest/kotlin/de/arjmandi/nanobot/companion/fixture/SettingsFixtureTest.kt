@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * C7.1's evidence. `settings.json` and `settings-usage.json` are `/api/settings` and
+ * The settings recording. `settings.json` and `settings-usage.json` are `/api/settings` and
  * `/api/settings/usage` read from the dev gateway and indexed under `manifest.reads`; the
  * assertions are the ones the Overview screen depends on.
  */
@@ -25,7 +25,7 @@ class SettingsFixtureTest {
         assertEquals("Darwin", state.environment?.os)
         assertTrue(!state.environment?.pythonVersion.isNullOrBlank())
 
-        // D11: the manifest carries the real revision, so the alias inside the payload loses nothing.
+        // The manifest carries the real revision, so the alias inside the payload loses nothing.
         assertTrue(
             (Fixtures.manifest()["provenance"].obj().str("gateway_commit") ?: "").isNotBlank(),
             "provenance.gateway_commit is the record of which revision this set came from",
@@ -44,8 +44,8 @@ class SettingsFixtureTest {
     }
 
     /**
-     * A fixture is committed, so the recording machine's locale must not be in it (T26): the
-     * settings payload carries the agent's timezone twice, once flattened into `runtime_config`.
+     * A fixture is committed, so the recording machine's locale must not be in it: the settings
+     * payload carries the agent's timezone twice, once flattened into `runtime_config`.
      */
     @Test
     fun noFixtureCarriesARealTimezone() {
@@ -60,9 +60,9 @@ class SettingsFixtureTest {
     }
 
     /**
-     * T44: the card draws the recorded days in the WebUI's 30-day window. The window ends on a date
+     * The card draws the recorded days in the WebUI's 30-day window. The window ends on a date
      * the phone supplies; anchored on the recording's own last day, the strip is thirty slots and
-     * the headline is the day the gateway reported — the payload carries a year of days.
+     * the headline is the day the gateway reported, while the payload carries a year of days.
      */
     @Test
     fun theRecordedUsageFillsTheCardsWindow() {
@@ -78,8 +78,8 @@ class SettingsFixtureTest {
 
     /**
      * The model sheet is drawn from `model_presets` in the settings payload the client already
-     * reads (I5). The alternative — a hand-written list of presets in the app — would offer a
-     * `/model` switch to a name the gateway does not have.
+     * reads. The alternative, a hand-written list of presets in the app, would offer a `/model`
+     * switch to a name the gateway does not have.
      */
     @Test
     fun theModelPresetsComeFromTheRecordedSettings() {
@@ -105,7 +105,7 @@ class SettingsFixtureTest {
     @Test
     fun transcriptionBoundsMatchTheProtocol() {
         val state = SettingsPayloads.settings(read("settings.json"))
-        // C6.5's 120 s bound is the gateway's own, so the two must agree.
+        // The 120 s bound is the gateway's own, so the two must agree.
         assertEquals(120, state.transcription?.maxDurationSeconds)
     }
 }

@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The WebUI's token copy (T36), pinned at the sizes the owner's gateway actually answers: the
+ * The WebUI's token copy, pinned at the sizes the owner's gateway actually answers: the
  * model sheet lists `default` at 200 000, `primary` at 1 000 000 and `Vision and OCR` at 256 000,
  * and the Overview row printed `1000k tokens` for a million until this existed.
  *

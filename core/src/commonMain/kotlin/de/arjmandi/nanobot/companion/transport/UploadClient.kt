@@ -21,9 +21,9 @@ internal sealed interface UploadOutcome {
 }
 
 /**
- * `POST {ready.upload.path}` with the capability token (plan.md C3.6, D15.5). Bytes are
- * sent as one length-delimited body: the gateway refuses a chunked request, so streaming
- * the upload is not an option — one file, one request, whole.
+ * `POST {ready.upload.path}` with the per-connection capability token from the greeting.
+ * Bytes are sent as one length-delimited body: the gateway refuses a chunked request, so
+ * streaming the upload is not an option. One file, one request, whole.
  */
 internal class UploadClient(
     private val http: HttpClient,

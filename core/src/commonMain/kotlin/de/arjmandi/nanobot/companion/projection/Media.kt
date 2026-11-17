@@ -6,7 +6,7 @@ public enum class MediaKind { Image, Video, Audio, File }
 /**
  * One picture, clip or recording on a turn. The gateway signs these urls itself
  * (`nanobot/webui/media_api.py:118`), so the path is the authorisation and the client adds
- * nothing to it — only the gateway's origin.
+ * nothing to it but the gateway's origin.
  */
 public data class MediaAttachment(
     public val id: String,
@@ -30,8 +30,8 @@ public data class MediaAttachment(
 /**
  * What kind a row is, in the order the WebUI decides it (`webui/src/lib/media.ts:55`): what the
  * name and url say, then the gateway's own word for anything the extension cannot name. The order
- * matters because the gateway has only three words — `media_attachment_kind` (`media_api.py:169`)
- * answers `image`, `video` or `file` — so a recording arrives as `file` with a `.m4a` name. Audio
+ * matters because the gateway has only three words: `media_attachment_kind` (`media_api.py:169`)
+ * answers `image`, `video` or `file`, so a recording arrives as `file` with a `.m4a` name. Audio
  * is ours; the WebUI has no player for it, which is why it never needed the word. A type nobody
  * knows is a file row rather than a hole in the thread.
  */

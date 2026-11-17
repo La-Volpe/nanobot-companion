@@ -3,9 +3,9 @@ package de.arjmandi.nanobot.companion.wire
 import kotlinx.serialization.json.JsonObject
 
 /**
- * One server frame (plan.md C2.1). Every frame keeps its original [raw] payload, so a
- * field added by a newer gateway survives a decode/encode round trip even though this
- * client has no property for it (C2.2).
+ * One server frame. Every frame keeps its original [raw] payload, so a field added by a
+ * newer gateway survives a decode/encode round trip even though this client has no
+ * property for it.
  */
 internal sealed interface Frame {
     val event: String
@@ -17,9 +17,9 @@ internal sealed interface Frame {
 }
 
 /**
- * A frame this client does not model — a newer gateway's event, or a payload whose
- * shape changed. It is never an exception: a client that throws on the future stops
- * showing the chat the user is in the middle of.
+ * A frame this client does not model: a newer gateway's event, or a payload whose shape
+ * changed. It is never an exception, because a client that throws on the future stops showing
+ * the chat the user is in the middle of.
  */
 internal class UnknownFrame(
     override val event: String,

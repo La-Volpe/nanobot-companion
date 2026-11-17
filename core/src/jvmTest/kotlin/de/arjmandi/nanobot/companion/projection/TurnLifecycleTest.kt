@@ -10,7 +10,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Delivery and settle (plan.md C4.3, C4.5): the optimistic bubble, the reasoning bubble,
+ * Delivery and settle: the optimistic bubble, the reasoning bubble,
  * and the moment the stop button has to become a send button again.
  */
 class TurnLifecycleTest {
@@ -43,7 +43,7 @@ class TurnLifecycleTest {
     /**
      * The history page replays reasoning as one `reasoning_end` per block carrying the block's
      * whole text (no `reasoning_delta` at all), while the socket streams deltas and ends with a
-     * text-less `reasoning_end`. Both must produce a reasoning bubble — the recorded `file`
+     * text-less `reasoning_end`. Both must produce a reasoning bubble, and the recorded `file`
      * scenario's history page proves the shape.
      */
     @Test
@@ -61,9 +61,9 @@ class TurnLifecycleTest {
     }
 
     /**
-     * The live socket emits `stream_end` with `text: ""` for a stream that never carried a delta
-     * — a placeholder the history page does not store. Rendering it gives the turn an empty
-     * bubble, which is exactly the mismatch `core-cli watch --verify` printed (D37).
+     * The live socket emits `stream_end` with `text: ""` for a stream that never carried a delta,
+     * a placeholder the history page does not store. Rendering it gives the turn an empty bubble,
+     * which is exactly the mismatch `core-cli watch --verify` printed.
      */
     @Test
     fun streamEndWithAnEmptyTextCreatesNoBubble() {

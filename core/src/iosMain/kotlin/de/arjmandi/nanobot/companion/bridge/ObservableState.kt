@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /**
- * A `StateFlow` as Swift can actually use it (plan.md C8.2). Kotlin/Native exports
- * `StateFlow` as an untyped protocol whose `value` is `id`, so a Swift screen reading
- * `core.connection.value` gets `Any?` and has to cast — in every view, for every state.
+ * A `StateFlow` as Swift can actually use it. Kotlin/Native exports `StateFlow` as an untyped
+ * protocol whose `value` is `id`, so a Swift screen reading `core.connection.value` gets `Any?`
+ * and has to cast, in every view, for every state.
  * This is that cast, once, and the subscription SwiftUI needs on top of it.
  *
  * The generic parameter is what makes it useful: `ObservableState<ConnectionState>` in
@@ -33,10 +33,10 @@ public class ObservableState<T : Any> internal constructor(
      * delivered before this call returns so a view model has state on its first body rather
      * than one frame later.
      *
-     * Values are deduplicated against the last one delivered, because the synchronous read
-     * and the collector's first emission are usually the same value — and because a value
-     * that changes between them must still be delivered, which a plain "skip the first
-     * emission" would lose.
+     * Values are deduplicated against the last one delivered, because the synchronous read and
+     * the collector's first emission are usually the same value, and because a value that
+     * changes between them must still be delivered, which a plain "skip the first emission"
+     * would lose.
      */
     public fun subscribe(onChange: (T) -> Unit): Cancellable {
         var last: T? = null

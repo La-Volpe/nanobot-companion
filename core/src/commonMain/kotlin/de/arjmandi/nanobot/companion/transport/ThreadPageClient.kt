@@ -17,11 +17,11 @@ internal sealed interface ThreadPageOutcome {
 }
 
 /**
- * `GET /api/sessions/{key}/webui-thread` (plan.md C4.6, D46): the page the WebUI reads when a
- * session is opened. The socket's `attach` does not replay history — the gateway answers it with
- * runtime facts only (`session_projection.attach_fields`) — so this read is how an opened chat
- * shows the turns that came before. Its events are the socket's own vocabulary, which is why the
- * caller reduces them with the same `ThreadReducer` (D9).
+ * `GET /api/sessions/{key}/webui-thread`: the page the WebUI reads when a session is opened.
+ * The socket's `attach` does not replay history, because the gateway answers it with runtime
+ * facts only (`session_projection.attach_fields`), so this read is how an opened chat shows the
+ * turns that came before. Its events are the socket's own vocabulary, which is why the caller
+ * reduces them with the same `ThreadReducer` as a live turn.
  */
 internal class ThreadPageClient(
     private val http: HttpClient,
@@ -33,7 +33,7 @@ internal class ThreadPageClient(
     suspend fun fetch(apiToken: String, sessionKey: String): ThreadPageOutcome = try {
         // The WebUI builds this path with `encodeURIComponent(sessionKey)`, which escapes the
         // colon of `websocket:<id>`; Ktor's path encoder leaves a colon alone, so it is escaped
-        // here to ask for the same URL the browser asks for (D46).
+        // here to ask for the same URL the browser asks for.
         val key = sessionKey.encodeURLPathPart().replace(":", "%3A")
         val url = "${baseUrl.trimEnd('/')}/api/sessions/$key/webui-thread?limit=$PAGE_LIMIT&direction=$PAGE_DIRECTION"
         val response = http.get(url) {

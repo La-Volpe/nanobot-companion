@@ -4,7 +4,7 @@ import de.arjmandi.nanobot.companion.wire.CivilDate
 import de.arjmandi.nanobot.companion.wire.UsageTotals
 import kotlin.math.roundToInt
 
-/** One bar of Overview's daily strip (T44): the day, its tokens, and its height already divided. */
+/** One bar of Overview's daily strip: the day, its tokens, and its height already divided. */
 public data class UsageBar(
     public val date: String,
     public val tokens: Long,
@@ -13,9 +13,9 @@ public data class UsageBar(
 )
 
 /**
- * Overview's token card (T44), as one value: the headline the WebUI prints and the 30 days behind
- * it. Nothing here is invented — a day the gateway did not report is a zero bar, and a window with
- * no usage at all says so instead of drawing a chart of nothing.
+ * Overview's token card, as one value: the headline the WebUI prints and the 30 days behind
+ * it. Nothing here is invented: a day the gateway did not report is a zero bar, and a window
+ * with no usage at all says so instead of drawing a chart of nothing.
  */
 public data class UsageSummary(
     /** Oldest first, always [UsageWindow.DAYS] of them. */
@@ -37,12 +37,12 @@ public data class UsageSummary(
 /**
  * The card's window: the last 30 days ending today, in the WebUI's arithmetic
  * (`settings/TokenUsageCard.tsx:56` builds the same 30 slots, fills the gaps with zero and sums
- * the slot totals for the headline — not the payload's flat `total_tokens_30d`, so the number
+ * the slot totals for the headline, not the payload's flat `total_tokens_30d`, so the number
  * above the chart is the chart).
  *
- * `today` is the platform's own civil date: the reader is holding the phone, so its date is the one
- * that ends the strip. The core does no clock and no zone arithmetic — subtraction on a day count
- * is all this needs (`CivilDate`).
+ * `today` is the platform's own civil date: the reader is holding the phone, so its date is the
+ * one that ends the strip. The core does no clock and no zone arithmetic; subtraction on a day
+ * count is all this needs (`CivilDate`).
  */
 public object UsageWindow {
 

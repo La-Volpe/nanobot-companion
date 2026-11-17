@@ -6,7 +6,7 @@ import de.arjmandi.nanobot.companion.wire.Frame
 import de.arjmandi.nanobot.companion.wire.Outbound
 
 /**
- * Opening a chat (plan.md C5.3). A chat exists on the gateway before the client knows its
+ * Opening a chat. A chat exists on the gateway before the client knows its
  * id, so "open" is a request and `attached` is the answer: an existing chat is attached by
  * the id the caller has, a new one takes the id the gateway mints.
  *
@@ -53,7 +53,7 @@ internal object ChatLifecycle {
         }
 
         // Only a rejection *while attaching* is about the chat being open; a later one is
-        // about a message (C7.4), and closing an attached chat on it would be a lie.
+        // about a message, and closing an attached chat on it would be a lie.
         is ErrorFrame -> if (state.phase == ChatLifecycleState.Phase.Attaching) {
             LifecycleReduction(state.copy(phase = ChatLifecycleState.Phase.NotOpen, failure = frame.detail ?: "error"))
         } else {

@@ -8,7 +8,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 /**
- * Opening a chat (plan.md C5.3). The gateway mints ids, so the client never invents one: an
+ * Opening a chat. The gateway mints ids, so the client never invents one: an
  * existing chat is attached by the id it was opened with, and a new chat learns its id from
  * the `attached` frame. Everything the client sends leaves as an [Effect.Send] so these
  * tests need no socket.

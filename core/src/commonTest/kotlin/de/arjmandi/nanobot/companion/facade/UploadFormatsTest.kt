@@ -10,8 +10,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * The phone asks this before it uploads (I6). An iPhone photo is HEIC unless the reader switched
- * the camera to "Most Compatible", and `attachment_policy.py` has no HEIC in its whitelist — so
+ * The phone asks this before it uploads. An iPhone photo is HEIC unless the reader switched
+ * the camera to "Most Compatible", and `attachment_policy.py` has no HEIC in its whitelist. So
  * the picker needs the gateway's answer to know it has to re-encode, instead of handing the
  * reader a refusal for a photo they just took.
  */

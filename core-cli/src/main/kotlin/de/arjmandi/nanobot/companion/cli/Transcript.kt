@@ -8,21 +8,21 @@ import de.arjmandi.nanobot.companion.projection.Turn
 import de.arjmandi.nanobot.companion.projection.TurnStatus
 
 /**
- * One thread as plain lines (plan.md C8.3: "output as plain lines so it is diffable").
+ * One thread as plain lines, so two of them diff line for line.
  *
- * The transcript is the instrument for G1's parity item, so it renders only what the live
- * socket and the WebUI's history page agree on. Gateway turn ids are not shared — a live
- * turn carries this client's id until the gateway names it — so turns are numbered by
- * position. Everything volatile (ids, wall clocks) is left out; everything a user reads is
- * in, one item per line, newlines escaped, so two transcripts diff line for line.
+ * The transcript is the instrument for the parity item, so it renders only what the live socket
+ * and the WebUI's history page agree on. Gateway turn ids are not shared (a live turn carries
+ * this client's id until the gateway names it), so turns are numbered by position. Everything
+ * volatile (ids, wall clocks) is left out; everything a user reads is in, one item per line,
+ * newlines escaped.
  */
 internal object Transcript {
 
     /**
      * What both feeds know: the turns and what is attached to them, the notices, the usage.
-     * The chat id and the model are *commentary* — the history page carries no
-     * `turn_model_updated`, so putting them in the body would fail a comparison for a reason
-     * that has nothing to do with the thread (observed on the dev gateway, D31).
+     * The chat id and the model are *commentary*: the history page carries no
+     * `turn_model_updated`, so putting them in the body would fail a comparison for a reason that
+     * has nothing to do with the thread (observed on the dev gateway).
      */
     fun render(state: ThreadState): String = buildString {
         state.turns.forEachIndexed { index, turn -> renderTurn(index + 1, turn) }
@@ -73,7 +73,7 @@ internal object Transcript {
         ToolStatus.Failed -> "$name failed"
     }
 
-    /** The notice's copy key, not its sentence: copy belongs to the platform (plan.md D2). */
+    /** The notice's copy key, not its sentence: copy belongs to the platform. */
     private fun noticeLine(notice: Notice): String = when (notice) {
         is Notice.Compaction -> "notice | compaction | ${notice.phase}${notice.reason?.let { " | $it" }.orEmpty()}"
         is Notice.Recovery -> "notice | recovery | ${notice.status} | can_continue=${notice.canContinue}"

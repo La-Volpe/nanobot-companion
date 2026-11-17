@@ -5,7 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Reconnect pacing (plan.md C3.5). Deterministic here because the jitter source is
+ * Reconnect pacing. Deterministic here because the jitter source is
  * injected: a test that needs the wall clock cannot prove ten attempts in milliseconds,
  * and an app that retries every 100 ms drains a phone battery on a dead gateway.
  */

@@ -8,7 +8,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The two composer palettes (plan.md C6.4): `/` lists the gateway's commands, `@` lists the
+ * The two composer palettes: `/` lists the gateway's commands, `@` lists the
  * sessions and the installed CLI apps. The rules here are the WebUI's own
  * (`ThreadComposer.tsx` `slashQuery`, `filteredMentionCandidates`,
  * `composer-mention-text.ts` `isCapabilityMentionStart`), transcribed rather than invented:

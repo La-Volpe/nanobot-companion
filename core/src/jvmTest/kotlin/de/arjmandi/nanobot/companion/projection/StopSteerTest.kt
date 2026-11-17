@@ -7,7 +7,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * What the client may send while a turn is running (plan.md C5.5). Stop is `/stop` as a
+ * What the client may send while a turn is running. Stop is `/stop` as a
  * message, steering is a second message on the same turn, and the queue is the client's own
  * because the gateway cannot hold a prompt for later.
  */

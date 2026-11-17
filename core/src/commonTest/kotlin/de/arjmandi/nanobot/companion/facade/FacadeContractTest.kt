@@ -23,7 +23,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 /**
- * The public surface (plan.md C8.1). Everything here is driven through [NanobotCore] and a
+ * The public surface. Everything here is driven through [NanobotCore] and a
  * fake transport, which is the claim that matters: the facade is composable from fakes with
  * no platform API in sight, and a chat can be driven without a gateway.
  */

@@ -14,10 +14,10 @@ import platform.Foundation.credentialForTrust
 import platform.Foundation.serverTrust
 
 /**
- * The iOS half of the trust decision (plan.md C3.2, D21, P2): [TlsTrustRule] decides, this
- * translates. Nothing here evaluates a certificate chain — the system still validates every
- * certificate; the switch only changes what happens when that validation rejects the *anchor*,
- * which is exactly what a self-signed home gateway looks like.
+ * The iOS half of the trust decision: [TlsTrustRule] decides, this translates. Nothing here
+ * evaluates a certificate chain, because the system still validates every certificate; the
+ * switch only changes what happens when that validation rejects the *anchor*, which is exactly
+ * what a self-signed home gateway looks like.
  *
  * `protectionSpace.serverTrust` is the trust the system already built for this connection, so
  * the credential accepts that certificate for that host. It is never a global "trust anything":

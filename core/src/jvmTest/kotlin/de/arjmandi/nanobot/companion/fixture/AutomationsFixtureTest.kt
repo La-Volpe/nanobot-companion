@@ -7,10 +7,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * C7.2's recorded half. `automations.json` is `/api/webui/automations` from the dev gateway.
- * The *actions* are not recorded: the gateway refuses them over HTTP (405) and every job in
- * this recording is a protected `system_event`, so a live action is only reachable as a 403 —
- * which the contract suite asserts instead (`docs/decisions.md` D31).
+ * The automations recording. `automations.json` is `/api/webui/automations` from the dev
+ * gateway. The *actions* are not recorded: the gateway refuses them over HTTP (405) and every
+ * job in this recording is a protected `system_event`, so a live action is only reachable as a
+ * 403, which the contract suite asserts instead.
  */
 class AutomationsFixtureTest {
 

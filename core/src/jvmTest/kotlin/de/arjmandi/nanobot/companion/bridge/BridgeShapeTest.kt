@@ -7,18 +7,18 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
- * What Swift actually sees (C8.2). Not the docs, not the KMP guide: the Objective-C header
- * Kotlin/Swift interop generated for this framework, read back and asserted. Every claim a
- * Swift screen depends on is one assertion here, so a toolchain upgrade that changes the
- * shape fails a test rather than a Swift compile three tasks later.
+ * What Swift actually sees: the Objective-C header Kotlin/Swift interop generated for this
+ * framework, read back and asserted. Every claim a Swift screen depends on is one assertion
+ * here, so a toolchain upgrade that changes the shape fails a test rather than a Swift compile
+ * three tasks later.
  *
  * Two kinds of assertion live in this file on purpose:
  *
- *  - **the bridge's own**, which fail when [ObservableState] or the companion factory is
- *    deleted — those are tests;
- *  - **the record**, which state what Kotlin/Native does with `StateFlow`, enums and sealed
- *    interfaces *today*. Those lock the reason the bridge exists and pass without it; they
- *    are documentation with a tripwire, listed as such in the run report.
+ *  - the bridge's own, which fail when [ObservableState] or the companion factory is deleted,
+ *    and are therefore tests;
+ *  - the record, which states what Kotlin/Native does with `StateFlow`, enums and sealed
+ *    interfaces *today*. Those lock the reason the bridge exists and pass without it. They are
+ *    documentation with a tripwire, listed as such in the run report.
  *
  * The header is produced by `:core:linkDebugFrameworkIosSimulatorArm64`, which `jvmTest`
  * depends on, so the fast suite cannot pass with a stale or missing header.

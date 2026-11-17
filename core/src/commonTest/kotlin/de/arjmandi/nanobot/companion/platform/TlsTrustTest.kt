@@ -7,7 +7,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The trust decision a self-signed home gateway needs (plan.md C3.2, D21, P2). The policy
+ * The trust decision a self-signed home gateway needs. The policy
  * object existed and was tested; this is the rule that turns it into a decision a platform's
  * TLS stack can act on, kept pure so both platforms can share it and a test can walk every
  * cell of the matrix.

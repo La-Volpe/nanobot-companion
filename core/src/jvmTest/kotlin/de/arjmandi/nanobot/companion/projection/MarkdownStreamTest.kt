@@ -8,10 +8,10 @@ import kotlin.test.assertTrue
 
 /**
  * A reply arrives a few characters at a time, and the document a platform draws has to stay
- * readable while that happens (C4.8, risk table "streaming markdown half-rendering").
+ * readable while that happens.
  *
  * These cases test `document`, which is what the facade hands the apps. They used to test a
- * `stableBlocks`/`unstableTail` pair that nothing in production called — a test that could not
+ * `stableBlocks`/`unstableTail` pair that nothing in production called, a test that could not
  * fail for a reason a reader would ever see. The rule they pin down now is the one that exists:
  * prose is drawn as it arrives (the parser already renders an unclosed marker as a literal
  * character, which is what the browser does too), and only a table's in-flight row is withheld.
@@ -78,7 +78,7 @@ class MarkdownStreamTest {
 
     @Test
     fun everyPrefixOfARealReplyParses() {
-        // Fuzz over a real transcript (plan.md C4.8): 200 prefixes of the recorded answer,
+        // Fuzz over a real transcript: 200 prefixes of the recorded answer,
         // none of which may throw. A chat client that crashes on a half-written reply is
         // worse than one that shows it as plain text.
         val answer = recordedAnswer()

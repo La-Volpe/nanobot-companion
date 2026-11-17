@@ -6,7 +6,7 @@ import kotlin.test.assertTrue
 
 /**
  * A home gateway is usually self-signed, which is why onboarding has one explicit switch
- * (plan.md C3.2, D-risk table). The switch is off until the user turns it on, and turning
+ * (the design's risk table). The switch is off until the user turns it on, and turning
  * it on never disables hostname checks: the certificate may be unknown, the host may not.
  */
 class TlsPolicyTest {

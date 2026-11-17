@@ -1,8 +1,8 @@
 package de.arjmandi.nanobot.companion.projection
 
 /**
- * The thread as it survives a restart (plan.md D5): drafts and cache are plain JSON in the
- * app's own container, and the token never goes near them.
+ * The thread as it survives a restart: drafts and cache are plain JSON in the app's own
+ * container, and the token never goes near them.
  *
  * It encodes only. Restore needs a page of history to reconcile against, and that lands with
  * the earlier-page work; a decoder written before its reader would be a shape nobody has to

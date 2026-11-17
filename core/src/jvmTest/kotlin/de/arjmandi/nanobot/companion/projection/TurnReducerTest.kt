@@ -9,7 +9,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 /**
- * The streaming reducer (plan.md C4.2). A live turn arrives as many `delta` frames with a
+ * The streaming reducer. A live turn arrives as many `delta` frames with a
  * shared opaque `stream_id` and one `stream_end`; the reducer must build segments from
  * those ids alone, because arrival order alone cannot tell a resumed stream from a new one.
  */

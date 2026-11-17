@@ -1,7 +1,7 @@
 package de.arjmandi.nanobot.companion.projection
 
 /**
- * The subset of markdown the WebUI renders, as a tree `:core` owns (plan.md D6/C4.7).
+ * The subset of markdown the WebUI renders, as a tree `:core` owns.
  * Rendering belongs to the platform, so this file is the whole contract between them:
  * a block list, and inline spans inside each block.
  *

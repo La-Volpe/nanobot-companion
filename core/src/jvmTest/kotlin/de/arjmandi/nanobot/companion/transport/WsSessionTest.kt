@@ -21,9 +21,9 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 
 /**
- * The socket session is where a single-use token and a frame stream meet (plan.md C3.3,
- * C3.4). The server here is a real Ktor WebSocket server in-process: the pump is tested
- * against an actual socket, not a fake flow.
+ * The socket session is where a single-use token and a frame stream meet. The server here is
+ * a real Ktor WebSocket server in-process: the pump is tested against an actual socket, not a
+ * fake flow.
  */
 class WsSessionTest {
 

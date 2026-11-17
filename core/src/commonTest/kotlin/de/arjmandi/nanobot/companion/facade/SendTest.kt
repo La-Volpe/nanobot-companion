@@ -25,9 +25,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * The composer's send path (plan.md C6.1): the bubble appears before the gateway answers, a
+ * The composer's send path: the bubble appears before the gateway answers, a
  * refused send keeps what was typed, and a frame the gateway would refuse is refused here
- * instead — `ready.limits` is the ceiling, not a suggestion.
+ * instead, because `ready.limits` is the ceiling rather than a suggestion.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SendTest {
@@ -99,7 +99,7 @@ class SendTest {
     }
 
     /**
-     * T42: the owner's prompt was in the thread *and* back in the composer, so the receipt said
+     * The owner's prompt was in the thread *and* back in the composer, so the receipt said
      * "refused" about a message the gateway had taken. The mirror image of that is this: a
      * socket that will not take the frame must not leave a bubble and an emptied field.
      */
@@ -147,7 +147,7 @@ class SendTest {
     }
 
     /**
-     * T42: the send the phone showed twice. A bubble for the text is proof the message landed,
+     * The send the phone showed twice. A bubble for the text is proof the message landed,
      * so the composer keeps the field empty even when the call that sent it came back as a
      * failure; and a bubble that was already there is not proof of anything new.
      */

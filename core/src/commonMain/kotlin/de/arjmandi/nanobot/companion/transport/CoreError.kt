@@ -1,7 +1,7 @@
 package de.arjmandi.nanobot.companion.transport
 
 /**
- * The eight failures the UI has to be able to explain (plan.md §6, C7.4). They are
+ * The eight failures the UI has to be able to explain. They are
  * deliberately few and named for the user's problem, not the library's: a socket that
  * refuses is "unreachable" whether Ktor calls it IOException or ConnectException.
  */

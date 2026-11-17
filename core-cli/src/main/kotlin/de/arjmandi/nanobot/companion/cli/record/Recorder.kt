@@ -16,12 +16,12 @@ import kotlinx.serialization.json.put
 
 /**
  * `core-cli record`: bootstrap, one scripted scenario at a time, then the reads the app
- * needs for the chats those scenarios created. The written set is the evidence `:core`'s
- * codec and reducer are tested against (plan.md C2.5, §3.3, and P3's scenarios).
+ * needs for the chats those scenarios created. The written set is the evidence `:core`'s codec
+ * and reducer are tested against.
  *
- * A scenario gets its own bootstrap, because a bootstrap token is single-use per
- * handshake (plan.md §0). Its frames land in its own directory and the manifest is the
- * index: which scenario, which envelope, which chat, which events.
+ * A scenario gets its own bootstrap, because a bootstrap token is single-use per handshake. Its
+ * frames land in its own directory and the manifest is the index: which scenario, which
+ * envelope, which chat, which events.
  */
 internal class Recorder(
     private val profile: GatewayProfile,
@@ -43,7 +43,7 @@ internal class Recorder(
     fun run(): File = runBlocking {
         val client = GatewayClient()
         try {
-            // One throwaway bootstrap for the api token the HTTP reads need (D15.6).
+            // One throwaway bootstrap for the api token the HTTP reads need.
             val apiToken = client.bootstrap(profile)["api_token"]?.jsonText()
                 ?: error("bootstrap has no api_token; /api/sessions needs it (docs/decisions.md D15.6)")
 
@@ -103,8 +103,8 @@ internal class Recorder(
 
     /**
      * The HTTP reads no scripted turn produces: the command palette and the installed CLI
-     * apps (C6.4). They are plain reads, so they are captured into a set instead of costing
-     * a model turn each.
+     * apps. They are plain reads, so they are captured into a set instead of costing a model
+     * turn each.
      */
     fun captureReads(): File = runBlocking {
         val client = GatewayClient()
@@ -128,8 +128,8 @@ internal class Recorder(
     }
 
     /**
-     * The read endpoints the app needs that no turn produces: the two palettes (C6.4), the
-     * settings overview and its usage totals (C7.1), and the automation jobs (C7.2).
+     * The read endpoints the app needs that no turn produces: the two palettes, the settings
+     * overview and its usage totals, and the automation jobs.
      */
     private suspend fun reads(client: GatewayClient, apiToken: String): Map<String, JsonObject> = linkedMapOf(
         "palette/commands.json" to client.commands(profile, apiToken),
@@ -236,7 +236,7 @@ internal class Recorder(
                 put("recorded_at", recordedAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z")
                 put("gateway_version", webui["version"]!!.jsonText())
                 put("gateway_commit", gatewayCommit)
-                // Not `profile.url` (T55): a fixture is committed, and the address a person
+                // Not `profile.url`: a fixture is committed, and the address a person
                 // records from is theirs. The host still reaches the manifests that mention it,
                 // where the redactor replaces it.
                 put("gateway_url", EXAMPLE_GATEWAY_URL)
@@ -253,7 +253,7 @@ internal class Recorder(
             })
             put("session", sessionOf(redactor, plain))
             put("scenarios", buildJsonArray { recorded.forEach { add(scenarioManifest(redactor, it)) } })
-            // D15.2: the plain turn's event order, at the root because it is the sequence
+            // The plain turn's event order, at the root because it is the sequence
             // the codec and reducer tests are written against.
             put("events", buildJsonArray { plain.frames.forEach { add(JsonPrimitive(it["event"]!!.jsonText())) } })
             put(

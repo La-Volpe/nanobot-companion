@@ -35,12 +35,12 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assume.assumeTrue
 
 /**
- * The two G1 items that need more than one client or a mutation (plan.md §6):
+ * The two live checks that need more than one client or a mutation:
  *
  * 1. two simultaneous clients on one gateway, interleaved sends, no cross-talk; and
- * 2. the `webui_request` / `webui_response` round trip, which only a live gateway can prove —
- *    every automation on the dev gateway is a protected `system_event`, so the answer is a
- *    403 and that is exactly what the client has to keep.
+ * 2. the `webui_request` / `webui_response` round trip, which only a live gateway can prove:
+ *    every automation on the dev gateway is a protected `system_event`, so the answer is a 403
+ *    and that is exactly what the client has to keep.
  */
 class LiveTwoClientsTest {
 
@@ -104,7 +104,7 @@ class LiveTwoClientsTest {
             val promptsB = listOf("beta-one", "beta-two")
 
             // Interleaved across clients, one turn at a time each: a second send while a turn is
-            // running is *steering* (C5.5), not a second turn, so the pairs take turns settling.
+            // running is *steering*, not a second turn, so the pairs take turns settling.
             for (round in promptsA.indices) {
                 assertIs<SendReceipt.Accepted>(a.send(OutboundDraft(text = promptsA[round])), "A:$round")
                 assertIs<SendReceipt.Accepted>(b.send(OutboundDraft(text = promptsB[round])), "B:$round")
@@ -138,7 +138,7 @@ class LiveTwoClientsTest {
     }
 
     /**
-     * `webui_request` → `webui_response` against the real gateway (C7.2). The dev gateway's
+     * `webui_request` → `webui_response` against the real gateway. The dev gateway's
      * automations are all `system_event`s, so the honest live assertion is the refusal: the
      * client sends the mutation on the socket and keeps the gateway's 403 and its words.
      */
@@ -166,7 +166,7 @@ class LiveTwoClientsTest {
 
     /**
      * The parity claim, end to end: what the socket delivered and what the WebUI's thread page
-     * holds reduce to the same thread (plan.md D9). `core-cli watch --verify` prints this as a
+     * holds reduce to the same thread. `core-cli watch --verify` prints this as a
      * diff; here it is an assertion about the same two feeds.
      */
     @Test

@@ -1,7 +1,7 @@
 package de.arjmandi.nanobot.companion.projection
 
 /**
- * The document a platform draws while an answer is still arriving (C4.8).
+ * The document a platform draws while an answer is still arriving.
  *
  * The parser is a whole-document parser, so the only question is which part of the *last* block
  * cannot be trusted yet. For prose there is nothing to do: a half-written `**bold` marker is a
@@ -12,7 +12,7 @@ package de.arjmandi.nanobot.companion.projection
  * header like any other row.
  *
  * This used to also split a trailing paragraph into stable/unstable halves. Nothing called that
- * pair — the facade has always taken the whole document — so the split was tested code that
+ * pair (the facade has always taken the whole document), so the split was tested code that
  * production never ran, and its test could not fail for a reason a reader would notice. It is
  * gone; `document` is what the apps draw and what the tests exercise.
  */
@@ -32,7 +32,7 @@ internal object MarkdownStream {
 
     /**
      * The final row of a streaming table is the one being typed. It is dropped when it has no
-     * text at all or when it is a row the reader can already read — a cell that is complete
+     * text at all, or when it is a row the reader can already read. A cell that is complete
      * enough to draw stays, so the table grows a row at a time rather than all at once.
      */
     private fun MarkdownBlock.Table.withoutTheRowStillArriving(): MarkdownBlock.Table {

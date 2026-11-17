@@ -24,7 +24,7 @@ import kotlinx.coroutines.test.runTest
 /**
  * The facade's half of the notice rule: the frames the gateway actually sends
  * (`turn_end`, `recovery_state`) become one `taskNotice` the platform posts, and the screen
- * the user is on suppresses it. This is the bug the owner reported — the frames arrived,
+ * the user is on suppresses it. This is the bug the owner reported: the frames arrived, and
  * nothing turned them into a banner.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)

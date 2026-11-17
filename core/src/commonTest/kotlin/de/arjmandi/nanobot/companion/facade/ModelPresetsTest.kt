@@ -6,8 +6,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The model sheet's list (T40). The owner's decisions: the built-in preset "shouldn't be visible
- * at all", and "Manage presets" is meaningless on a phone. The flag is real — this is
+ * The model sheet's list. The owner's decisions: the built-in preset "shouldn't be visible
+ * at all", and "Manage presets" is meaningless on a phone. The flag is real: this is
  * `/api/settings` from their gateway on 2026-11-15, cut to the fields that matter.
  */
 class ModelPresetsTest {
@@ -49,7 +49,7 @@ class ModelPresetsTest {
     }
 
     /**
-     * T39: the tick follows the chat, not the gateway's configuration. The owner's chat ran
+     * The tick follows the chat, not the gateway's configuration. The owner's chat ran
      * `default` while the sheet kept ticking `primary`, so a tap looked like nothing happening.
      */
     @Test

@@ -11,15 +11,15 @@ import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
 /**
- * The Android half of the trust decision (plan.md C3.2, D21, the twin of `IosTls.kt`): the
+ * The Android half of the trust decision (the twin of `IosTls.kt`): the
  * platform validates, and the switch only changes what happens when that validation rejects the
  * *anchor*, which is what a self-signed home gateway looks like.
  *
  * The lenient manager is installed only when the user turned the switch on for this gateway, and
  * this client is built for one gateway address (`openCompanion`), so it cannot widen trust for a
  * second host. The hostname check stays OkHttp's: the switch is about the certificate, not the
- * name on it. The handshake itself is not covered by a test here — the same gap iOS has until a
- * local self-signed server exists (P7, P1).
+ * name on it. The handshake itself is not covered by a test here, the same gap iOS has until a
+ * local self-signed server exists.
  */
 internal fun androidHttpClient(policy: TlsPolicy): HttpClient = HttpClient(OkHttp) {
     engine {
@@ -46,7 +46,7 @@ internal fun platformTrustManager(): X509TrustManager {
 /**
  * The platform's decision, then the user's: a chain the OS accepts is accepted unchanged, and one
  * the OS rejects is accepted only because the switch was turned on for this address. An empty or
- * unparseable chain is never accepted, switch or not — there is nothing the user could have meant.
+ * unparseable chain is never accepted, switch or not: there is nothing the user could have meant.
  */
 internal class GatewayTrustManager(private val platform: X509TrustManager) : X509TrustManager {
 

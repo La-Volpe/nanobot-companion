@@ -2,15 +2,15 @@ package de.arjmandi.nanobot.companion.transport
 
 import de.arjmandi.nanobot.companion.wire.AttachmentLimits
 
-/** One picked file, before it is uploaded (C6.6). */
+/** One picked file, before it is uploaded. */
 internal data class CandidateFile(val name: String, val mimeType: String, val bytes: Long)
 
 /**
- * The reasons a pick is refused, typed so the platform holds the copy (plan.md §10).
- * Each maps to exactly one sentence in the design's attachment sheet.
+ * The reasons a pick is refused, typed so the platform holds the copy. Each maps to
+ * exactly one sentence in the design's attachment sheet.
  */
 public sealed interface AttachmentRejection {
-    /** The design's own copy lives in the platform's strings, keyed by this (plan.md §10). */
+    /** The design's own copy lives in the platform's strings, keyed by this. */
     public val copyKey: String
 
     public data object EmptyFile : AttachmentRejection {
@@ -63,7 +63,7 @@ internal val DOCUMENT_MIME_ALLOWED: Set<String> = setOf(
 internal val UPLOAD_MIME_ALLOWED: Set<String> = IMAGE_MIME_ALLOWED + VIDEO_MIME_ALLOWED + DOCUMENT_MIME_ALLOWED
 
 /**
- * Local validation before upload (plan.md C3.7). Numbers and the MIME whitelist are the
+ * Local validation before upload. Numbers and the MIME whitelist are the
  * gateway's own: `channels/websocket/attachment_policy.py` (max_count 4, 6 MiB each,
  * 24 MiB total, one video ≤ 20 MiB) and `ingress_policy.py` for the batch budget.
  */

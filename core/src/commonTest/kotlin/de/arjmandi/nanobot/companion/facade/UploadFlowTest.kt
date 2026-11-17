@@ -35,9 +35,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Upload then send (plan.md C6.6): the bytes go to `POST {ready.upload.path}` and the message
+ * Upload then send: the bytes go to `POST {ready.upload.path}` and the message
  * carries the reference, never the bytes again. A refused or interrupted upload must leave the
- * draft — and its attachment — where they were.
+ * draft, and its attachment, where they were.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class UploadFlowTest {
@@ -119,8 +119,8 @@ class UploadFlowTest {
      * Both apps hand the send the references their own cards hold, and `upload()` has already
      * staged the same reference on the session, so the naive envelope names one file twice. The
      * dev gateway answers that with `detail: attachment_rejected, reason: Duplicate attachment
-     * reference` and no turn at all — measured against the live gateway, not guessed — so the
-     * frame carries each reference once.
+     * reference`, measured against the live gateway rather than guessed, so the frame carries
+     * each reference once.
      */
     @Test
     fun aReferenceTheComposerAlreadyHoldsIsNotSentTwice() = runTest {

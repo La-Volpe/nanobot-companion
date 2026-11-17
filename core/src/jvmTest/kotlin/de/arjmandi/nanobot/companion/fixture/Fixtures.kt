@@ -7,7 +7,7 @@ import kotlinx.serialization.json.JsonObject
 
 /**
  * Fixture files are evidence, so they live as real files under
- * `commonTest/resources/fixtures` where review can read them (plan.md §3.3).
+ * `commonTest/resources/fixtures` where review can read them.
  * The JVM test task runs in the module directory, but not every Gradle task does,
  * so resolve the root by walking up instead of trusting `user.dir`.
  */

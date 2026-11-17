@@ -5,13 +5,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The markdown parser is `:core`'s job because both platforms must agree on what a reply
- * means (plan.md D6). Nothing here renders: it turns the gateway's text into a tree, and
- * these tests are the specification of which markdown is in v1 (D7).
+ * The markdown parser is `:core`'s job because both platforms must agree on what a reply means.
+ * Nothing here renders: it turns the gateway's text into a tree, and these tests are the
+ * specification of which markdown is in v1.
  *
- * Not in the subset, by decision: math and mermaid (D7), setext headings, reference links,
- * HTML passthrough, footnotes. A construct outside the subset stays literal text, which is
- * the failure a reader can still read.
+ * Not in the subset, by decision: math and mermaid, setext headings, reference links, HTML
+ * passthrough, footnotes. A construct outside the subset stays literal text, which is the
+ * failure a reader can still read.
  */
 class MarkdownTest {
 

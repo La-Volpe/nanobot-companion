@@ -40,11 +40,11 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Automations (plan.md C7.2). The list is an HTTP read, but every action is a socket
- * mutation — `{type:"webui_request", request_id, action, payload}` answered by a
- * `webui_response` frame (`inbound_commands.py:930-943, 1219`) — because the gateway refuses
- * WebUI writes over plain HTTP with a 405. And there is no create: an automation is created
- * by asking the agent, which the design states as a limit rather than hiding.
+ * Automations. The list is an HTTP read, but every action is a socket mutation,
+ * `{type:"webui_request", request_id, action, payload}` answered by a `webui_response` frame
+ * (`inbound_commands.py:930-943, 1219`), because the gateway refuses WebUI writes over plain
+ * HTTP with a 405. And there is no create: an automation is created by asking the agent, which
+ * the design states as a limit rather than hiding.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class AutomationsTest {
@@ -132,10 +132,10 @@ class AutomationsTest {
     }
 
     /**
-     * T41: the owner's phone said "No automations yet" while the gateway had four, and the page
+     * The owner's phone said "No automations yet" while the gateway had four, and the page
      * "disappears sometimes". Measured against their gateway on 2026-11-15: the global
      * `GET /api/webui/automations` returns the four, and every per-chat
-     * `/api/sessions/{key}/automations` returns `{jobs: []}` — so the endpoint is right, and the
+     * `/api/sessions/{key}/automations` returns `{jobs: []}`, so the endpoint is right and the
      * page was blanked by a reconnect (`disconnect` empties this state) that nothing re-read.
      */
     @Test

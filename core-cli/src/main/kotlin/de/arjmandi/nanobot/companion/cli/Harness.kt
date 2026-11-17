@@ -26,7 +26,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * The harness's own composition root (plan.md C8.3). `:core`'s production deps are the two
+ * The harness's own composition root. `:core`'s production deps are the two
  * apps' (`productionDeps` is per platform); the CLI needs no keystore and no app container,
  * so it passes the smallest true implementations and keeps its files under `.dev/cli-cache`.
  */
@@ -60,7 +60,7 @@ internal class Harness private constructor(
     }
 
     /**
-     * The bootstrap `api_token` the HTTP reads need (D15.6). It is fetched here rather than
+     * The bootstrap `api_token` the HTTP reads need. It is fetched here rather than
      * read out of the facade: the token belongs to a bootstrap, and a second bootstrap only
      * costs a token nobody handshakes with.
      */
@@ -108,7 +108,7 @@ internal class Harness private constructor(
 /** A harness failure the command prints and turns into exit code 1. */
 internal class HarnessError(message: String) : Exception(message)
 
-/** Nothing here persists a credential, so nothing here needs a keystore (D5 is about the apps). */
+/** Nothing here persists a credential, so nothing here needs a keystore; that rule is about the apps. */
 private class VolatileSecureStore : SecureStore {
     private val values = mutableMapOf<String, String>()
     override fun put(alias: String, value: String) {

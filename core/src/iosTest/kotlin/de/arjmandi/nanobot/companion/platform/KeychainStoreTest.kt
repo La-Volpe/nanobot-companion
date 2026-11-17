@@ -5,9 +5,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /**
- * The iOS secret store is the Keychain (`Security.framework`, plan.md D5). The store's
- * own contract — replace instead of duplicate, null for a missing alias, text in and
- * text out — is driven here over a recording backend, because a simulator test binary
+ * The iOS secret store is the Keychain (`Security.framework`). The store's
+ * own contract (replace instead of duplicate, null for a missing alias, text in and text out)
+ * is driven here over a recording backend, because a simulator test binary
  * is not an app bundle and Security.framework answers `errSecNotAvailable` to it.
  * `KeychainQueryTest` proves the marshalling that backend would use.
  */

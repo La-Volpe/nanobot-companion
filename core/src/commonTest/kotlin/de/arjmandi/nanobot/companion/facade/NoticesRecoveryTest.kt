@@ -29,10 +29,10 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * The two notices a user acts on (plan.md C7.3). Recovery is a socket mutation —
- * `{chat_id, recovery_id}` on `recovery.continue` / `recovery.dismiss` — because the gateway
- * refuses those routes over plain HTTP (`ws_http.py:900`). The sandbox warning is dismissed
- * locally, because it is this client's own observation of a failed `exec`.
+ * The two notices a user acts on. Recovery is a socket mutation, `{chat_id, recovery_id}` on
+ * `recovery.continue` / `recovery.dismiss`, because the gateway refuses those routes over plain
+ * HTTP (`ws_http.py:900`). The sandbox warning is dismissed locally, because it is this client's
+ * own observation of a failed `exec`.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class NoticesRecoveryTest {

@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /**
- * The day count the usage strip subtracts on (T44). It is Howard Hinnant's pair of algorithms, the
+ * The day count the usage strip subtracts on. It is Howard Hinnant's pair of algorithms, the
  * same one the session rows' parser already used; what matters here is that the two directions are
  * inverses across a month, a year and a leap day, because "30 days back from today" is the whole
  * arithmetic the chart does.

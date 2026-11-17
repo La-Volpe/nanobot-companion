@@ -11,11 +11,11 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * A plain streaming turn was all the set carried, which left tool rows (C4.4), notices
- * (C7.3) and the error taxonomy (C7.4) written from the gateway source rather than from
- * what it actually sends. These assertions are the reason the recorder grew scenarios
- * (P3): each one names the frames a later task needs, so a scenario that stops producing
- * them fails the build instead of silently hollowing out the fixture set.
+ * A plain streaming turn was all the set carried, which left tool rows, notices and the error
+ * taxonomy written from the gateway source rather than from what it actually sends. These
+ * assertions are the reason the recorder grew scenarios: each one names the frames the client
+ * needs, so a scenario that stops producing them fails the build instead of silently hollowing
+ * out the fixture set.
  */
 class ScenarioFixturesTest {
 
@@ -27,7 +27,7 @@ class ScenarioFixturesTest {
         val toolEvents = frames.flatMap { frame -> frame.array("tool_events").map { it.obj() } }
         assertTrue(toolEvents.isNotEmpty(), "the tool scenario produced no tool_events; got ${frames.map { it.event() }}")
 
-        // C4.4 turns start into a running row and end into a settled one, so both phases
+        // A tool turn starts into a running row and ends into a settled one, so both phases
         // have to be in evidence.
         val phases = toolEvents.mapNotNull { it.str("phase") }
         assertTrue("start" in phases, "no running tool row in the recording; phases were $phases")
@@ -53,7 +53,7 @@ class ScenarioFixturesTest {
         assertTrue(!end.str("failure_kind").isNullOrBlank(), "the retry copy is chosen by failure_kind")
         assertTrue(!end.str("failure_message").isNullOrBlank(), "the gateway ships the message a user reads")
 
-        // D15: a model failure arrives with the retry that gave up on it.
+        // A model failure arrives with the retry that gave up on it.
         assertTrue(
             frames.any { it.event() == "retry_status" && !it.str("error_kind").isNullOrBlank() },
             "no retry_status with an error_kind; got ${frames.map { it.event() }}",
@@ -69,7 +69,7 @@ class ScenarioFixturesTest {
         assertTrue(error != null, "the error scenario recorded no error frame; got ${frames.map { it.event() }}")
         assertTrue(!error!!.str("detail").isNullOrBlank(), "error.detail is what the taxonomy is keyed on (C7.4)")
         // The recording, not the docs, says this: a rejection is reported with `detail`
-        // alone. C7.4 must not require a chat id the gateway never sends.
+        // alone. The error taxonomy must not require a chat id the gateway never sends.
         assertNull(error.str("chat_id"), "a rejection frame names no chat; the taxonomy keys on detail")
     }
 
@@ -87,8 +87,8 @@ class ScenarioFixturesTest {
             )
         }
         // The manifest is the index review reads; every frame directory has to be in it. A
-        // read capture (`palette/`, C6.4) holds documents, not frames, so it is named under
-        // `manifest.reads` instead — and named there, not merely exempted.
+        // read capture (`palette/`) holds documents, not frames, so it is named under
+        // `manifest.reads` instead, and named there rather than merely exempted.
         val reads = (Fixtures.manifest(set)["reads"] as? JsonObject)
             ?.get("endpoints")
             ?.let { it as? JsonArray }

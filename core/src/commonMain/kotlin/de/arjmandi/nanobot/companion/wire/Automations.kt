@@ -23,8 +23,8 @@ public data class AutomationRunState(
 )
 
 /**
- * One automation (`/api/webui/automations`). `protected` marks a system job — heartbeat,
- * dream — which the gateway refuses to enable, run or delete with a 403, so the row shows
+ * One automation (`/api/webui/automations`). `protected` marks a system job (heartbeat,
+ * dream), which the gateway refuses to enable, run or delete with a 403, so the row shows
  * no switch for it rather than a switch that fails.
  */
 public data class AutomationJob(
@@ -47,7 +47,7 @@ public data class AutomationsState(
     /**
      * The last read was refused or could not be made. "The gateway said no" and "the gateway has
      * nothing scheduled" are two different pages, and a client that only sees an empty list draws
-     * the wrong one (T41: the phone said "No automations yet" over four jobs).
+     * the wrong one: the phone said "No automations yet" over four jobs.
      */
     public val failed: Boolean = false,
 ) {
@@ -58,7 +58,7 @@ public object AutomationsParser {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    /** `{jobs: [...]}` — the same document a successful action answers with, so one parser serves both. */
+    /** `{jobs: [...]}`: the same document a successful action answers with, so one parser serves both. */
     public fun parse(text: String): List<AutomationJob> = parseElement(
         runCatching { json.parseToJsonElement(text) as? JsonObject }.getOrNull(),
     )

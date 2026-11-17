@@ -16,13 +16,13 @@ public data class SessionMention(
     public val title: String,
 )
 
-/** Everything the two palettes are drawn from, refreshed on demand (C6.4, C7.1). */
+/** Everything the two palettes are drawn from, refreshed on demand. */
 public data class PaletteCatalog(
     public val commands: List<SlashCommand> = emptyList(),
     public val sessions: List<SessionMention> = emptyList(),
     public val apps: List<CliAppMention> = emptyList(),
 ) {
-    /** The commands and apps are their own read; the sessions ride the drawer's payload (C5.1). */
+    /** The commands and apps are their own read; the sessions ride the drawer's payload. */
     public fun withReads(commands: List<SlashCommand>, apps: List<CliAppMention>): PaletteCatalog =
         copy(commands = commands, apps = apps)
 
@@ -45,7 +45,7 @@ public data class PaletteCatalog(
 
 public enum class PaletteMode { Slash, Mention }
 
-/** Group titles are copy, so the platform holds the sentence (plan.md D2, §10). */
+/** Group titles are copy, so the platform holds the sentence. */
 public enum class PaletteGroupKind(public val copyKey: String) {
     Commands("palette.commands"),
     Sessions("palette.sessions"),
@@ -92,7 +92,7 @@ public data class PaletteState(
 }
 
 /**
- * One query model shared by both palettes (plan.md C6.4). Pure: the composer's text and caret
+ * One query model shared by both palettes. Pure: the composer's text and caret
  * in, the open sheet out; `null` means no palette is open.
  *
  * The rules are the WebUI's, read from its source rather than chosen here: the slash palette
@@ -188,7 +188,7 @@ public object PaletteQuery {
         command.argHint,
     ).joinToString(" ").lowercase().contains(query)
 
-    /** `includes` over the row's words, lowercased on both sides — the WebUI's filter. */
+    /** `includes` over the row's words, lowercased on both sides: the WebUI's filter. */
     private fun mentionMatches(query: String, vararg words: String?): Boolean =
         words.filterNotNull().joinToString(" ").lowercase().contains(query)
 }

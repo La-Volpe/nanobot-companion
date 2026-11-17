@@ -9,9 +9,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * `GET /webui/bootstrap` is the only handshake the client has (plan.md C2.4), and the
- * recorded payload is the reference: D15.1 says the protocol contract lives at
- * `terminal.webui` and `runtime_capabilities` is a different thing entirely.
+ * `GET /webui/bootstrap` is the only handshake the client has, and the recorded payload is the
+ * reference: the protocol contract lives at `terminal.webui` and `runtime_capabilities` is a
+ * different thing entirely.
  */
 class BootstrapParserTest {
 
