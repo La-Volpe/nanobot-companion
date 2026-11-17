@@ -63,7 +63,7 @@ internal sealed interface DiagramRender {
  *
  * Which half is on screen is the core's rule (`Diagrams.view`); this draws it. The page reports a
  * height instead of the app guessing one, and a page that fails or never answers leaves the source
- * on screen with a sentence — never an empty box, never a spinner that keeps spinning.
+ * on screen with a sentence, never an empty box and never a spinner that keeps spinning.
  */
 @Composable
 internal fun DiagramBlock(
@@ -173,7 +173,8 @@ private fun ModeTab(label: String, selected: Boolean, tag: String, onTap: () -> 
 
 /**
  * The app's light/dark tokens as the renderer's variables, so a diagram is drawn in the palette the
- * reader is already looking at — the WebUI's `readPalette`, with the Material scheme in its place.
+ * reader is already looking at. It is the WebUI's `readPalette`, with the Material scheme in its
+ * place.
  */
 @Composable
 private fun diagramPalette(): Map<String, String> {
@@ -194,7 +195,7 @@ private fun diagramPalette(): Map<String, String> {
 
 /**
  * The page itself: a `WebView` over one bundled document. Every route out of it is shut at the
- * WebView, not in the page alone — `blockNetworkLoads` stops network fetches, the settings refuse
+ * WebView, not in the page alone: `blockNetworkLoads` stops network fetches, the settings refuse
  * secondary windows and content urls, and the client refuses to navigate or load anything that is
  * not the document and the renderer beside it.
  */
@@ -265,7 +266,7 @@ private fun configured(context: Context, report: (DiagramRender) -> Unit): WebVi
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
             !DiagramPages.belongs(context, request.url)
 
-        // A subresource that is not ours — a stylesheet, a font, a picture, a beacon — is not
+        // A subresource that is not ours (a stylesheet, a font, a picture, a beacon) is not
         // fetched: it is answered here with nothing.
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
             if (DiagramPages.belongs(context, request.url)) {

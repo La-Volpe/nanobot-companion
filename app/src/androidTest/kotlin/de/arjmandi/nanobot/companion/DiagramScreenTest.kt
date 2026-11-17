@@ -27,7 +27,7 @@ import org.junit.runner.RunWith
 /**
  * A mermaid fence on the Android half (owner's decision, 2026-11-15): the picture the bundled
  * renderer draws, the fence's source, and the toggle between them. The renderer, the page and the
- * height measurement are the real ones — a WebView cannot be faked into proving it measured.
+ * height measurement are the real ones, because a WebView cannot be faked into proving it measured.
  *
  * The screenshots are the evidence the manager needs for a diagram that composes, so the three
  * states write themselves to the app's own files directory (`adb pull` takes them from there).
@@ -108,7 +108,7 @@ class DiagramScreenTest {
         screen(streaming = true)
 
         // Source is what the core decides while the turn arrives, and the picture must not be
-        // built at all — a half-written fence is not a diagram.
+        // built at all, because a half-written fence is not a diagram.
         assertTrue(compose.onAllNodesWithTag("diagram.source").fetchSemanticsNodes().isNotEmpty())
         compose.onNodeWithText("graph TD").assertExists()
         assertTrue(compose.onAllNodesWithTag("diagram.preview").fetchSemanticsNodes().isEmpty())

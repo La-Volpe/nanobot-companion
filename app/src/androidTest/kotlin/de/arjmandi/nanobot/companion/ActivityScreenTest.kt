@@ -24,7 +24,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * A4's rendering (the Compose half): the headline sentence is built from the design's clauses, a
+ * The activity cluster on screen: the headline sentence is built from the design's clauses, a
  * failure shows the gateway's reason, a tap opens what the fold hid, and a diff keeps its markers.
  * The fold rules themselves are `ActivityViewModelTest`'s; this is what only a composition proves.
  */
@@ -69,8 +69,8 @@ class ActivityScreenTest {
         screen(cluster())
 
         compose.onNodeWithText("Thought for 8s · 3 steps · 1 file changed").assertIsDisplayed()
-        // The head says the cluster is done and the row says its tool is done — two words, and
-        // neither of them is the tool's own output, which now waits behind the row (T9).
+        // The head says the cluster is done and the row says its tool is done: two words, and
+        // neither of them is the tool's own output, which now waits behind the row.
         compose.onAllNodesWithText("done").assertCountEquals(2)
         compose.onNodeWithText("exit 0").assertDoesNotExist()
     }

@@ -11,8 +11,8 @@ import kotlin.test.assertEquals
  * reason a failed one is not onboarding either.
  *
  * The gateway is a lambda here on purpose: what this model decides is the screen, and the attempt's
- * own bookkeeping is `ConnectViewModelTest`'s. The pair — a real failed reopen landing on the shell
- * with its banner — is `LaunchScreenTest`'s, on a device.
+ * own bookkeeping is `ConnectViewModelTest`'s. The pair, a real failed reopen landing on the shell
+ * with its banner, is `LaunchScreenTest`'s, on a device.
  */
 class LaunchModelTest {
 

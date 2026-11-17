@@ -3,11 +3,11 @@ import SwiftUI
 import UIKit
 import core
 
-/// The adapter layer (plan.md §7): the only files in the app allowed to import the framework.
+/// The adapter layer: the only files in the app allowed to import the framework.
 /// `CoreHolder` owns the `Companion` and translates its typed state flows into Swift state;
 /// `CoreGateway` is the connect command; `KeychainSecrets` is the key store.
 
-/// The Keychain, through the core's own `SecureStore` (plan.md D5): one implementation of
+/// The Keychain, through the core's own `SecureStore`: one implementation of
 /// "secret at rest" for both platforms, not a second one written in Swift.
 final class KeychainSecrets: SecretStoring {
     func read() -> String? { CompanionBridgeKt.readGatewaySecret() }
@@ -28,18 +28,18 @@ final class CoreHolder: ObservableObject {
         }
     }
 
-    /// The connection as the states screen draws it (I8), and whether it has ever been open —
+    /// The connection as the states screen draws it, and whether it has ever been open:
     /// a socket that was up and dropped is "reconnecting", not "disconnected".
     @Published private(set) var connectionStatus: ConnectionStatus = .idle
     @Published private(set) var everConnected = false
 
-    /// The drawer's rows (I2). A plain Swift value, not a framework type: the screens read this.
+    /// The drawer's rows. A plain Swift value, not a framework type: the screens read this.
     @Published private(set) var sessions: [SessionSummary] = []
     @Published private(set) var sessionsLoaded = false
     /// The last `GET /api/sessions` did not answer; the drawer says so instead of "none".
     @Published private(set) var sessionsFailed = false
 
-    /// The `/model` presets the sheet lists (I5), from the settings read the gateway answers.
+    /// The `/model` presets the sheet lists, from the settings read the gateway answers.
     @Published private(set) var presets: [ChatModelPreset] = []
 
     /// What the two palettes are drawn from; the core maps it, this only keeps the last read.
@@ -61,11 +61,11 @@ final class CoreHolder: ObservableObject {
     }
 
     /// The model sheet's list for a scripted launch, in the gateway's own shape: a tap can then
-    /// prove which rows the sheet offers, which is the one thing a seeded snapshot cannot (T40).
+    /// prove which rows the sheet offers, which is the one thing a seeded snapshot cannot.
     private var scriptedPresets: [ModelPreset] = []
     /// The owner's own gateway (`/api/settings`, 2026-11-15), built-in preset and all: the sheet
     /// hides that one because the core says so (`ModelPresets`), and this is what proves it on a
-    /// screen rather than in a unit test (T40).
+    /// screen rather than in a unit test.
     func seedPresetsForUITest() {
         scriptedPresets = [
             ModelPreset(name: "default", model: "anthropic/claude-opus-4-5", provider: "auto", contextWindowTokens: 200_000, active: false, isDefault: true),
@@ -92,7 +92,7 @@ final class CoreHolder: ObservableObject {
 
     var isReachable: Bool { companion != nil }
 
-    /// The model sheet's list, ticked for the preset this chat is on (T39): the gateway's
+    /// The model sheet's list, ticked for the preset this chat is on: the gateway's
     /// `active` flag describes its configuration, and a chat can be on a different preset.
     func presets(for chosen: String?) -> [ChatModelPreset] {
         #if DEBUG
@@ -128,7 +128,8 @@ final class CoreHolder: ObservableObject {
         self.companion = companion
         // A stack opened while the shell is already in front of the user has to hear that: the
         // core's notice rule starts from "away", and a shell that only reported the scene phase
-        // when it *changed* would never have told it (T32 — the banner for the chat on screen).
+        // when it *changed* would never have told it, which is how a banner for the chat on screen
+        // got posted.
         companion.core.setForeground(foreground: foreground)
         observe(ObservableState<ConnectionState>(flow: companion.core.connection), into: \.connection)
         observe(ObservableState<SettingsState>(flow: companion.core.settings), into: \.settings)
@@ -159,7 +160,7 @@ final class CoreHolder: ObservableObject {
 
     /// A second handshake on the stack that is already open, which is what "Try again" and a
     /// phone coming back to the foreground both need: the core bootstraps a fresh single-use
-    /// token on every `connect()`, so this is the reconnect path and not a resume (C3.4).
+    /// token on every `connect()`, so this is the reconnect path and not a resume.
     /// True when the gateway greeted the new socket.
     func reconnect() async -> Bool {
         guard companion != nil else { return false }
@@ -208,7 +209,7 @@ final class CoreHolder: ObservableObject {
         }
         endBackgroundWindow()
         // A banner that went missing while the app was away is the one moment the dialog is
-        // justified: the user has just come back to what the app could not tell them (D8).
+        // justified: the user has just come back to what the app could not tell them.
         Task { await notices.askIfJustified() }
     }
 
@@ -252,7 +253,7 @@ final class CoreHolder: ObservableObject {
 
     #if DEBUG
     /// The drawer's rows for a scripted launch, so a tap can prove the search states without a
-    /// gateway (the debug menu G2 asks for grows from here).
+    /// gateway, and the debug menu grows from here.
     func seedSessionsForUITest(_ rows: [SessionSummary]) {
         sessions = rows
         sessionsLoaded = true
@@ -260,7 +261,7 @@ final class CoreHolder: ObservableObject {
     }
     #endif
 
-    /// A chat handle for the thread (I3). Nil before a gateway is open.
+    /// A chat handle for the thread. Nil before a gateway is open.
     func chat(id: String?) -> ChatHandle? {
         companion?.core.chat(chatId: id)
     }
@@ -269,11 +270,11 @@ final class CoreHolder: ObservableObject {
         try await companion?.core.refreshSessions()
     }
 
-    /// The automations page's read (I2b): the same socket, one HTTP GET through the core.
+    /// The automations page's read: the same socket, one HTTP GET through the core.
     ///
-    /// The core answers with the failure it got, not by throwing — a stale `api_token` is a 401,
-    /// not an exception — and this used to drop that answer on the floor, so a refused read
-    /// reached the page as an empty list: "No automations yet" over four jobs (T41).
+    /// The core answers with the failure it got rather than throwing (a stale `api_token` is a
+    /// 401, not an exception), and this used to drop that answer on the floor, so a refused read
+    /// reached the page as an empty list: "No automations yet" over four jobs.
     func refreshAutomations() async -> Bool {
         do {
             return try await companion?.core.refreshAutomations() == nil
@@ -288,7 +289,7 @@ final class CoreHolder: ObservableObject {
         return (flow.value as? AutomationsState)?.jobs ?? []
     }
 
-    /// Whether the last read was refused: the page says "could not read" instead of "none" (T41).
+    /// Whether the last read was refused: the page says "could not read" instead of "none".
     var automationsReadFailed: Bool {
         (companion?.core.automations.value as? AutomationsState)?.failed ?? false
     }
@@ -318,7 +319,7 @@ final class CoreHolder: ObservableObject {
         )
     }
 
-    /// The usage card's numbers (T44). The core owns the window, the gap-filling and the compact
+    /// The usage card's numbers. The core owns the window, the gap-filling and the compact
     /// copy; the one thing only the phone knows is what day it is where the reader is holding it.
     private func usage(from usage: UsageTotals?) -> SettingsViewModel.Usage? {
         guard let usage else { return nil }
@@ -344,7 +345,7 @@ final class CoreHolder: ObservableObject {
         return formatter.string(from: now)
     }
 
-    /// The settings read the model sheet and Settings → Overview both draw from (C6.2, C7.1).
+    /// The settings read the model sheet and Settings → Overview both draw from.
     /// False when it did not answer: both screens say so rather than drawing an empty one.
     @discardableResult
     func refreshSettings() async -> Bool {
@@ -359,8 +360,8 @@ final class CoreHolder: ObservableObject {
         }
     }
 
-    /// Commands and CLI apps for the palette sheets; the core reads them when a sheet opens
-    /// (C6.4), so this is a read per open, not a read per keystroke.
+    /// Commands and CLI apps for the palette sheets; the core reads them when a sheet opens,
+    /// so this is a read per open, not a read per keystroke.
     func refreshPaletteReads() async {
         _ = try? await companion?.core.refreshPalettes()
     }
@@ -410,7 +411,7 @@ struct SessionSummary: Identifiable, Equatable {
     }
 }
 
-/// One chat, as the app drives it (I3). Reads the handle's thread flow and maps it to
+/// One chat, as the app drives it. Reads the handle's thread flow and maps it to
 /// `ChatThreadState`; every command forwards to the facade, and nothing branches here.
 @MainActor
 final class CoreChat: ChatDriving {
@@ -486,8 +487,8 @@ final class CoreChat: ChatDriving {
     }
 
     /// The one place an outbound draft is built, so a caller that has uploads says so and a
-    /// caller that has none says that instead (P13: the composer's cards used to be drawn and
-    /// then left out of this draft).
+    /// caller that has none says that instead. The composer's cards used to be drawn and then
+    /// left out of this draft.
     private func sendDraft(text: String, media: [SentAttachment]) async -> String? {
         let draft = OutboundDraft(
             text: text,
@@ -551,7 +552,7 @@ extension MediaRow {
 }
 
 extension MediaRowKind {
-    /// The Kotlin enum arrives as a class, not a Swift `case`, so it is read by its own name —
+    /// The Kotlin enum arrives as a class, not a Swift `case`, so it is read by its own name,
     /// the same way `SandboxIssue` is. A kind this build has never heard of is a file card.
     init(kind: MediaKind) {
         switch kind.name {
@@ -638,7 +639,7 @@ extension ConnectionStatus {
 }
 
 extension ConnectionFailureKind {
-    /// The taxonomy, named once more in Swift (D38's lowercased case names).
+    /// The taxonomy, named once more in Swift, by its lowercased case names.
     init(failure: ConnectionFailure) {
         switch failure {
         case ConnectionFailure.authfailed: self = .authFailed
@@ -656,7 +657,7 @@ extension ConnectionFailureKind {
 /// `ActivityItem` is a sealed interface, so the four cases are four casts and nothing else:
 /// an item this build does not know is dropped rather than drawn as a blank row.
 extension ChatThreadState {
-    /// A thread built in Swift — the DEBUG scripted chat — still gets the core's markdown, so a
+    /// A thread built in Swift (the DEBUG scripted chat) still gets the core's markdown, so a
     /// flow test draws the same blocks a live turn does instead of a wall of raw text.
     func withMarkdown() -> ChatThreadState {
         var copy = self
@@ -706,7 +707,7 @@ extension ChatActivityItem {
 }
 
 private extension ToolRunStatus {
-    /// The core's enum cases arrive as class instances with lowercased Swift names (D38).
+    /// The core's enum cases arrive as class instances with lowercased Swift names.
     init(_ status: ToolStatus) {
         if status == ToolStatus.failed {
             self = .failed
@@ -759,7 +760,7 @@ final class CoreGateway: GatewayConnecting {
     }
 
     /// The taxonomy is the core's, and this is the one place its eight entries are named in
-    /// Swift (D38: the Swift names are the lowercased Kotlin case names).
+    /// Swift, where each Swift name is the lowercased Kotlin case name.
     private static func kind(of failure: ConnectionFailure) -> ConnectionFailureKind {
         switch failure {
         case ConnectionFailure.authfailed: .authFailed
@@ -780,8 +781,8 @@ final class CoreGateway: GatewayConnecting {
 extension CoreChat: ComposerDriving {
 
     /// A send landed if the call said so, or if the thread now holds its bubble: the receipt can
-    /// fail where the message did not, and the phone showed exactly that — the prompt under its
-    /// own bubble and back in the composer at once (T42).
+    /// fail where the message did not, and the phone showed exactly that: the prompt under its
+    /// own bubble and back in the composer at once.
     func sendPrompt(_ text: String, media: [SentAttachment]) async -> Bool {
         let mark = handle.threadMark()
         if await sendDraft(text: text, media: media) != nil { return true }
@@ -815,7 +816,7 @@ extension CoreChat: ComposerDriving {
         try? await handle.setWorkspaceScope(mode: access == .full ? WorkspaceScope.full : WorkspaceScope.default_)
     }
 
-    /// The two palettes are the core's rules applied to the reads (`PaletteQuery`, C6.4). The
+    /// The two palettes are the core's rules applied to the reads (`PaletteQuery`). The
     /// read is refreshed when a sheet opens, which is what the WebUI does too.
     func loadPalette(text: String, cursor: Int) async -> PaletteSheet? {
         await holder.refreshPaletteReads()
@@ -830,7 +831,7 @@ extension CoreChat: ComposerDriving {
 
 extension ComposerSnapshot {
     /// `core.ComposerState` → what the row draws. The ring's two numbers come from the thread's
-    /// own usage (`turn_end.usage.context_tokens` over `context_window_tokens`, D15.4).
+    /// own usage: `turn_end.usage.context_tokens` over `context_window_tokens`.
     init(state: ComposerState) {
         self.init(
             modelName: state.modelName,
@@ -843,7 +844,7 @@ extension ComposerSnapshot {
         )
     }
 
-    /// Overview names the model in use, and the composer is the only thing that knows it (T45): the
+    /// Overview names the model in use, and the composer is the only thing that knows it: the
     /// same value the chip prints and the ring divides by. The core words the two lines
     /// (`ModelInUse`), so neither phone invents its own reading of a window.
     var currentModel: SettingsViewModel.CurrentModel {
@@ -936,7 +937,7 @@ extension CoreChat: StateDriving {
 extension CoreChat: AttachmentDriving {
 
     /// One picked file: the core validates it against `ready.limits` before a byte leaves the
-    /// device and returns the gateway's reference or a typed refusal (C6.6).
+    /// device and returns the gateway's reference or a typed refusal.
     func upload(name: String, mimeType: String, data: Data) async -> AttachmentOutcome {
         let file = PickedFile(name: name, mimeType: mimeType, bytes: data.kotlinByteArray)
         let result = try? await handle.upload(file: file)
@@ -966,7 +967,7 @@ enum UploadWhitelist {
 extension CoreChat: VoiceDriving {
 
     /// The recording goes out as a data URL and comes back as text on the same gateway turn
-    /// (`transcription_ws.py`, C6.5). The core owns both bounds.
+    /// (`transcription_ws.py`). The core owns both bounds.
     func transcribe(pcm: Data, durationMs: Int) async -> VoiceOutcome {
         let result = try? await handle.transcribe(pcm: pcm.kotlinByteArray, durationMs: Int64(durationMs))
         switch result {
@@ -1118,8 +1119,8 @@ final class CoreAutomations: AutomationsDriving {
         }
     }
 
-    /// The gateway's own status and words, turned into one sentence. A protection is not an
-    /// error to apologise for: it is the gateway saying this job is its own.
+    /// The gateway's own status and words, turned into one sentence. A protection is the gateway
+    /// saying this job is its own, not an error to apologise for.
     static func refusal(from result: AutomationActionResult) -> String? {
         if result is AutomationActionResultDone || result is AutomationActionResultAccepted {
             return nil
@@ -1178,7 +1179,7 @@ final class CoreAutomations: AutomationsDriving {
         return "No run yet"
     }
 
-    /// Absolute and short — "Fri 08:00". A relative "in 3 h" would need a clock ticking under the
+    /// Absolute and short: "Fri 08:00". A relative "in 3 h" would need a clock ticking under the
     /// view, and reads worse on a page you open once.
     private static func stamp(_ seconds: Double) -> String {
         let formatter = DateFormatter()

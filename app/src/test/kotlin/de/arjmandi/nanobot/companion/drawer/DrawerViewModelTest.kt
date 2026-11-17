@@ -7,9 +7,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The drawer's search and its states (plan.md A2). The red line the plan names is the no-match
+ * The drawer's search and its states. The rule worth pinning here is the no-match
  * state: a query that matches nothing is a sentence, not an empty list that looks like a broken
- * drawer — and it is not the same sentence as "this gateway has no sessions".
+ * drawer, and it is not the same sentence as "this gateway has no sessions".
  */
 class DrawerViewModelTest {
 
@@ -101,8 +101,8 @@ class DrawerViewModelTest {
 
     @Test
     fun theGatewayOrderIsKept() {
-        // The gateway sorts newest first (D15.2); a client that re-sorted by the string timestamp
-        // would put them in a different order, so this only asserts that nothing re-sorts.
+        // The gateway sorts newest first; a client that re-sorted by the string timestamp would
+        // put them in a different order, so this only asserts that nothing re-sorts.
         val model = loaded(row("Newest", "3"), row("Middle", "2"), row("Oldest", "1"))
 
         assertEquals(listOf("Newest", "Middle", "Oldest"), model.matches.map { it.displayTitle })

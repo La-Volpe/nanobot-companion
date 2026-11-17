@@ -2,7 +2,7 @@ import Foundation
 
 /// Which screen a launch opens on, and why. The store is the reason a second launch is not a
 /// second setup: a gateway the device already holds puts the app in the chat, and a gateway that
-/// no longer answers is the banner on that chat — with its own "Try again" — rather than the
+/// no longer answers is the banner on that chat, with its own "Try again", rather than the
 /// address and key questions again.
 ///
 /// This is a model for the same reason every other branch in the app is: the rule is worth a test,
@@ -17,7 +17,7 @@ final class LaunchModel: ObservableObject {
         case deciding
         /// Nothing on this device can be reopened: the address and the key are the user's to type.
         case onboarding
-        /// The chat, whether or not the socket is up — the shell says the rest.
+        /// The chat, whether or not the socket is up. The shell says the rest.
         case shell
     }
 

@@ -9,7 +9,7 @@ import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** What a media row is, as the core's `MediaKind` names it (A9). */
+/** What a media row is, as the core's `MediaKind` names it. */
 enum class MediaKindView { Image, Video, Audio, File }
 
 /**
@@ -40,7 +40,7 @@ enum class MediaPhase { Idle, Loading, Ready, Failed }
  *
  * No bearer header goes on this request. The gateway's media route checks the signature in the
  * path (`nanobot/webui/media_api.py:207`) and nothing else, so adding the api token here would be
- * plumbing the endpoint does not want (D48).
+ * plumbing the endpoint does not want.
  */
 class MediaImageLoader<T>(
     private val fetch: suspend (String) -> ByteArray = ::readBytes,
@@ -108,8 +108,8 @@ internal suspend fun readBytes(url: String): ByteArray = withContext(Dispatchers
 enum class AudioPhase { Idle, Loading, Playing, Paused, Failed }
 
 /**
- * The player an audio row drives. `MediaPlayer` is the real one — the platform's own, so no
- * ExoPlayer and no dependency — and a fake is the other, which is how the play/pause, the retry
+ * The player an audio row drives. `MediaPlayer` is the real one (the platform's own, so no
+ * ExoPlayer and no dependency), and a fake is the other, which is how the play/pause, the retry
  * and the progress line are tested off-device.
  */
 interface AudioTransport {
@@ -137,7 +137,7 @@ class AudioPlayerModel(
     var durationMs: Long by mutableStateOf(0L)
         private set
 
-    /** 0…1, and 0 while nobody has reported a length — never NaN, which no bar can draw. */
+    /** 0…1, and 0 while nobody has reported a length, never NaN, which no bar can draw. */
     val progress: Float
         get() = if (durationMs > 0L) (elapsedMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
 

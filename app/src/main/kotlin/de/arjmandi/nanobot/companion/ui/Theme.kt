@@ -17,7 +17,7 @@ import de.arjmandi.nanobot.companion.R
 
 /**
  * The design system's Android mapping in one place (design README, "Platform adaptation"), so no
- * screen spells a dp value or a radius out of thin air — the same role `Design.swift` plays on
+ * screen spells a dp value or a radius out of thin air. It is the same role `Design.swift` plays on
  * iOS, with Android's own numbers:
  *
  * - reading is Open Sans 16 at a 1.55 line height (iOS reads at 17 / 1.5),
@@ -43,7 +43,7 @@ object Design {
 
     /**
      * How far up a hold has to travel before it locks: past this the finger may leave the screen
-     * and the button becomes Send (T48). A distance, not a delay — nothing about starting a
+     * and the button becomes Send. A distance, not a delay: nothing about starting a
      * recording waits for a clock any more.
      */
     val lockDragDistance = 64.dp
@@ -93,7 +93,7 @@ fun NanobotTheme(
     content: @Composable () -> Unit,
 ) {
     val scheme = when {
-        // Charcoal `hsl(0 0% 19%)`, not black and not navy — the design says so, and the iOS
+        // Charcoal `hsl(0 0% 19%)` rather than black or navy: the design says so, and the iOS
         // palette carries the same numbers.
         dark -> darkColorScheme(
             primary = Color(0xFFFAFAFA),
@@ -138,7 +138,7 @@ val readingStyle = TextStyle(
 
 /**
  * Settings → Appearance moves the reading scale and nothing else, which is the design's rule: prose,
- * code and the composer follow it, navigation does not (A7).
+ * code and the composer follow it, navigation does not.
  */
 val LocalReadingScale = androidx.compose.runtime.compositionLocalOf { 1f }
 

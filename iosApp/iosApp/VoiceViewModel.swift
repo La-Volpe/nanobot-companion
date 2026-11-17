@@ -1,9 +1,9 @@
 import Foundation
 
-/// Hold to talk (T48).
+/// Hold to talk.
 ///
 /// The model is one machine with three states and one rule of thumb: the finger is the start. A
-/// press records the instant it lands — no threshold, no commit step — because the old 300 ms
+/// press records the instant it lands (no threshold, no commit step), because the old 300 ms
 /// tap-mode wait read as lag on the owner's phone. What a release then means depends only on how
 /// long the press lasted: under `VoiceLimits.discardMs` it was a tap, the recording is thrown away
 /// with no request, and the first tap explains the gesture; at or above it the recording goes to
@@ -12,7 +12,7 @@ import Foundation
 /// recording away.
 ///
 /// The clock is the caller's: the gesture passes `nowMs`, so the floor, the ceiling and the frame's
-/// duration are one number and no timer runs inside the model. That includes the transcribing arc —
+/// duration are one number and no timer runs inside the model. That includes the transcribing arc:
 /// it advances on `tick`, never on an animation, because XCUITest waits for quiescence and an
 /// endless animation never gets there.
 @MainActor
@@ -47,7 +47,7 @@ final class VoiceViewModel: ObservableObject {
     }
 
     /// The screen swaps in the chat once a gateway is open, and a scripted recorder in a flow
-    /// test — a simulator has no microphone, and the permission prompt would block the test.
+    /// test, because a simulator has no microphone and the permission prompt would block the test.
     func use(_ driver: VoiceDriving, recording: AudioRecording? = nil, hints: VoiceHints? = nil) {
         self.driver = driver
         if let recording { self.recording = recording }
@@ -69,7 +69,7 @@ final class VoiceViewModel: ObservableObject {
     private(set) var pendingTranscript: String?
 
     /// A notice is the reader's to put away. It is a line on the composer, not an alert, so the
-    /// control that clears it is the reader's only way out (T31).
+    /// control that clears it is the reader's only way out.
     func dismissNotice() {
         notice = nil
     }
@@ -144,7 +144,7 @@ final class VoiceViewModel: ObservableObject {
 
     // MARK: - internals
 
-    /// A tap is discarded silently, and the first one explains the gesture — once ever, because a
+    /// A tap is discarded silently, and the first one explains the gesture, once ever, because a
     /// hint that keeps coming back is a nag. Persisting the flag is `VoiceHints`'s job.
     private func discardAsTap() {
         recording.cancel()

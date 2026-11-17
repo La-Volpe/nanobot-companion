@@ -1,6 +1,6 @@
 package de.arjmandi.nanobot.companion.activity
 
-/** One row inside a turn's activity cluster (A4), as Kotlin's own values: the core reduced the
+/** One row inside a turn's activity cluster, as Kotlin's own values: the core reduced the
  * frames into `ActivityItem`; the bridge maps each case here and nothing else branches on it. */
 data class ActivityItemView(
     val id: String,

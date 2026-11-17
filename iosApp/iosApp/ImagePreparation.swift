@@ -7,13 +7,13 @@ import UniformTypeIdentifiers
 ///
 /// The phone stores photos as HEIC and the gateway's `UPLOAD_MIME_ALLOWED`
 /// (`channels/websocket/attachment_policy.py`) has no HEIC in it, so a library photo was uploaded
-/// as a type the gateway refuses — for the owner, "the attachments do not work". The same
-/// photo is also 12 to 48 megapixels, and a JPEG of that at high quality is over the 6 MiB
+/// as a type the gateway refuses, which for the owner read as "the attachments do not work". The
+/// same photo is also 12 to 48 megapixels, and a JPEG of that at high quality is over the 6 MiB
 /// per-file cap, which is a second refusal the reader cannot do anything about.
 ///
 /// So this decodes through ImageIO (which reads HEIC whatever the MIME label says), re-encodes
 /// as JPEG when the type is not on the whitelist, steps quality and then pixels down until the
-/// file fits, and makes the card's preview once. It runs off the main actor — see
+/// file fits, and makes the card's preview once. It runs off the main actor; see
 /// `AttachmentViewModel`, which calls it from a detached task.
 struct ImagePreparation {
 

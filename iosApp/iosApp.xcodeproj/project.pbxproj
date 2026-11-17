@@ -265,7 +265,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# The Kotlin framework is built by Gradle, not by Xcode: :core owns the code (plan.md D1).\n# embedAndSignAppleFrameworkForXcode reads CONFIGURATION, SDK_NAME, ARCHS and the target\n# directories from Xcode's environment, so it produces exactly the slice this build links.\nif [ -z \"$JAVA_HOME\" ]; then\n  export JAVA_HOME=$(/usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home)\nfi\ncd \"$SRCROOT/..\"\n./gradlew :core:embedAndSignAppleFrameworkForXcode\n";
+			shellScript = "# The Kotlin framework is built by Gradle, not by Xcode: :core owns the code.\n# embedAndSignAppleFrameworkForXcode reads CONFIGURATION, SDK_NAME, ARCHS and the target\n# directories from Xcode's environment, so it produces exactly the slice this build links.\nif [ -z \"$JAVA_HOME\" ]; then\n  export JAVA_HOME=$(/usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home)\nfi\ncd \"$SRCROOT/..\"\n./gradlew :core:embedAndSignAppleFrameworkForXcode\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

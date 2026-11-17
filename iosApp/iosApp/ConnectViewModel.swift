@@ -1,11 +1,11 @@
 import Foundation
 import SwiftUI
 
-/// Onboarding's three fields, one button and its states (plan.md I1, design artifact
+/// Onboarding's three fields, one button and its states (design artifact
 /// `data-view="onboarding"`). Every branch worth testing is here rather than in the view:
 /// what counts as a usable address, when the key is required, what a failure says, and the one
-/// rule the unverified-certificate switch exists for — it is the user's decision, never the
-/// app's.
+/// rule the unverified-certificate switch exists for, which is that trusting a certificate is
+/// the user's decision and never the app's.
 @MainActor
 final class ConnectViewModel: ObservableObject {
 
@@ -69,7 +69,7 @@ final class ConnectViewModel: ObservableObject {
         !address.trimmingCharacters(in: .whitespaces).isEmpty && !key.isEmpty
     }
 
-    /// The store, read again — a Keychain read that ran on a phone still locked comes back empty,
+    /// The store, read again: a Keychain read that ran on a phone still locked comes back empty,
     /// and the return to the foreground is the second chance. True when the device holds a gateway
     /// now, which it is then prefilled with. Nothing is adopted over a screen the owner has started
     /// typing on: what someone is halfway through entering is theirs.
@@ -103,9 +103,9 @@ final class ConnectViewModel: ObservableObject {
     }
 
     /// The launch's own attempt on the gateway the device already holds: the same bookkeeping the
-    /// button does, and one difference — it keeps the stack when the handshake fails. A typed
+    /// button does, and one difference: it keeps the stack when the handshake fails. A typed
     /// attempt leaves a form to fix; a launch leaves the shell's banner, and that banner's "Try
-    /// again" is a reconnect on the stack this keeps open (C3.4). True when the gateway greeted it.
+    /// again" is a reconnect on the stack this keeps open. True when the gateway greeted it.
     @discardableResult
     func reopenStoredGateway() async -> Bool {
         await attempt(closeOnFailure: false)

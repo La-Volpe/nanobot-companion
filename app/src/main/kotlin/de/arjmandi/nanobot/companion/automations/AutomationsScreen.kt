@@ -53,7 +53,7 @@ import de.arjmandi.nanobot.companion.ui.SkeletonRows
 import kotlinx.coroutines.launch
 
 /**
- * The automations page (A7), following the design's `data-view="automations"`: a title bar, a
+ * The automations page, following the design's `data-view="automations"`: a title bar, a
  * "Scheduled" group of cards, the sentence that says where these come from, and one button that
  * asks the agent to create another. A card opens the design's action sheet.
  */

@@ -6,11 +6,11 @@ import androidx.compose.runtime.setValue
 import de.arjmandi.nanobot.companion.chat.ChatTurnView
 
 /**
- * The activity cluster per turn (plan.md A4): what nanobot thought, ran and changed, folded into one
+ * The activity cluster per turn: what nanobot thought, ran and changed, folded into one
  * row that opens on a tap. The twin of iOS's `ActivityViewModel`, and the same two rules live here
  * rather than in a composable: a running turn shows its work and a finished turn folds it, a
- * reader's tap wins over both, and a failure overrides the fold — a turn that went wrong should not
- * hide the reason it did.
+ * reader's tap wins over both, and a failure overrides the fold, because a turn that went wrong
+ * should not hide the reason it did.
  *
  * [now] is injected so "Thought for 8s" is a computed value a test can pin, never a clock read
  * inside the reducer.
@@ -28,8 +28,8 @@ class ActivityViewModel(private val now: () -> Long = { System.currentTimeMillis
     private val overrides = mutableMapOf<String, Boolean>()
 
     /**
-     * Rows whose details the reader opened, by row id. A row starts folded — one line, like the
-     * web's `ActivityStep` — and a tap is what shows the arguments and the output.
+     * Rows whose details the reader opened, by row id. A row starts folded, one line, like the
+     * web's `ActivityStep`, and a tap is what shows the arguments and the output.
      */
     private val openRows = mutableSetOf<String>()
 

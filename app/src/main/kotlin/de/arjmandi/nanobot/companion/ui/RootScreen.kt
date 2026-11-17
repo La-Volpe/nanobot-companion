@@ -58,8 +58,8 @@ import de.arjmandi.nanobot.companion.states.ConnectionDotView
 import kotlinx.coroutines.launch
 
 /**
- * The app's screen (plan.md A1, A2): onboarding, then the shell — a `ModalNavigationDrawer` whose
- * content is the bar, the connection dot and (from A3) the thread. Android's navigation is the
+ * The app's screen: onboarding, then the shell, a `ModalNavigationDrawer` whose
+ * content is the bar, the connection dot and the thread. Android's navigation is the
  * design's own mapping (README: "TopAppBar, ModalNavigationDrawer"), and session actions collapse
  * into one overflow so the title keeps its room on a 412 dp screen.
  */
@@ -113,8 +113,7 @@ fun RootScreen(
                 loadSnapshot = { holder.settingsSnapshot() },
                 onClose = { main.closeSettings() },
                 // The model in use is the open chat's composer, the same value the chip and the
-                // ring read; with no chat open Overview says so instead of naming `agent.model`
-                // (T45).
+                // ring read; with no chat open Overview says so instead of naming `agent.model`.
                 modelInUse = main.chat?.composer?.snapshot?.toChatModelInUse(),
                 modifier = modifier,
             )
@@ -173,7 +172,7 @@ private fun Shell(
         if (chat?.composer?.sheet != null) chat.composer.closeSheet() else main.closeDrawer()
     }
 
-    // One owner for "is the drawer open": the model asks, the drawer state answers — and the
+    // One owner for "is the drawer open": the model asks, the drawer state answers, and the
     // swipe reports back, so dragging it open also tells the model (Back then knows to close it).
     LaunchedEffect(main.drawerOpen) {
         if (main.drawerOpen && drawerState.isClosed) drawerState.open()
@@ -186,7 +185,7 @@ private fun Shell(
     ModalNavigationDrawer(
         drawerState = drawerState,
         // The shell is only drawn for a launch that decided on it, so a swipe is always the
-        // drawer's here — the onboarding screen has no shell to open it on.
+        // drawer's here: the onboarding screen has no shell to open it on.
         gesturesEnabled = true,
         drawerContent = {
             ModalDrawerSheet {
@@ -279,7 +278,7 @@ private fun de.arjmandi.nanobot.companion.core.ConnectionStatus.toDot(everConnec
 }
 
 /**
- * The thread, and the way out until Settings lands (A7 draws that screen). The chat is built on
+ * The thread, and the way out until Settings lands. The chat is built on
  * the first appearance, which is also the chat the gateway's greeting minted; opening a row from
  * the drawer does not build a second screen, it opens a second chat through the same core.
  */
@@ -322,8 +321,8 @@ private fun Thread(
                 )
             }
         }
-        // The way out is Settings → Gateway (A7), which forgets the address and the key; the
-        // thread no longer carries a placeholder button for it (D48's note, now closed).
+        // The way out is Settings → Gateway, which forgets the address and the key; the
+        // thread no longer carries a placeholder button for it.
     }
 }
 

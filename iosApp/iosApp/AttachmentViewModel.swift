@@ -1,13 +1,13 @@
 import Foundation
 
-/// The composer's attachments (plan.md I6): pick, upload, show as a card, remove. Every limit
-/// and every refusal is the gateway's — this asks the core and draws the answer, so a rejection
+/// The composer's attachments: pick, upload, show as a card, remove. Every limit
+/// and every refusal is the gateway's: this asks the core and draws the answer, so a rejection
 /// cannot drift from the one the gateway would give.
 ///
 /// The card goes up with the pick, before a byte leaves the phone. Uploading first and drawing
 /// afterwards left the composer empty for as long as the link took, which is what the owner saw
-/// as "the attachment does nothing"; and a pick the gateway refused produced a sentence drawn
-/// inside a strip that is hidden when there are no cards, so a first pick could fail in silence.
+/// as "the attachment does nothing". A pick the gateway refused produced a sentence drawn inside
+/// a strip that is hidden when there are no cards, so a first pick could fail in silence.
 @MainActor
 final class AttachmentViewModel: ObservableObject {
 
@@ -21,18 +21,18 @@ final class AttachmentViewModel: ObservableObject {
 
     private var driver: AttachmentDriving
     /// The bytes of a card that has not landed yet, so a failure can be tried again without
-    /// asking the reader to find the photo a second time. Cleared as soon as a card is ready —
+    /// asking the reader to find the photo a second time. Cleared as soon as a card is ready:
     /// at most four files, and the gateway's own 6 MiB each.
     private var picks: [String: PickedAttachment] = [:]
     /// The chat the cards on screen belong to. Nil is the chat being composed before the gateway
     /// names it, which is why it is a key rather than an optional id.
     private var chatKey = ""
     /// Every chat's cards, kept apart: a card names an upload reference that belongs to one chat's
-    /// session, so showing it in another one promises a message that chat cannot carry (P13).
+    /// session, so showing it in another one promises a message that chat cannot carry.
     private var cardsByChat: [String: [PendingAttachment]] = [:]
     /// Stable, so a card's identity survives the attachment list changing around it.
     private var nextId = 0
-    /// The attach sheet's row that was tapped, held until the sheet has actually gone (T50).
+    /// The attach sheet's row that was tapped, held until the sheet has actually gone.
     private var pendingRow: AttachRow?
 
     init(driver: AttachmentDriving, limits: UploadLimits = .fallback) {
@@ -40,7 +40,7 @@ final class AttachmentViewModel: ObservableObject {
         self.limits = limits
     }
 
-    /// The cards by kind — the grid, the video card and the file cards the design draws.
+    /// The cards by kind: the grid, the video card and the file cards the design draws.
     var images: [PendingAttachment] { attachments.filter { $0.kind == .image } }
     var videos: [PendingAttachment] { attachments.filter { $0.kind == .video } }
     var files: [PendingAttachment] { attachments.filter { $0.kind == .file || $0.kind == .audio } }
@@ -72,8 +72,8 @@ final class AttachmentViewModel: ObservableObject {
     }
 
     /// A row's tap says which door and waits. Asking for the picker in the same tap is a request
-    /// iOS drops — a sheet cannot be presented from a view whose own sheet is still up — which is
-    /// why the camera arrived only after the overlay had been closed by hand.
+    /// iOS drops, because a sheet cannot be presented from a view whose own sheet is still up,
+    /// which is why the camera arrived only after the overlay had been closed by hand.
     func request(_ row: AttachRow) {
         pendingRow = row
     }
@@ -113,7 +113,7 @@ final class AttachmentViewModel: ObservableObject {
     }
 
     /// The bytes go up once, from whichever door the pick came through. The preparation is
-    /// CPU work — a 48-megapixel HEIC takes hundreds of milliseconds — so it is not done on the
+    /// CPU work (a 48-megapixel HEIC takes hundreds of milliseconds), so it is not done on the
     /// main actor; only the card's own updates are.
     private func upload(id: String, picked: PickedAttachment) async {
         let takesIt = driver.accepts(mimeType: picked.mimeType)
@@ -155,7 +155,7 @@ final class AttachmentViewModel: ObservableObject {
         await upload(id: id, picked: picked)
     }
 
-    /// A pick the phone refused before there were any bytes — the camera switched off in
+    /// A pick the phone refused before there were any bytes, which is the camera switched off in
     /// Settings. The same row as an upload refusal, because it is the same thing to the reader.
     func note(_ notice: UploadNotice) {
         self.notice = notice
@@ -188,14 +188,14 @@ final class AttachmentViewModel: ObservableObject {
         lightbox = nil
     }
 
-    /// What the send carries: the references the gateway handed back (C6.6). A card still
+    /// What the send carries: the references the gateway handed back. A card still
     /// uploading has none, which is why the composer refuses to send while one is in flight.
     var references: [String] {
         attachments.compactMap(\.reference)
     }
 
-    /// The same cards as a message names them — reference and file name — so the send can say
-    /// what it is carrying instead of leaving it to a side effect (P13).
+    /// The same cards as a message names them (reference and file name), so the send can say
+    /// what it is carrying instead of leaving it to a side effect.
     var uploads: [SentAttachment] {
         attachments.compactMap { card in
             card.reference.map { SentAttachment(reference: $0, name: card.name) }

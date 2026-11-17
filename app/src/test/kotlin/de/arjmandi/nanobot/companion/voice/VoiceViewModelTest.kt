@@ -12,7 +12,7 @@ import kotlinx.coroutines.test.runTest
  * Hold to talk, one machine (the Android twin of iOS's `VoiceViewModelTests`): the press records
  * the instant it lands, a release under 800 ms is a discard that asks the gateway nothing, a
  * release at or above it transcribes, and a drag up locks the recording so Send and Cancel own it
- * instead of the finger (T48).
+ * instead of the finger.
  */
 class VoiceViewModelTest {
 
@@ -69,7 +69,7 @@ class VoiceViewModelTest {
         assertEquals(0L, model.elapsedMs)
     }
 
-    /** T48's floor: 799 ms is a tap, so nothing at all goes to the gateway. */
+    /** The 800 ms floor: 799 ms is a tap, so nothing at all goes to the gateway. */
     @Test
     fun aReleaseUnder800msSendsNothing() = runTest {
         val recorder = FakeRecorder()
@@ -109,7 +109,7 @@ class VoiceViewModelTest {
     }
 
     /**
-     * A tap explains the gesture once and never again — Android's "tapping does nothing" answered
+     * A tap explains the gesture once and never again: Android's "tapping does nothing" answered
      * with a sentence instead of a second recording mode.
      */
     @Test
@@ -227,7 +227,7 @@ class VoiceViewModelTest {
     }
 
     /**
-     * The refusal is the reader's to put away (T31). The owner's gateway has no speech provider, so
+     * The refusal is the reader's to put away. The owner's gateway has no speech provider, so
      * every recording comes back refused; a notice with no dismissal is a line that never leaves.
      */
     @Test

@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// The thread (plan.md I3): history, streaming answer, one composer row. The view draws
+/// The thread: history, streaming answer, one composer row. The view draws
 /// `ChatViewModel.rows` and calls one of two commands; every branch is in the model.
 struct ChatView: View {
     @ObservedObject var model: ChatViewModel
@@ -10,7 +10,7 @@ struct ChatView: View {
     @ObservedObject var attachments: AttachmentViewModel
     @ObservedObject var voice: VoiceViewModel
     @ObservedObject var states: StatesViewModel
-    /// I6 wires the picker here; until it exists the button says it is not built yet.
+    /// The attach sheet wires the picker here; until then the button says it is not built yet.
     var onAttach: () -> Void = {}
 
     /// The scroll view's own height and the tail marker's position in the same space: the

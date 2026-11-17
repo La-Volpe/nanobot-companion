@@ -7,8 +7,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The taxonomy's pairing with Android's strings (plan.md C7.4, D29 §9). Every entry gets one
- * sentence, a 5xx gets the "try again in a moment" variant, and a 4xx does not — that is the only
+ * The taxonomy's pairing with Android's strings. Every entry gets one
+ * sentence, a 5xx gets the "try again in a moment" variant, and a 4xx does not, which is the only
  * copy decision the taxonomy leaves to the platform besides the sentence itself.
  */
 class ConnectionCopyTest {

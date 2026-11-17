@@ -1,10 +1,10 @@
 import Foundation
 
-/// The composer's state and the rules that decide what its one button does (plan.md I5).
+/// The composer's state and the rules that decide what its one button does.
 ///
 /// The button rule is the WebUI's, transcribed rather than invented
 /// (`showStopButton = isStreaming && !canSend`): while a turn runs an empty field is a Stop
-/// button, and typing turns it back into Send — which queues the prompt instead of stopping
+/// button, and typing turns it back into Send, which queues the prompt instead of stopping
 /// the turn. Everything else here is a sheet, a chip or a confirmation.
 @MainActor
 final class ComposerViewModel: ObservableObject {
@@ -23,7 +23,7 @@ final class ComposerViewModel: ObservableObject {
 
     private var driver: ComposerDriving
     /// The cards the composer is showing. They belong to the composer, not to the view: the send
-    /// has to carry them and only a message the gateway took may spend them (P13).
+    /// has to carry them and only a message the gateway took may spend them.
     private var attachments: AttachmentViewModel?
     /// Injected so a test can hold the confirmation open instead of sleeping through it.
     private let sleep: @Sendable (TimeInterval) async -> Void
@@ -62,7 +62,7 @@ final class ComposerViewModel: ObservableObject {
     }
 
     /// A *locked* recording has no finger on it any more, so the same button finishes it and
-    /// reads Send (T48).
+    /// reads Send.
     func primaryState(recording: Bool, locked: Bool = false) -> PrimaryState {
         if recording, locked { return .send }
         if recording { return .stop }
@@ -74,7 +74,7 @@ final class ComposerViewModel: ObservableObject {
     var showsStop: Bool { streaming && !canSend }
 
     /// The ring's percent, as the core resolved it: the WebUI's rounding over the WebUI's choice
-    /// of window (T37). Nil before there is a window, because a percentage of nothing is a lie.
+    /// of window. Nil before there is a window, because a percentage of nothing is a lie.
     var usagePercent: Int? { snapshot.contextPercent }
 
     /// The send is waiting for an upload that has not landed. Derived rather than remembered, so
@@ -128,7 +128,7 @@ final class ComposerViewModel: ObservableObject {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         if streaming {
             driver.enqueue(text)
-            // The chip shows it, so the field is empty again — the core keeps the text.
+            // The chip shows it, so the field is empty again, and the core keeps the text.
             draft = ""
             snapshot.queued = [snapshot.queued, text].compactMap { $0 }.joined(separator: "\n")
             return
@@ -137,12 +137,12 @@ final class ComposerViewModel: ObservableObject {
         lastRefusal = nil
         let accepted = await driver.sendPrompt(text, media: attachments?.uploads ?? [])
         if !accepted {
-            // A refused send gives the text back rather than losing it (C6.1), and its uploads
+            // A refused send gives the text back rather than losing it, and its uploads
             // stay on screen to go with the next try.
             draft = text
             lastRefusal = "The gateway did not take that message."
         } else {
-            // A message the gateway took carries the uploads, so the cards go with it (D49).
+            // A message the gateway took carries the uploads, so the cards go with it.
             attachments?.clear()
         }
     }
@@ -167,7 +167,7 @@ final class ComposerViewModel: ObservableObject {
     func openAttachSheet() { sheet = .attach }
     func closeSheet() { sheet = nil }
 
-    /// The sheet's list comes from the settings read the gateway already answers (C6.2), not
+    /// The sheet's list comes from the settings read the gateway already answers, not
     /// from a list this app invents. A read that refuses answers nil, which is a different screen
     /// from a gateway with no presets: the sheet says it could not read them and offers the read
     /// again rather than showing an empty list.
@@ -182,7 +182,7 @@ final class ComposerViewModel: ObservableObject {
         presetState = .loaded
     }
 
-    /// A pick either applies or the reader is told it did not (T39): the chip already shows the
+    /// A pick either applies or the reader is told it did not: the chip already shows the
     /// choice, so a silence would leave it naming a model the chat is not on.
     func pick(preset: ChatModelPreset) async {
         sheet = nil
@@ -195,14 +195,14 @@ final class ComposerViewModel: ObservableObject {
 
     func pick(access: WorkspaceAccess) async {
         sheet = nil
-        // The chip shows the choice at once and goes back if the gateway refuses it (C6.3).
+        // The chip shows the choice at once and goes back if the gateway refuses it.
         snapshot.access = access
         await driver.setWorkspaceScope(access)
     }
 
     // MARK: - palettes
 
-    /// Ask for the sheet the current text opens, if any (C6.4). The core decides; this only
+    /// Ask for the sheet the current text opens, if any. The core decides; this only
     /// carries the answer to the view.
     func refreshPalette() async {
         let loaded = await driver.loadPalette(text: draft, cursor: draft.count)

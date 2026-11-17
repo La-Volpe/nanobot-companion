@@ -35,7 +35,7 @@ import de.arjmandi.nanobot.companion.R
 import de.arjmandi.nanobot.companion.ui.Design
 
 /**
- * The composer's attachment cards (plan.md A6): an image grid that opens a lightbox, a video card
+ * The composer's attachment cards: an image grid that opens a lightbox, a video card
  * and file cards. Audio has no player in chat, by the design's own limit, so it is a file card.
  */
 @Composable

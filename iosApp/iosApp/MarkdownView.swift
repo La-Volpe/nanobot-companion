@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A reply, drawn from the core's markdown tree (I5): prose at the reading scale, bullets,
+/// A reply, drawn from the core's markdown tree: prose at the reading scale, bullets,
 /// tables that scroll inside their own box, and code blocks with a language chip, line numbers
 /// on multiline code and a Copy that confirms for 1.5 s.
 ///

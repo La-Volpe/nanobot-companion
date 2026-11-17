@@ -2,9 +2,9 @@ import AVFoundation
 import Foundation
 
 /// The microphone, really: `AVAudioRecorder` into a 16 kHz mono WAV, which is what the gateway's
-/// `transcribe_audio` takes (`data:audio/wav;base64,…`, C6.5).
+/// `transcribe_audio` takes (`data:audio/wav;base64,…`).
 ///
-/// A simulator has no microphone, so a recording there is silence — the transcription path
+/// A simulator has no microphone, so a recording there is silence; the transcription path
 /// itself is real bytes through the real gateway either way.
 @MainActor
 final class MicrophoneRecorder: AudioRecording {

@@ -7,7 +7,7 @@ import UIKit
 /// without one would have killed the app on the first shot.
 ///
 /// The picture becomes an ordinary `PickedAttachment`, so it travels the same upload path as a
-/// library photo — one door, not two.
+/// library photo, because one door is enough.
 struct CameraPicker: UIViewControllerRepresentable {
     let onCapture: (PickedAttachment) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -71,7 +71,7 @@ struct CameraPicker: UIViewControllerRepresentable {
 }
 
 /// Whether opening the camera is the right thing to do at all. Without this, a camera the reader
-/// switched off in Settings opens to a black screen with no explanation — which reads as the
+/// switched off in Settings opens to a black screen with no explanation, which reads as the
 /// camera being broken rather than being off.
 enum CameraAccess {
 

@@ -1,7 +1,7 @@
 import Foundation
 
 /// The "Hold to talk" hint is shown once and remembered. The owner's answer to "holding works and
-/// tapping does nothing" is a sentence, not a second recording mode (T48); deciding to say it is
+/// tapping does nothing" is a sentence, not a second recording mode; deciding to say it is
 /// `VoiceViewModel`'s business, remembering it is the phone's.
 protocol VoiceHints: AnyObject {
     func hasSeenHoldHint() -> Bool
@@ -18,7 +18,7 @@ final class InMemoryVoiceHints: VoiceHints {
     func markHoldHintSeen() { seen = true }
 }
 
-/// The app's own store: one key beside the settings, because it is the same kind of thing — a
+/// The app's own store: one key beside the settings, because it is the same kind of thing, a
 /// decision the reader made by doing something.
 final class UserDefaultsVoiceHints: VoiceHints {
     private static let key = "voice.holdHintSeen"

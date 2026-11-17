@@ -6,10 +6,10 @@ import androidx.compose.runtime.setValue
 import de.arjmandi.nanobot.companion.core.SessionSummary
 
 /**
- * The drawer's rows and its four states (plan.md A2, design artifact `data-view="drawer"`, the
+ * The drawer's rows and its four states (design artifact `data-view="drawer"`, the
  * Android twin of iOS's `DrawerViewModel`). The gateway hands the rows down; what a search field
  * does to them, and what the drawer says when there is nothing to show, is a decision worth
- * testing — so it lives here, not in a composable.
+ * testing, so it lives here and not in a composable.
  */
 class DrawerViewModel(rows: List<SessionSummary> = emptyList(), loaded: Boolean = false) {
 
@@ -61,9 +61,10 @@ class DrawerViewModel(rows: List<SessionSummary> = emptyList(), loaded: Boolean 
     val isSearching: Boolean get() = searchText.isNotEmpty()
 
     /**
-     * Search is a case-insensitive substring over what a row shows — title and preview — which is
+     * Search is a case-insensitive substring over what a row shows (title and preview), which is
      * what the WebUI searches in the sessions it has already loaded. The gateway sorts the rows;
-     * this does not re-sort by a string timestamp (D15.2).
+     * this does not re-sort by a string timestamp, because session rows carry `updated_at` as an
+     * ISO-8601 string and sorting that as text puts the rows in the wrong order.
      */
     val matches: List<SessionSummary>
         get() {

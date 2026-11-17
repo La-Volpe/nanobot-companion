@@ -39,9 +39,10 @@ import org.junit.runner.RunWith
 /**
  * Putting the keyboard away (the Android half of the owner report iOS fixed in `2a5c060`): a flick
  * on the transcript and a tap outside the field both had to leave it up, and only Back closed it.
- * The Android answers are `Modifier.imeNestedScroll()` on the thread — the platform's interactive
- * dismissal, the twin of `.scrollDismissesKeyboard(.interactively)` — and one `clearFocus` on the
- * conversation, which is only correct if a tool row's disclosure and a reasoning fold still fire.
+ * The Android answers are `Modifier.imeNestedScroll()` on the thread, which is the platform's
+ * interactive dismissal and the twin of `.scrollDismissesKeyboard(.interactively)`, plus one
+ * `clearFocus` on the conversation, which is only correct if a tool row's disclosure and a
+ * reasoning fold still fire.
  *
  * Whether the keyboard went is asked of the device (`dumpsys input_method`'s `mInputShown`), not of
  * a flag: a Compose focus bit says the field let go, and that is not the same claim as the IME

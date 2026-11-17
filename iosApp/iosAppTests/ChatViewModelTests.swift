@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import iosApp
 
-/// The chat's two red lines (plan.md I3) and the rule that decides what the primary button does.
+/// The chat's two rules, and the rule that decides what the primary button does.
 @MainActor
 struct ChatViewModelTests {
 
@@ -56,7 +56,7 @@ struct ChatViewModelTests {
         #expect(model.placeholder == .none)
     }
 
-    /// The plan's red line: the bubble is real before the gateway speaks, and stops being
+    /// The bubble is real before the gateway speaks, and stops being
     /// marked pending when `message_accepted` arrives.
     @Test func optimisticBubbleReconcilesOnAccept() {
         let model = ChatViewModel(chat: FakeChat())
@@ -121,7 +121,7 @@ struct ChatViewModelTests {
         model.draft = "keep me"
         await model.send()
 
-        #expect(model.draft == "keep me", "a refused send gives the text back (C6.1)")
+        #expect(model.draft == "keep me", "a refused send gives the text back")
         #expect(model.lastRefusal != nil)
     }
 
@@ -148,7 +148,8 @@ struct ChatViewModelTests {
         #expect(chat.opens == 1)
     }
 
-    /// The auto-scroll rule T9 asked for (webui `ThreadViewport.tsx:1002`, `thread-motion.ts:353`):
+    /// The auto-scroll rule the owner asked for (webui `ThreadViewport.tsx:1002`,
+    /// `thread-motion.ts:353`):
     /// the thread follows the stream only while the reader is at the end. A reader who scrolled up
     /// keeps their place, and coming back to the end resumes following.
     @Test func theTailFollowsOnlyWhileTheReaderIsAtIt() {

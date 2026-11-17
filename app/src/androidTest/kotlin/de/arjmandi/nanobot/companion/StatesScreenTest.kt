@@ -35,7 +35,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * A8's surfaces (the Compose half): the banner under the bar with the taxonomy's own sentence, the
+ * The states surfaces: the banner under the bar with the taxonomy's own sentence, the
  * snackbar above the composer with one transient line at a time, a recovery row with its two
  * actions, the goal as a strip and the dock with only active subtasks, and the DEBUB menu that
  * reaches all eight failures by hand. The precedence table is `StatesViewModelTest`'s.

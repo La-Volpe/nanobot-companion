@@ -38,8 +38,8 @@ import de.arjmandi.nanobot.companion.ui.Design
 import de.arjmandi.nanobot.companion.ui.scaledReadingStyle
 
 /**
- * The activity cluster (A4): one collapsible row per turn holding what nanobot thought, ran and
- * changed. The layout follows the artifact's `.activity` block — a head with a chevron, the label
+ * The activity cluster: one collapsible row per turn holding what nanobot thought, ran and
+ * changed. The layout follows the artifact's `.activity` block: a head with a chevron, the label
  * and a status word, and a body of reasoning, tool rows, diffs and source chips. The composable
  * draws; every fold rule is [ActivityViewModel]'s.
  */
@@ -125,10 +125,10 @@ private fun statusText(status: ActivityStatus): String = stringResource(
 /**
  * One row in the cluster's body: reasoning, a tool run, an edited file, or a search.
  *
- * Each row is one line — glyph, name, one-line summary, state — and everything the gateway sent
- * beyond that (arguments, output, the whole reasoning block) is behind the row's own disclosure,
- * closed until the reader opens it. That is the web's shape (`ActivityStep.tsx:77`), which the
- * owner reported this screen was missing (T9).
+ * Each row is one line (glyph, name, a one-line summary, the state), and everything the gateway
+ * sent beyond that (arguments, output, the whole reasoning block) is behind the row's own
+ * disclosure, closed until the reader opens it. That is the web's shape (`ActivityStep.tsx:77`),
+ * which the owner reported this screen was missing.
  */
 @Composable
 fun ActivityItemRow(
@@ -272,7 +272,8 @@ private fun DetailLine(label: String, value: String?) {
 
 /**
  * A row is one line: the tool's glyph, its name, the one-line summary the core reduced from the
- * arguments, and the state. Nothing here wraps, because a wrapped row is the verbosity T9 reported.
+ * arguments, and the state. Nothing here wraps, because a wrapped row is the verbosity the owner
+ * reported.
  */
 @Composable
 private fun ActivityLine(

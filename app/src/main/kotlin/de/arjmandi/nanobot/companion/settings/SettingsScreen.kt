@@ -49,7 +49,7 @@ import de.arjmandi.nanobot.companion.ui.SkeletonRows
 import kotlinx.coroutines.launch
 
 /**
- * Settings (plan.md A7): sectioned lists and M3 switches, which is the design's Android column.
+ * Settings: sectioned lists and M3 switches, which is the design's Android column.
  * The screen draws the model's rows and calls one command each; every rule is the view model's.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,7 +58,7 @@ fun SettingsScreen(
     model: SettingsViewModel,
     loadSnapshot: suspend () -> SettingsSnapshot?,
     onClose: () -> Unit,
-    /** The open chat's model (T45); null is "no chat open", which Overview says in words. */
+    /** The open chat's model; null is "no chat open", which Overview says in words. */
     modelInUse: ChatModelInUse? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -75,8 +75,8 @@ fun SettingsScreen(
     }
 
     // On API 33 an app has to be granted the notification permission before it may post; the
-    // dialog is asked on the tap that needs it, and the notifier answers honestly afterwards
-    // (D8). A permission the user already refused is not asked for again: the row offers the
+    // dialog is asked on the tap that needs it, and the notifier answers honestly afterwards.
+    // A permission the user already refused is not asked for again: the row offers the
     // system's own screen instead, because Android would not draw the dialog twice.
     val context = androidx.compose.ui.platform.LocalContext.current
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -142,7 +142,7 @@ fun SettingsScreen(
                 OverviewState.Loaded -> Unit
             }
             // The card the design puts first (design of record, `.usage-card`): the total, the
-            // gateway's own request count and cache rate, then one bar per day (T44). It used to be
+            // gateway's own request count and cache rate, then one bar per day. It used to be
             // fetched and parsed into nothing.
             if (model.overview == OverviewState.Loaded) model.snapshot.usage?.let { usage ->
                 TokenUsageCard(usage)
@@ -205,7 +205,7 @@ fun SettingsScreen(
                     .heightIn(min = Design.minimumTarget)
                     .testTag("settings.permission"),
             )
-            // The sound is the reader's own choice, beside the state it modifies (T34).
+            // The sound is the reader's own choice, beside the state it modifies.
             Row(
                 modifier = Modifier.fillMaxWidth().heightIn(min = Design.minimumTarget),
                 verticalAlignment = Alignment.CenterVertically,
@@ -315,7 +315,7 @@ fun SettingsScreen(
 }
 
 /**
- * Overview's token card (T44), drawn as the design draws it: the 30-day total and its unit, the
+ * Overview's token card, drawn as the design draws it: the 30-day total and its unit, the
  * gateway's own request count and cache hit rate, then a bar per day scaled to the window's peak
  * with the biggest day solid (design of record, `.spark i.hi`). Every number arrives computed and
  * worded by the core; this draws them and invents nothing.

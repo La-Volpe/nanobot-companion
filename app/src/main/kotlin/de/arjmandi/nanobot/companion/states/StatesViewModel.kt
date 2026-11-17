@@ -7,10 +7,10 @@ import de.arjmandi.nanobot.companion.R
 import de.arjmandi.nanobot.companion.facade.ConnectionFailure
 
 /**
- * A8's states (the Android twin of iOS's `StatesViewModel`), with the platform's own surface: the
- * design's Android column puts feedback in a snackbar above the composer, so the transient states —
- * a delivery that failed, a retry with its clock, a compaction in flight — share one snackbar with a
- * precedence table instead of stacking banners.
+ * The states that are not part of an answer (the Android twin of iOS's `StatesViewModel`), with
+ * the platform's own surface: the design's Android column puts feedback in a snackbar above the
+ * composer, so the transient states (a delivery that failed, a retry with its clock, a compaction
+ * in flight) share one snackbar with a precedence table instead of stacking banners.
  *
  * One owner per state is the rule. The banner belongs to the connection and nothing else. The goal
  * is a strip and never a transcript row. A notice that needs a decision is a row and never a

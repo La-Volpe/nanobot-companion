@@ -11,7 +11,7 @@ import org.junit.runner.RunWith
 
 /**
  * The core's copy keys and this app's string resources are one pairing, not two lists that happen
- * to agree (D29 §9, the same guarantee iOS's `CopyTests` gives). The resource name is the key with
+ * to agree (the same guarantee iOS's `CopyTests` gives). The resource name is the key with
  * its dot turned into an underscore, so a renamed string fails here instead of falling back to
  * whatever the next resource with that id says.
  */

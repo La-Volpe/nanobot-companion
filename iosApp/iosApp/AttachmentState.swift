@@ -1,6 +1,6 @@
 import Foundation
 
-/// What the composer may attach, and why it may not (plan.md I6).
+/// What the composer may attach, and why it may not.
 ///
 /// The numbers are the gateway's (`attachment_policy.py`: max_count 4, 6 MiB each, 24 MiB
 /// total, one video ≤ 20 MiB), and the refusals are the core's typed reasons, so this file is
@@ -49,14 +49,14 @@ enum AttachmentKind: Equatable {
     }
 }
 
-/// One upload as a message names it (C6.6): the gateway's reference and the file's name, never
+/// One upload as a message names it: the gateway's reference and the file's name, never
 /// the bytes. The composer hands these to the send, so what it draws is what goes out.
 struct SentAttachment: Equatable {
     let reference: String
     let name: String?
 }
 
-/// The attach sheet's three doors, as the row that was tapped (T50).
+/// The attach sheet's three doors, as the row that was tapped.
 enum AttachRow: Equatable {
     case photos
     case camera
@@ -209,7 +209,7 @@ final class NoopAttachments: AttachmentDriving {
 
 /// The two bounds the gateway enforces (`transcription_ws.py`).
 enum VoiceLimits {
-    /// The phone's own floor: a release under this is a tap, so nothing is sent (T48). It sits
+    /// The phone's own floor: a release under this is a tap, so nothing is sent. It sits
     /// above `floorMs`, the gateway's own refusal, so a recording it would reject is never asked.
     static let discardMs = 800
     static let floorMs = 650
@@ -230,7 +230,7 @@ protocol AudioRecording: AnyObject {
     func cancel()
 }
 
-/// What one transcription came back as (C6.5).
+/// What one transcription came back as.
 enum VoiceOutcome: Equatable {
     case transcribed(String)
     case refused(String)

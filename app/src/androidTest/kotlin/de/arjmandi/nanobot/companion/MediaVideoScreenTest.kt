@@ -15,7 +15,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * A9's video row, the part only a composition proves: the tap opens the player over the thread,
+ * The video row, the part only a composition proves: the tap opens the player over the thread,
  * the app's own controls are what is drawn, a clip that will not play is a sentence with a retry
  * rather than a spinner, and closing returns to the turn.
  *

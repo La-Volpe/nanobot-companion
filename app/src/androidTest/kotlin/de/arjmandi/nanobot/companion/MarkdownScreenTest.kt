@@ -26,7 +26,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * A5's markdown rendering (the Compose half): prose, bullets, a code fence with its language chip,
+ * The markdown rendering: prose, bullets, a code fence with its language chip,
  * line numbers on a multiline block and Copy's 1.5 s confirmation, and a table that scrolls inside
  * its own box. The parse is the core's (`MarkdownTest`); this is what only a composition proves.
  */

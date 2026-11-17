@@ -5,9 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /**
- * The composer's attachments (plan.md A6): pick, upload, show as a card, remove. Every limit is the
- * gateway's — the core validates against `ready.limits` before a byte leaves the device and answers
- * with a typed reason — so this only draws the answer and never re-derives a rejection.
+ * The composer's attachments: pick, upload, show as a card, remove. Every limit is the
+ * gateway's: the core validates against `ready.limits` before a byte leaves the device and answers
+ * with a typed reason, so this only draws the answer and never re-derives a rejection.
  */
 class AttachmentViewModel(
     private var driver: AttachmentDriving,
@@ -31,7 +31,7 @@ class AttachmentViewModel(
     /** Stable, so a card's identity survives the list changing around it. */
     private var nextId = 0
 
-    /** The cards by kind — the grid, the video card and the file cards the design draws. */
+    /** The cards by kind: the grid, the video card and the file cards the design draws. */
     val images: List<PendingAttachment> get() = attachments.filter { it.kind == AttachmentKind.Image }
     val videos: List<PendingAttachment> get() = attachments.filter { it.kind == AttachmentKind.Video }
     val files: List<PendingAttachment>
@@ -101,6 +101,6 @@ class AttachmentViewModel(
         lightbox = null
     }
 
-    /** What the send carries: the references the gateway handed back (C6.6). */
+    /** What the send carries: the references the gateway handed back. */
     val references: List<String> get() = attachments.mapNotNull { it.reference }
 }

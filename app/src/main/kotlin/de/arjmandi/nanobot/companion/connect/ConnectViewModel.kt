@@ -16,10 +16,11 @@ sealed interface ConnectPhase {
 }
 
 /**
- * Onboarding's three fields, one button and its states (plan.md A1, the Android twin of iOS's
+ * Onboarding's three fields, one button and its states (the Android twin of iOS's
  * `ConnectViewModel`). Every branch worth testing is here rather than in the composable: what
  * counts as a usable address, when the key is required, what a failure says, and the one rule the
- * unverified-certificate switch exists for — it is the user's decision, never the app's.
+ * unverified-certificate switch exists for, which is that trusting a certificate is the user's
+ * decision and never the app's.
  *
  * The state is Compose state, so a Compose test and a JVM unit test read the same fields.
  */
@@ -29,7 +30,7 @@ class ConnectViewModel(
     /**
      * A launch that already knows its gateway (DEBUG live instrument) hands it here instead of
      * typing it: the secret never reaches a log. The values win over the store, because the
-     * instrument names the gateway it is about — and what it connects with is then stored like
+     * instrument names the gateway it is about, and what it connects with is then stored like
      * any other connect, so the next launch needs nothing.
      */
     private val prefillAddress: String? = null,
@@ -100,7 +101,7 @@ class ConnectViewModel(
 
     /**
      * The launch's own attempt on the gateway the device already holds: the same bookkeeping the
-     * button does, and one difference — it keeps the stack when the handshake fails. A typed
+     * button does, and one difference: it keeps the stack when the handshake fails. A typed
      * attempt leaves a form to fix; a launch leaves the shell's banner, and that banner's "Try
      * again" is a reconnect on the stack this keeps open. True when the gateway greeted it.
      */
@@ -167,8 +168,8 @@ class ConnectViewModel(
 
     /**
      * Settings → Gateway, once the store is empty: the screen must not keep the address it just
-     * forgot, and a `Connected` phase must not walk the launch back into the shell it left — the
-     * connect screen reports its first composition as a success otherwise.
+     * forgot, and a `Connected` phase must not walk the launch back into the shell it left, because
+     * the connect screen reports its first composition as a success otherwise.
      */
     fun forget() {
         address = ""

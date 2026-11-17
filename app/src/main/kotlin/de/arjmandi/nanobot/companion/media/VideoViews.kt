@@ -50,8 +50,8 @@ import kotlinx.coroutines.launch
  *
  * The controls are the app's own, not `MediaController`'s: the platform's transport bar is the
  * Android 2 look the design has no place for, and it would come with a title bar and a scrubber
- * the rest of the app does not use. `VideoView` plays the signed url as it stands — the gateway's
- * media route checks the signature in the path and nothing else (D48), so no header travels here.
+ * the rest of the app does not use. `VideoView` plays the signed url as it stands: the gateway's
+ * media route checks the signature in the path and nothing else, so no header travels here.
  */
 @Composable
 fun VideoPlayerSheet(url: String, title: String, onClose: () -> Unit) {
@@ -62,7 +62,7 @@ fun VideoPlayerSheet(url: String, title: String, onClose: () -> Unit) {
         val model = remember(url) { VideoPlayerModel() }
         val scope = rememberCoroutineScope()
 
-        // A player nobody dismissed keeps playing with the sheet gone — the audio bug iOS guards
+        // A player nobody dismissed keeps playing with the sheet gone, the audio bug iOS guards
         // against in `dismantleUIViewController`. Leave the surface, release the player; and hold
         // the frame when the app leaves the foreground rather than talking to the room from a
         // pocket.

@@ -22,7 +22,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * A6's attachment drawing (the Compose half): the image grid, the video and file cards, the
+ * The attachment drawing: the image grid, the video and file cards, the
  * per-reason sentence with the gateway's own numbers in it, and the lightbox on a tap. The limits
  * and the grouping are `AttachmentViewModelTest`'s; this is what only a composition proves.
  */

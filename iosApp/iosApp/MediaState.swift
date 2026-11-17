@@ -9,7 +9,7 @@ struct MediaRow: Identifiable, Equatable {
     let url: URL?
     let kind: MediaRowKind
 
-    /// A row with no loadable url still draws — as a file card that says it is unavailable,
+    /// A row with no loadable url still draws, as a file card that says it is unavailable,
     /// because an entry the gateway could not sign is not an image to be waited for.
     var loadable: Bool { url != nil }
 }

@@ -2,13 +2,13 @@ import Foundation
 import Testing
 @testable import iosApp
 
-/// P13: a picked attachment must ride the message the composer sends.
+/// A picked attachment has to ride the message the composer sends.
 ///
 /// The cards and the send met only in `ComposerViews.primaryAction()`, which cleared them when
-/// the send was accepted — so nothing but a tap could show whether the references the gateway
+/// the send was accepted, so nothing but a tap could show whether the references the gateway
 /// handed back were in the draft at all, and the composer's own draft built them empty. The
 /// rule lives in the model now: what the composer shows is what it sends, and cards only leave
-/// once the gateway took the message (the Android half's rule, D49).
+/// once the gateway took the message, which is the Android half's rule too.
 @MainActor
 struct AttachmentSendTests {
 
@@ -90,7 +90,7 @@ struct AttachmentSendTests {
         await model.primaryAction()
 
         #expect(driver.sends.count == 1)
-        #expect(model.draft == "does this go?", "a refused send gives the text back (C6.1)")
+        #expect(model.draft == "does this go?", "a refused send gives the text back")
         #expect(attachments.references == ["ref-1"], "and the upload is still there to send with the next try")
     }
 
@@ -106,8 +106,8 @@ struct AttachmentSendTests {
     }
 
     /// An upload in flight has no reference, so no message can carry it yet. Sending anyway sent
-    /// the text with nothing attached and then cleared the card that promised the picture — the
-    /// dropped attachment, back through another door.
+    /// the text with nothing attached and then cleared the card that promised the picture, which is
+    /// the dropped attachment back through another door.
     final class GatedUploader: AttachmentDriving {
         let gate = AsyncGate()
         private(set) var started = false
@@ -147,7 +147,7 @@ struct AttachmentSendTests {
         #expect(model.refusalLine == nil, "and the waiting line goes with the wait")
     }
 
-    /// While a turn runs, typing queues instead of sending — and the cards stay for the message
+    /// While a turn runs, typing queues instead of sending, and the cards stay for the message
     /// that comes later, unlike a send that empties them.
     @Test func queueingDoesNotSpendTheCards() async {
         let driver = SendingDriver()

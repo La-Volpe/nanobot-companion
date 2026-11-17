@@ -27,7 +27,7 @@ import de.arjmandi.nanobot.companion.states.StatesViewModel
 import de.arjmandi.nanobot.companion.ui.Design
 
 /**
- * A8's debug menu, the Android twin of iOS's `DebugMenu` (G2 asked for it, and G3 keeps it): the
+ * The debug menu, the Android twin of iOS's `DebugMenu`: the
  * eight taxonomy failures with their sentences, then the chat states the artifact's chips inject,
  * then one way back. DEBUG builds only; the release build never compiles the entry point.
  */

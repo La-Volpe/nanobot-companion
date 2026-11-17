@@ -4,8 +4,8 @@ import UIKit
 import core
 @testable import iosApp
 
-/// The rows a turn's media becomes, and the two resting failures a loader may end in (plan.md
-/// I3). The pixels are the screenshot's job; what is asserted here is that a picture that will
+/// The rows a turn's media becomes, and the two resting failures a loader may end in. The pixels
+/// are the screenshot's job; what is asserted here is that a picture that will
 /// not load says so instead of leaving a blank box or a spinner spinning for ever.
 @MainActor
 struct MediaRowTests {

@@ -2,7 +2,7 @@ import Testing
 @testable import iosApp
 
 /// The two ways a phone asks for a socket it lost: the banner's "Try again" and coming back to
-/// the foreground. What is asserted here is the state machine's rules — one attempt at a time, no
+/// the foreground. What is asserted here is the state machine's rules: one attempt at a time, no
 /// attempt on a socket that was never up, and the reads only after a handshake that succeeded.
 @MainActor
 struct ConnectionRecoveryTests {

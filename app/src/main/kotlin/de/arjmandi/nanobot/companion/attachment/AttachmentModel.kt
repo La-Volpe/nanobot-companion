@@ -1,7 +1,7 @@
 package de.arjmandi.nanobot.companion.attachment
 
 /**
- * What the composer may attach, and why it may not (plan.md A6).
+ * What the composer may attach, and why it may not.
  *
  * The numbers are the gateway's (`attachment_policy.py`: max_count 4, 6 MiB each, 24 MiB total,
  * one video ≤ 20 MiB) and arrive on `ready.limits`; the refusals are the core's typed reasons, so
@@ -56,7 +56,7 @@ data class PendingAttachment(
         }
 }
 
-/** The gateway's own limits, as the composer validates and words them (C3.7). */
+/** The gateway's own limits, as the composer validates and words them. */
 data class UploadLimits(
     val maxCount: Int = 4,
     val maxFileBytes: Long = 6L * 1024 * 1024,

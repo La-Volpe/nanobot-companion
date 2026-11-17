@@ -16,7 +16,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * The drawer's taps (plan.md A2's Compose half): search filters to the row it matches, a query
+ * The drawer's taps: search filters to the row it matches, a query
  * nothing matches says so instead of showing an empty list, the pinned entries survive that state,
  * and picking a row is one command that closes the drawer. The rules are
  * `DrawerViewModelTest`'s; this is what only a composition can prove.

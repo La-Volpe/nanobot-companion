@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import iosApp
 
-/// The one primary button has three jobs and is pressed by one finger (T31, the owner's report:
+/// The one primary button has three jobs and is pressed by one finger, which is the owner's report:
 /// "the voice option is activated with send button and begins to record"). The send empties the
 /// field, so the button becomes the microphone *while that finger is still down*, and the gesture
 /// that belonged to the send must not be allowed to start anything. This is the guard, as a

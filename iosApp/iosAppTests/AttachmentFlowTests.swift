@@ -3,8 +3,8 @@ import Testing
 import UIKit
 @testable import iosApp
 
-/// What a pick does between the system picker and the message (I6) — the part the owner's
-/// report ("the attachments do not work") lands on.
+/// What a pick does between the system picker and the message, which is the part the owner's
+/// report ("the attachments do not work") landed on.
 ///
 /// Three things were wrong in the same direction. The card only appeared once the upload had
 /// finished, so a photo on a slow link looked like nothing had happened at all. A photo the

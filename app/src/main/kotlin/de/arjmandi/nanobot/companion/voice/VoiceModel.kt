@@ -2,7 +2,7 @@ package de.arjmandi.nanobot.companion.voice
 
 /**
  * The microphone, as a seam: a real `AudioRecord` in the app, a fake in a test. The recording
- * comes back as WAV bytes, which is what the gateway's transcription frame carries (C6.5).
+ * comes back as WAV bytes, which is what the gateway's transcription frame carries.
  */
 interface AudioRecording {
     fun start()
@@ -13,11 +13,11 @@ interface AudioRecording {
     fun cancel()
 }
 
-/** What one transcription came back as (C6.5). */
+/** What one transcription came back as. */
 sealed interface VoiceOutcome {
     data class Transcribed(val text: String) : VoiceOutcome
 
-    /** The gateway's `transcription_error.detail`: its word, not a sentence (P8). */
+    /** The gateway's `transcription_error.detail`: its word, not a sentence. */
     data class Refused(val detail: String) : VoiceOutcome
 }
 
@@ -34,7 +34,7 @@ class EmptyVoiceDriver : VoiceDriving {
  * The numbers a recording lives between, in milliseconds.
  *
  * [DISCARD_MS] is the phone's own floor and the one the gesture asks about: a press that short is
- * a tap, so nothing is sent (T48). It sits *above* [FLOOR_MS], the gateway's own refusal threshold
+ * a tap, so nothing is sent. It sits *above* [FLOOR_MS], the gateway's own refusal threshold
  * (`transcription_ws.py`), so a recording the gateway would reject is never asked about.
  */
 object VoiceLimits {
@@ -47,8 +47,8 @@ object VoiceLimits {
 enum class VoiceNotice { HoldToTalk, TooLong, MicrophoneUnavailable, NothingRecorded, TranscriptionFailed }
 
 /**
- * The "Hold to talk" hint is shown once and remembered (T48 answers Android's "tapping does
- * nothing" with an explanation, not with a second recording mode). The decision to show it is the
+ * The "Hold to talk" hint is shown once and remembered. That is the answer to Android's "tapping
+ * does nothing": an explanation, not a second recording mode. The decision to show it is the
  * model's; the remembering is the phone's.
  */
 interface VoiceHints {

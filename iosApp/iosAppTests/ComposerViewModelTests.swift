@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import iosApp
 
-/// The composer's rules (plan.md I5): which button the primary action is, what a queued prompt
+/// The composer's rules: which button the primary action is, what a queued prompt
 /// does, the copy confirmation, the usage ring, the model sheet, the access chip and the two
 /// palettes. Every branch the view would otherwise hold lives here.
 @MainActor
@@ -19,7 +19,7 @@ struct ComposerViewModelTests {
         var palettes = 0
         var paletteRows: PaletteSheet?
         var sendNowSucceeds = true
-        /// False is a pick the socket refused (T39).
+        /// False is a pick the socket refused.
         var presetAccepted = true
 
         func sendPrompt(_ text: String, media: [SentAttachment]) async -> Bool {
@@ -65,7 +65,7 @@ struct ComposerViewModelTests {
         ChatModelPreset(name: name, model: "model-\(name)", provider: "ollama", contextWindowTokens: 32_768, active: active, isDefault: name == "default")
     }
 
-    /// The plan's first red line, and the WebUI's own rule: `showStopButton = isStreaming && !canSend`.
+    /// The WebUI's own rule: `showStopButton = isStreaming && !canSend`.
     @Test func stopVsSendRule() {
         let model = model()
 
@@ -215,12 +215,12 @@ struct ComposerViewModelTests {
 
         await model.pick(preset: preset("primary"))
 
-        #expect(driver.presets == ["primary"], "the switch is the /model command on this chat (C6.2)")
+        #expect(driver.presets == ["primary"], "the switch is the /model command on this chat")
         #expect(model.sheet == nil, "picking closes the sheet")
         #expect(model.refusalLine == nil, "a pick that went out says nothing under the field")
     }
 
-    /// T39: the pick the socket refused used to vanish. The chip had already moved, so silence
+    /// The pick the socket refused used to vanish. The chip had already moved, so silence
     /// left it naming a model the chat was not on.
     @Test func aPickTheSocketRefusedIsSaidOutLoud() async {
         let driver = FakeDriver()
@@ -241,7 +241,7 @@ struct ComposerViewModelTests {
 
         await model.pick(access: .full)
         #expect(driver.accesses == [.full])
-        #expect(model.snapshot.access == .full, "the chip says Full until the gateway refuses it (C6.3)")
+        #expect(model.snapshot.access == .full, "the chip says Full until the gateway refuses it")
 
         model.openAccessSheet()
         await model.pick(access: .default)

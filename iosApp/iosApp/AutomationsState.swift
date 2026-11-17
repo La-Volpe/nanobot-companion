@@ -18,7 +18,7 @@ struct AutomationRow: Identifiable, Equatable {
 /// which reads as an empty one.
 enum AutomationsPage: Equatable { case loading, empty, rows, failed }
 
-/// The four things a row can do. Creating one is not among them — the gateway has no create
+/// The four things a row can do. Creating one is not among them: the gateway has no create
 /// endpoint, so the page ends with a button that asks the agent instead.
 enum AutomationAct: Equatable {
     case run
@@ -36,7 +36,7 @@ protocol AutomationsDriving: AnyObject {
     func act(_ act: AutomationAct, id: String) async -> String?
 }
 
-/// The automations page (I2b). It lists, runs, pauses and deletes; it never invents a schedule.
+/// The automations page. It lists, runs, pauses and deletes; it never invents a schedule.
 @MainActor
 final class AutomationsViewModel: ObservableObject {
     @Published private(set) var rows: [AutomationRow] = []

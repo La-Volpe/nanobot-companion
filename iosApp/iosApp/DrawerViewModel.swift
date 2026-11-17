@@ -1,8 +1,8 @@
 import Foundation
 
-/// The drawer's rows and its three states (plan.md I2, design artifact `data-view="drawer"`).
+/// The drawer's rows and its three states (design artifact `data-view="drawer"`).
 /// The gateway hands the rows down; what a search field does to them, and what the drawer says
-/// when there is nothing to show, is a decision worth testing — so it lives here, not in a view.
+/// when there is nothing to show, is a decision worth testing, so it lives here and not in a view.
 @MainActor
 final class DrawerViewModel: ObservableObject {
 
@@ -40,7 +40,7 @@ final class DrawerViewModel: ObservableObject {
 
     var isSearching: Bool { !searchText.isEmpty }
 
-    /// Search is a case-insensitive substring over what the row shows — title and preview, the
+    /// Search is a case-insensitive substring over what the row shows (title and preview), the
     /// same fields the WebUI searches in the sessions it has already loaded (design README:
     /// "Search matches the webui behaviour of searching loaded content only").
     var matches: [SessionSummary] {
@@ -77,7 +77,8 @@ final class DrawerViewModel: ObservableObject {
     }
 
     /// Sessions are shown newest first; the gateway already sorts them, and a client that
-    /// re-sorted by a string timestamp would put them in the wrong order (D15.2).
+    /// re-sorted by a string timestamp would put them in the wrong order, because `updated_at` is
+    /// an ISO-8601 string.
     func ordered() -> [SessionSummary] {
         rows
     }

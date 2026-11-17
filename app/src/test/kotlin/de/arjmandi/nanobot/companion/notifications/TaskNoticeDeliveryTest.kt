@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 
 /**
  * The phone half of a task notice: post what the core allowed, remember what the system refused,
- * and ask for the permission once — at the first banner that went missing, not at launch.
+ * and ask for the permission once, at the first banner that went missing rather than at launch.
  */
 class TaskNoticeDeliveryTest {
 
@@ -83,8 +83,8 @@ class TaskNoticeDeliveryTest {
     }
 
     /**
-     * T43: the Notifications switches have to gate something. A reader who turned "Needs attention"
-     * off is not posted a recovery, and the suppressed notice is not remembered either — turning the
+     * The Notifications switches have to gate something. A reader who turned "Needs attention"
+     * off is not posted a recovery, and the suppressed notice is not remembered either: turning the
      * switch back on lets the next one through, which is what a switch means.
      */
     @Test

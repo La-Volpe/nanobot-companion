@@ -8,8 +8,8 @@ import androidx.compose.runtime.setValue
  * Hold to talk, the Android twin of iOS's `VoiceViewModel`.
  *
  * The model is one machine with three states and one rule of thumb: the finger is the start. A
- * press records the instant it lands — no threshold, no commit step — because the old 300 ms
- * tap-mode wait read as lag on the owner's phone (T48). What a release then means depends only on
+ * press records the instant it lands (no threshold, no commit step), because the old 300 ms
+ * tap-mode wait read as lag on the owner's phone. What a release then means depends only on
  * how long the press lasted: under [VoiceLimits.DISCARD_MS] it was a tap, the recording is thrown
  * away with no request, and the first tap explains the gesture; at or above it the recording goes
  * to the gateway and the transcript lands in the field. A drag up in between locks the recording so
@@ -17,7 +17,7 @@ import androidx.compose.runtime.setValue
  * recording away.
  *
  * The clock is the caller's: the gesture passes `nowMs`, so the floor, the ceiling and the frame's
- * duration are one number and no timer runs inside the model. That includes the transcribing arc —
+ * duration are one number and no timer runs inside the model. That includes the transcribing arc:
  * it advances on [tick], never on an animation, so a screen that waits for quiet still gets it.
  */
 class VoiceViewModel(
@@ -72,7 +72,7 @@ class VoiceViewModel(
         if (recording != null) this.recording = recording
     }
 
-    /** A notice is the reader's to put away: it is a line on the composer, not an alert (T31). */
+    /** A notice is the reader's to put away: it is a line on the composer, not an alert. */
     fun dismissNotice() {
         notice = null
     }
@@ -144,7 +144,7 @@ class VoiceViewModel(
     }
 
     /**
-     * A tap is discarded silently, and the first one explains the gesture — once ever, because a
+     * A tap is discarded silently, and the first one explains the gesture, once ever, because a
      * hint that keeps coming back is a nag. Persisting the "seen" flag is [VoiceHints]'s job.
      */
     private fun discardAsTap() {

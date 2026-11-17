@@ -9,8 +9,8 @@ import org.junit.Test
 
 /**
  * The two ways a phone asks for a socket it lost: the banner's "Try again" and coming back to the
- * foreground. A8's states decide what the banner says; this decides whether a handshake is asked
- * for at all, and the rule is one at a time — a second bootstrap racing the first is how a
+ * foreground. The shell's states decide what the banner says; this decides whether a handshake is
+ * asked for at all, and the rule is one at a time: a second bootstrap racing the first is how a
  * single-use token gets burned twice.
  */
 class ConnectionRecoveryTest {

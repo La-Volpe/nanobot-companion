@@ -1,6 +1,6 @@
 import XCTest
 
-/// The chat flow a tap can prove (plan.md I3's gate): the history loads, a send appears at
+/// The chat flow a tap can prove: the history loads, a send appears at
 /// once, the answer streams in, and Stop is what the button becomes while a turn runs.
 /// The scripted chat streams on the same timeline as a real one (DEBUG only).
 final class ChatRoundTripTests: XCTestCase {
@@ -12,7 +12,7 @@ final class ChatRoundTripTests: XCTestCase {
         app.launchEnvironment["NANOBOT_THREAD"] = "scripted"
         app.launch()
         // The composer's field is what proves the shell: with an empty field the primary button
-        // is the microphone (I5), so waiting for "chat.send" would wait for a state the screen is
+        // is the microphone, so waiting for "chat.send" would wait for a state the screen is
         // not in yet.
         if !app.textFields["chat.composer"].waitForExistence(timeout: 10) {
             XCTFail("the chat is the connected screen. Tree:\n\(app.debugDescription)")

@@ -25,10 +25,10 @@ import de.arjmandi.nanobot.companion.ui.SkeletonRows
 import kotlinx.coroutines.launch
 
 /**
- * The sheets the composer opens (plan.md A5): model presets, the Default/Full access choice,
+ * The sheets the composer opens: model presets, the Default/Full access choice,
  * context usage, the slash or mention palette, the message list and the session details. One
- * `when` on the model's sheet value, so a sheet cannot be half-open — the same shape as iOS's
- * `ComposerSheets`.
+ * `when` on the model's sheet value, so a sheet cannot be half-open. iOS's `ComposerSheets` has
+ * the same shape.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

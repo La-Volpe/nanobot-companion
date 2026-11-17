@@ -3,10 +3,10 @@ import Testing
 import core
 @testable import iosApp
 
-/// Settings (plan.md I7): Overview says what the gateway is and never invents an uptime line,
+/// Settings: Overview says what the gateway is and never invents an uptime line,
 /// Notifications is honest about there being no push transport and proves itself with a real
 /// local notification, Appearance owns the theme and the reading size, and Gateway is the way
-/// out — a disconnect that forgets the address and the key.
+/// out, which is a disconnect that forgets the address and the key.
 @MainActor
 struct SettingsViewModelTests {
 
@@ -80,12 +80,12 @@ struct SettingsViewModelTests {
         )
     }
 
-    /// The open chat's model as the shell hands it over: the core words the two lines (T45).
+    /// The open chat's model as the shell hands it over: the core words the two lines.
     private func chat(preset: String = "primary", name: String = "glm-5.3-flash:cloud", window: String? = "1M") -> SettingsViewModel.CurrentModel {
         SettingsViewModel.CurrentModel(name: name, preset: preset, presetLabel: "Preset \(preset)", windowLabel: window)
     }
 
-    /// T34: the notification sound is a preference of the reader's, on until they say otherwise,
+    /// The notification sound is a preference of the reader's, on until they say otherwise,
     /// and the next launch reads the same key the banners do.
     @Test func theNotificationSoundIsOnUntilItIsTurnedOffAndTheChoiceOutlivesTheApp() {
         let defaults = FakeDefaults()
@@ -133,7 +133,7 @@ struct SettingsViewModelTests {
         #expect(rows.contains { $0.label == "Transcription" && $0.value == "Whisper-large-v3" })
     }
 
-    /// T36 and T45 together: the window row is the *chat's* window, and a million is `1M` — the
+    /// The window row is the *chat's* window, and a million is `1M`, and the
     /// unit stays, because a bare `1M` next to a version string reads like one. The label itself
     /// is the core's (`ModelInUseTest` pins 1 000 000 -> 1M).
     @Test func theWindowRowIsTheChatsAndReadsOneM() {
@@ -159,7 +159,7 @@ struct SettingsViewModelTests {
         #expect(!model.overviewRows.contains { $0.label == "Context window" }, "\(model.overviewRows)")
     }
 
-    /// The plan's red line: notifications are local, and the model never pretends otherwise.
+    /// Notifications are local, and the model never pretends otherwise.
     @Test func testNotificationIsLocalOnly() async {
         let notifier = FakeNotifier()
         let model = model(notifier: notifier)
@@ -186,7 +186,7 @@ struct SettingsViewModelTests {
         #expect(model.notice == "Notifications are turned off for this app in Settings.")
     }
 
-    /// The plan's red line: a disconnect forgets both the address and the key.
+    /// A disconnect forgets both the address and the key.
     @Test func disconnectForgetsSecureStore() async {
         let credentials = FakeCredentials()
         let notifier = FakeNotifier()
@@ -230,7 +230,7 @@ struct SettingsViewModelTests {
         #expect(ReadingScale.size(for: .medium) == 16)
     }
 
-    /// T45: the owner's rule — every name and size on screen describes the model *in use*, never
+    /// The owner's rule: every name and size on screen describes the model *in use*, never
     /// the gateway's configured default. `/api/settings` `agent.model` is a configuration (the
     /// WebUI's own Overview row prints it, `OverviewSettings.tsx:78`); with no chat open there is
     /// no model in use, and the row says so instead of naming one that is not answering.
@@ -249,7 +249,7 @@ struct SettingsViewModelTests {
         )
     }
 
-    /// T43: the switches used to be local state that persisted nowhere and gated nothing. Each one
+    /// The switches used to be local state that persisted nowhere and gated nothing. Each one
     /// is stored under the core's own key (`NoticeCategory.preferenceKey`), which is the key the
     /// poster reads at post time.
     @Test func everySwitchIsStoredUnderTheKeyThePosterReads() {
@@ -280,7 +280,7 @@ struct SettingsViewModelTests {
         #expect(afterRelaunch.notificationToggles[2].isOn == false, "and an untouched switch keeps the design's default")
     }
 
-    /// T43: the switch the screen draws and the switch the poster checks are one list. The rows'
+    /// The switch the screen draws and the switch the poster checks are one list. The rows'
     /// keys are the core's own strings, so a rename on either side is a test, not a silent switch.
     @Test func everyDrawnSwitchNamesACoreCategory() {
         let drawn = model().notificationToggles.map(\.id)

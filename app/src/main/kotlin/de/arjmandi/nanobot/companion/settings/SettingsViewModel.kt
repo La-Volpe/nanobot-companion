@@ -9,7 +9,7 @@ import de.arjmandi.nanobot.companion.projection.NoticeCategory
 private data class SwitchRow(val category: NoticeCategory, val title: String)
 
 /**
- * Settings (plan.md A7, the Android twin of iOS's `SettingsViewModel`): what Overview may say, the
+ * Settings (the Android twin of iOS's `SettingsViewModel`): what Overview may say, the
  * notification switches and their single honest promise, the appearance preference, and the way
  * out. Sectioned lists and M3 switches are the design's Android column; the rules are all here.
  */
@@ -24,7 +24,7 @@ class SettingsViewModel(
         private set
 
     /**
-     * The open chat's model, the only model Overview may name (T45). Null is "no chat open": the
+     * The open chat's model, the only model Overview may name. Null is "no chat open": the
      * section says so rather than printing the gateway's configured default.
      */
     var modelInUse: ChatModelInUse? by mutableStateOf(null)
@@ -50,7 +50,7 @@ class SettingsViewModel(
     )
         private set
 
-    /** Whether a banner may make a sound (T34): the reader's choice, read at post time. */
+    /** Whether a banner may make a sound: the reader's choice, read at post time. */
     var notificationSound: Boolean by mutableStateOf(
         preferences.flag(KEY_NOTIFICATION_SOUND) ?: true,
     )
@@ -62,8 +62,8 @@ class SettingsViewModel(
         private set
 
     /**
-     * The three switches the design draws, in its order. Each is stored under the core's own key
-     * (T43), so the poster silences exactly what the reader turned off, and a choice outlives the
+     * The three switches the design draws, in its order. Each is stored under the core's own key,
+     * so the poster silences exactly what the reader turned off, and a choice outlives the
      * screen that made it.
      */
     var notificationToggles: List<SettingsToggle> by mutableStateOf(
@@ -95,8 +95,8 @@ class SettingsViewModel(
      */
     val notificationsCopy: String =
         "Alerts arrive while you are away: a local notification when a turn finishes, fails or " +
-            "stops, and when nanobot needs an answer — the switches above are which. The chat you " +
-            "are looking at is never announced. The gateway has no push service and none is " +
+            "stops, and when nanobot needs an answer, which the switches above choose. The chat " +
+            "you are looking at is never announced. The gateway has no push service and none is " +
             "planned, so a closed app stays quiet instead of promising an alert it cannot deliver."
 
     /** The state the screen names, and the one action it offers for it. */
@@ -150,7 +150,7 @@ class SettingsViewModel(
             snapshot.os?.let { os ->
                 add(SettingsRow(label = "Server", detail = snapshot.pythonVersion?.let { "Python $it" }, value = os))
             }
-            // T45, deliberately unlike the WebUI (`overview/OverviewSettings.tsx:78` prints
+            // Deliberately unlike the WebUI (`overview/OverviewSettings.tsx:78` prints
             // `settings.agent.model`): the model row describes the chat on screen, from the same
             // composer the chip and the ring read. A gateway's configured model is not the model in
             // use, and with no chat open there is no model in use to name.
@@ -179,11 +179,11 @@ class SettingsViewModel(
 
     fun setToggle(category: NoticeCategory, on: Boolean) {
         notificationToggles = notificationToggles.map { if (it.category == category) it.copy(isOn = on) else it }
-        // The store is the poster's own source: written here, read at post time (T43).
+        // The store is the poster's own source: written here, read at post time.
         preferences.set(category.preferenceKey, on)
     }
 
-    /** The screen's proof that it can keep its promise: a real local notification (D8). */
+    /** The screen's proof that it can keep its promise: a real local notification. */
     suspend fun sendTestNotification() {
         notice = null
         if (!notifier.requestAuthorisation()) {

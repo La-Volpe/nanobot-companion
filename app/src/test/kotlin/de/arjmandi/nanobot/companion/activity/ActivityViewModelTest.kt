@@ -8,9 +8,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * A4's activity cluster: reasoning, tool rows, inline diffs and search sources, grouped by the turn
+ * The activity cluster: reasoning, tool rows, inline diffs and search sources, grouped by the turn
  * they belong to and folded once that turn is over. The core already reduced the frames
- * (`TurnReducerTest`); this suite owns the drawing rules only — the Android twin of
+ * (`TurnReducerTest`); this suite owns the drawing rules only, and it is the Android twin of
  * `ActivityViewModelTests` on iOS.
  */
 class ActivityViewModelTest {
@@ -59,7 +59,7 @@ class ActivityViewModelTest {
         ),
     )
 
-    /** The plan's red line: one cluster per turn, and a turn that has finished folds it. */
+    /** The rule this file pins: one cluster per turn, and a turn that has finished folds it. */
     @Test
     fun groupsByTurnAndCollapses() {
         val model = ActivityViewModel(now = { 7_000 })
@@ -86,8 +86,8 @@ class ActivityViewModelTest {
     }
 
     /**
-     * The plan's named red line. A tool that failed carries the gateway's own reason (`detail`),
-     * and a failure the reader has not seen must not be folded away — the iOS rule, kept here.
+     * A tool that failed carries the gateway's own reason (`detail`), and a failure the reader has
+     * not seen must not be folded away, which is the iOS rule, kept here.
      */
     @Test
     fun failedRowShowsRetryReason() {
@@ -221,9 +221,9 @@ class ActivityViewModelTest {
     }
 
     /**
-     * T9's first complaint: a row printed its arguments and its output. The web draws one line —
-     * glyph, name, one-line summary — and keeps the rest behind the row's disclosure, closed by
-     * default (`ActivityStep.tsx:77`, tooltip only on hover).
+     * The owner's first complaint about this screen: a row printed its arguments and its output.
+     * The web draws one line (glyph, name, one-line summary) and keeps the rest behind the row's
+     * disclosure, closed by default (`ActivityStep.tsx:77`, tooltip only on hover).
      */
     @Test
     fun rowDetailsStartClosed() {

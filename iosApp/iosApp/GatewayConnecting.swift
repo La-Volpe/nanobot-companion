@@ -8,7 +8,7 @@ enum GatewayOutcome: Equatable {
     case failed(ConnectionFailureKind, detail: String?)
 }
 
-/// The one thing the connect screen needs from the core (plan.md §7: views read one state and
+/// The one thing the connect screen needs from the core: views read one state and
 /// call one command). One method, so a test double is a closure rather than a fake framework.
 @MainActor
 protocol GatewayConnecting: AnyObject {

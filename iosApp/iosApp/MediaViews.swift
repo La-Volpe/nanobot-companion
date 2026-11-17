@@ -6,7 +6,7 @@ import UIKit
 ///
 /// The three shapes are the WebUI's own (`webui/src/components/AttachmentTile.tsx:33`): an image
 /// is inline with a lightbox, a video is a framed player, and everything else is a file card. What
-/// the WebUI does not have is an audio row — it has no player for one — so that is ours.
+/// the WebUI does not have is an audio row, because it has no player for one, so that is ours.
 struct MediaRowView: View {
     let row: MediaRow
 
@@ -25,7 +25,7 @@ struct MediaRowView: View {
 }
 
 /// An inline picture. Loading is a skeleton at its own height, a failure is a card with the
-/// sentence and a retry — never an empty frame the reader has to guess about.
+/// sentence and a retry, never an empty frame the reader has to guess about.
 struct MediaImageView: View {
     let row: MediaRow
     @StateObject private var loader = MediaLoader()
@@ -94,8 +94,8 @@ struct MediaFailureCard: View {
     }
 }
 
-/// The face of something that is not a picture: the kind, the name, and — when the gateway could
-/// not sign a url — the word that says it cannot be opened.
+/// The face of something that is not a picture: the kind, the name, and, when the gateway could
+/// not sign a url, the word that says it cannot be opened.
 struct MediaFileCard: View {
     let row: MediaRow
 
@@ -201,7 +201,7 @@ struct VideoPlayerScreen: UIViewControllerRepresentable {
 
 /// A recording, played in place: one row with a play/pause control and the line that says how
 /// far in it is. The simulator has no audio device, so what is proved here is the state and the
-/// line — whether it is audible needs a phone.
+/// line; whether it is audible needs a phone.
 struct MediaAudioRow: View {
     let row: MediaRow
     @StateObject private var player: AudioPlayerModel

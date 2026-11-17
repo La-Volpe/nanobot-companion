@@ -13,7 +13,7 @@ import de.arjmandi.nanobot.companion.voice.VoiceOutcome
 import de.arjmandi.nanobot.companion.wire.AttachmentLimits
 
 /**
- * One picked file, over the facade (A6). The core validates against `ready.limits` before a byte
+ * One picked file, over the facade. The core validates against `ready.limits` before a byte
  * leaves the device and answers with a typed reason; this only renames the reason by its copy key.
  */
 class CoreAttachmentDriver(private val handle: ChatHandle) : AttachmentDriving {
@@ -26,7 +26,7 @@ class CoreAttachmentDriver(private val handle: ChatHandle) : AttachmentDriving {
         }
 }
 
-/** One recording, over the facade (A6): the core owns both bounds and the round trip (C6.5). */
+/** One recording, over the facade: the core owns both bounds and the round trip. */
 class CoreVoiceDriver(private val handle: ChatHandle) : VoiceDriving {
 
     override suspend fun transcribe(pcm: ByteArray, durationMs: Long): VoiceOutcome =
@@ -38,7 +38,7 @@ class CoreVoiceDriver(private val handle: ChatHandle) : VoiceDriving {
         }
 }
 
-/** The gateway's attachment numbers, as the composer words them (`ready.limits`, C3.7). */
+/** The gateway's attachment numbers, as the composer words them (`ready.limits`). */
 internal fun AttachmentLimits.toUploadLimits(): UploadLimits = UploadLimits(
     maxCount = maxCount,
     maxFileBytes = maxFileBytes,

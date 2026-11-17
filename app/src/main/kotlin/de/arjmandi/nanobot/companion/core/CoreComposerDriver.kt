@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 /**
- * The composer's commands for one chat (A5), over the facade. Every method forwards and nothing
+ * The composer's commands for one chat, over the facade. Every method forwards and nothing
  * branches here: the core owns the queue, the bounds and the palette rules, and this only names
  * them for a screen that holds no framework type.
  */
@@ -45,7 +45,7 @@ class CoreComposerDriver(
 
     /**
      * A send landed if the receipt says so, or if the thread holds its bubble: the call can fail
-     * where the message did not, and a thrown send used to lose what was typed outright (T42).
+     * where the message did not, and a thrown send used to lose what was typed outright.
      */
     override suspend fun sendPrompt(text: String): Boolean {
         val mark = handle.threadMark()
@@ -87,7 +87,7 @@ class CoreComposerDriver(
     }
 
     /**
-     * The two palettes (C6.4): the core reads commands and CLI apps when a sheet opens, then
+     * The two palettes: the core reads commands and CLI apps when a sheet opens, then
      * answers with the resolved sheet. A read per open, not a read per keystroke.
      */
     override suspend fun loadPalette(text: String, cursor: Int): PaletteSheet? {
@@ -110,7 +110,7 @@ internal fun ComposerState.toSnapshot(): ComposerSnapshot = ComposerSnapshot(
 )
 
 /**
- * The chat's model as Settings → Overview names it (T45): the chip's model, preset and the ring's
+ * The chat's model as Settings → Overview names it: the chip's model, preset and the ring's
  * denominator, worded by the core (`ModelInUse`) so the two phones' rows cannot drift.
  */
 internal fun ComposerSnapshot.toChatModelInUse(): de.arjmandi.nanobot.companion.settings.ChatModelInUse {

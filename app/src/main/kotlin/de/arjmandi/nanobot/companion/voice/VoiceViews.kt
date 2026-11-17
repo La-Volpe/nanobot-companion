@@ -27,7 +27,7 @@ import de.arjmandi.nanobot.companion.ui.Design
 
 /**
  * The recording meter (artifact: `#voice-meter`): the elapsed clock and a level bar, plus the words
- * for what the finger has to do, and — once a drag up has locked the recording — the one control
+ * for what the finger has to do, and the one control, once a drag up has locked the recording,
  * that throws it away. It draws the model's numbers; the clock is the gesture's, not the meter's.
  */
 @Composable
@@ -46,7 +46,7 @@ fun VoiceMeter(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // The timer the owner could not see: it is the model's elapsed clock, drawn (T48).
+            // The timer the owner could not see: it is the model's elapsed clock, drawn.
             Text(
                 text = model.elapsedLabel,
                 fontSize = Design.Interface.microSize,
@@ -101,9 +101,9 @@ fun VoiceMeter(
 }
 
 /**
- * The one sentence a gesture produced, above the field, with the one control that puts it away
- * (T31: a gateway with no speech provider answers every recording with a refusal, so a notice
- * nobody can dismiss is a sentence that stays on the composer for the life of the app).
+ * The one sentence a gesture produced, above the field, with the one control that puts it away. A
+ * gateway with no speech provider answers every recording with a refusal, so a notice nobody can
+ * dismiss is a sentence that stays on the composer for the life of the app.
  */
 @Composable
 fun VoiceNoticeRow(

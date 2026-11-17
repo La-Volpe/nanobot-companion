@@ -43,9 +43,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 
 /**
- * One chat, as the app drives it (A3). Reads the handle's thread and maps it to what Android draws;
- * every command forwards to the facade and nothing branches here — the reducer's decisions are the
- * core's, which is why a replayed history (D46) and a live turn produce the same rows.
+ * One chat, as the app drives it. Reads the handle's thread and maps it to what Android draws;
+ * every command forwards to the facade and nothing branches here. The reducer's decisions are the
+ * core's, which is why a replayed history and a live turn produce the same rows.
  */
 class CoreChatDriver(
     private val handle: ChatHandle,
@@ -170,7 +170,7 @@ internal fun ToolStatus.toView(): ToolRunStatus = when (this) {
 }
 
 /**
- * `MarkdownDocument` → the tree the chat draws (A5). The core parses and both platforms render, so
+ * `MarkdownDocument` → the tree the chat draws. The core parses and both platforms render, so
  * this is a rename and nothing else: an unknown block or inline drops rather than drawing blank.
  */
 internal fun MarkdownBlock.toView(): MdBlock = when (this) {
@@ -213,7 +213,7 @@ internal fun Inline.toView(): MdInline = when (this) {
 }
 
 /**
- * `Notice` → the row the screen draws (A8). Seven casts and nothing else: a notice this build does
+ * `Notice` → the row the screen draws. Seven casts and nothing else: a notice this build does
  * not know is dropped rather than drawn as a blank row.
  */
 internal fun Notice.toView(): ThreadNotice? = when (this) {

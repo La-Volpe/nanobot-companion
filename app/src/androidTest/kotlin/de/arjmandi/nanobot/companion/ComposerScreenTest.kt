@@ -31,7 +31,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * A5's taps (the Compose half): the queued chip's two buttons, the model pill's sheet with the
+ * The composer's taps: the queued chip's two buttons, the model pill's sheet with the
  * gateway's presets, the access chip's choice, and the bar's one overflow holding the session
  * actions. The button and queue rules are `ComposerViewModelTest`'s; this is what only a
  * composition can prove.
@@ -152,7 +152,7 @@ class ComposerScreenTest {
         compose.onNodeWithText("primary").assertIsDisplayed()
 
         compose.onNodeWithTag("composer.model.primary").performClick()
-        assertEquals(listOf("primary"), composer.presets, "the switch is the /model command (C6.2)")
+        assertEquals(listOf("primary"), composer.presets, "the switch is the /model command")
     }
 
     @Test
@@ -174,7 +174,8 @@ class ComposerScreenTest {
         compose.onNodeWithText("42%").assertIsDisplayed()
     }
 
-    /// T50's Android half. The owner's iPhone row did nothing until the overlay was closed; the
+    /// The Android half of the attach-sheet fix. The owner's iPhone row did nothing until the
+    /// overlay was closed; the
     /// Android row has no such constraint because `ActivityResultContracts` start an activity, not
     /// a second sheet, so the tap reaches the launcher with the sheet still on screen. What a
     /// composition can prove is that the row fires; the picker it starts is the platform's own.

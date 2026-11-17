@@ -41,7 +41,7 @@ import de.arjmandi.nanobot.companion.R
 import de.arjmandi.nanobot.companion.ui.Design
 
 /**
- * The composer's chips and meta row (plan.md A5): the queued prompt above the field, then access,
+ * The composer's chips and meta row: the queued prompt above the field, then access,
  * the context ring and the model, then the field with attach on the left and the one button on the
  * right. Every control is at least 48 dp (the design's Android column), and the bar's session
  * actions live in one overflow beside the title rather than in three glyphs.
@@ -178,11 +178,11 @@ fun SessionActionsOverflow(composer: ComposerViewModel, expanded: Boolean, onDis
 }
 
 /**
- * The composer's one button: hold to record, tap to send, tap to stop — the model says which.
+ * The composer's one button: hold to record, tap to send, tap to stop, whichever the model says.
  *
  * While the gateway is transcribing, the voice job is the one thing the button cannot do, so it
- * goes inactive and a light arc circles it (T48: the owner asked for exactly that, and for the
- * composer around it to keep working). The arc's angle comes from the model's ticks, not from an
+ * goes inactive and a light arc circles it, which is what the owner asked for along with a
+ * composer that keeps working. The arc's angle comes from the model's ticks, not from an
  * animation: an endless animation keeps the frame clock busy and hangs every test that waits for
  * idle (`Skeleton` is static for the same reason).
  */

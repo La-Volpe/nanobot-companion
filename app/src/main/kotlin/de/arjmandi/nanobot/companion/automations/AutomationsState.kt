@@ -4,7 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
-/** One row of the automations page (A7): the design's card is a name, the schedule, what the
+/** One row of the automations page: the design's card is a name, the schedule, what the
  *  job is doing, and either a switch or the "System" flag. */
 data class AutomationRow(
     val id: String,
@@ -37,7 +37,7 @@ interface AutomationsDriving {
 
 /**
  * The automations page's state. It lists, runs, pauses and deletes; it never flips a row on its
- * own — the gateway owns the job, so every act ends in a re-read.
+ * own, because the gateway owns the job, so every act ends in a re-read.
  */
 class AutomationsViewModel(private val driver: AutomationsDriving) {
     var rows by mutableStateOf<List<AutomationRow>>(emptyList())

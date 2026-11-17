@@ -1,6 +1,6 @@
 import Foundation
 
-/// The composition root (plan.md §7's `CoreHolder` plus the two stores). Every screen takes
+/// The composition root (the `CoreHolder` plus the two stores). Every screen takes
 /// what it needs from here rather than reaching for a singleton, which is what lets the UI
 /// tests launch the app against a scripted gateway instead of a real one.
 @MainActor
@@ -16,7 +16,7 @@ final class Container {
     /// The one implementation of the system's notification calls: banners and Settings both use it.
     let notifications: SystemNotificationCentre
 
-    /// Where the voice hint's "shown once" lives (T48): the real store on a phone, a throwing-away
+    /// Where the voice hint's "shown once" lives: the real store on a phone, a throwing-away
     /// one for a scripted launch, so every UI test starts with the hint unshown.
     let voiceHints: VoiceHints
 
@@ -61,7 +61,7 @@ final class Container {
         let centre = SystemNotificationCentre()
         self.notifications = centre
         // The switches the Notifications screen writes are the ones the poster checks, read at post
-        // time from the same store the screen writes (T43).
+        // time from the same store the screen writes.
         self.notices = TaskNoticeCenter(
             posting: centre,
             switches: { NoticeSwitchStore.switches(in: UserDefaults.standard) }
@@ -73,7 +73,7 @@ final class Container {
         self.credentials = credentials ?? StoredCredentials(secrets: KeychainSecrets())
     }
 
-    /// What a launch gets. A UI test (or, later, the debug menu G2 asks for) names a scenario
+    /// What a launch gets. A UI test (or, later, the debug menu) names a scenario
     /// in the environment and gets the scripted gateway with stores that write nothing.
     static func forLaunch() -> Container {
         #if DEBUG
@@ -105,7 +105,7 @@ final class Container {
                 ),
                 startsConnected: environment["NANOBOT_START_CONNECTED"] != nil,
                 // The hint is a once-ever sentence, so a scripted launch that has to observe it
-                // needs a store that has never said it (T48).
+                // needs a store that has never said it.
                 voiceHints: InMemoryVoiceHints()
             )
             if environment["NANOBOT_SESSIONS"] != nil {
@@ -114,7 +114,7 @@ final class Container {
             // A scripted gateway answers the settings read too, so a tap can walk Overview.
             container.holder.seedSettingsForUITest(.scriptedGateway)
             // And its model sheet lists the three presets the owner's gateway lists, built-in one
-            // included: a tap proves which of them a phone offers (T40).
+            // included: a tap proves which of them a phone offers.
             container.holder.seedPresetsForUITest()
             if environment["NANOBOT_THREAD"] != nil || scripted == .markdown {
                 // The chat is created by the shell, which is where its callback lands.

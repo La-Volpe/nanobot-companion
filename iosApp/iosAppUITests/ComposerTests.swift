@@ -1,6 +1,6 @@
 import XCTest
 
-/// The composer flow a tap can prove (plan.md I5's gate): the meta row's three controls open
+/// The composer flow a tap can prove: the meta row's three controls open
 /// their sheets, a prompt typed during a turn waits on the chip with Send now / Delete, a slash
 /// opens the commands sheet, and a code block's Copy confirms.
 ///
@@ -31,8 +31,8 @@ final class ComposerTests: XCTestCase {
         model.tap()
 
         XCTAssertTrue(app.staticTexts["Choose model"].waitForExistence(timeout: 5), "the sheet says what it is")
-        // T40: "Manage presets" is gone, and the built-in preset is not offered at all — the
-        // scripted launch seeds the owner's own three presets, so this is the sheet's real list.
+        // "Manage presets" is gone, and the built-in preset is not offered at all: the scripted
+        // launch seeds the owner's own three presets, so this is the sheet's real list.
         XCTAssertFalse(app.buttons["composer.model.manage"].exists, "the phone does not manage presets")
         XCTAssertFalse(
             app.buttons["composer.model.default"].waitForExistence(timeout: 2),
@@ -55,7 +55,7 @@ final class ComposerTests: XCTestCase {
         app.buttons["composer.access.full"].tap()
         XCTAssertTrue(
             app.buttons["Workspace access: full"].waitForExistence(timeout: 5),
-            "the chip says Full until the gateway refuses it (C6.3)"
+            "the chip says Full until the gateway refuses it"
         )
     }
 

@@ -92,10 +92,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
- * The thread (plan.md A3, A4, A5): the history the core replayed, the activity cluster per turn,
+ * The thread: the history the core replayed, the activity cluster per turn,
  * the answer as the core parsed it and as it streams, and the composer row whose one button the
  * model decides. Everything on this screen comes from the core's own thread, so a replayed turn
- * and a live one look the same (D9).
+ * and a live one look the same.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -135,8 +135,8 @@ fun ChatScreen(
     }
     LaunchedEffect(listState) {
         // New content leaves the end further down: catch up by exactly that gap, and only for a
-        // reader who is following. Measured after layout — measuring before it reads the previous
-        // frame's zero and never scrolls at all, which is the bug this replaced.
+        // reader who is following. Measured after layout, because measuring before it reads the
+        // previous frame's zero and never scrolls at all, which is the bug this replaced.
         snapshotFlow {
             Triple(pixelsFromEnd(listState), dragging, listState.isScrollInProgress)
         }.collect { (distance, isDragging, scrolling) ->
@@ -153,7 +153,7 @@ fun ChatScreen(
             listState.scrollToItem(thread.turns.lastIndex)
         }
     }
-    // The clusters are a function of the thread, and the fold rules are the model's (A4): this
+    // The clusters are a function of the thread, and the fold rules are the model's: this
     // only hands it the value the screen already collects.
     LaunchedEffect(thread) { model.onThread(thread) }
     // The message-list sheet's pick is a scroll, done here because the list is the screen's.
@@ -217,7 +217,7 @@ fun ChatScreen(
                 }
             }
         }
-        // A notice is a row in the transcript, and never a banner (A8's one-owner rule). It sits
+        // A notice is a row in the transcript, and never a banner. It sits
         // above the composer rather than inside the list, so a notice still shows on an empty thread.
         model.states.rows.forEach { row ->
             StateRowView(row = row, onAction = { model.states.perform(it, row) })
@@ -234,7 +234,7 @@ fun ChatScreen(
     }
 }
 
-/** The composer zone: the queued chip, the meta row, the field and the one button (A5). */
+/** The composer zone: the queued chip, the meta row, the field and the one button. */
 @Composable
 private fun ComposerZone(
     model: ChatViewModel,
@@ -303,8 +303,8 @@ private fun ComposerZone(
             AttachmentStrip(model = attachments)
         }
         // The meter counts and the transcribing arc turns on the screen's clock: the model takes
-        // times as arguments and owns no timer. Both loops end — the recording one with the
-        // gesture, the arc's after a fixed number of ticks — so a test that waits for the frame
+        // times as arguments and owns no timer. Both loops end (the recording one with the
+        // gesture, the arc's after a fixed number of ticks), so a test that waits for the frame
         // clock to go quiet still gets it (`Skeleton` is static for the same reason).
         LaunchedEffect(voice.phase) {
             when (voice.phase) {
@@ -385,7 +385,7 @@ private fun ComposerZone(
             // One button, two readers of the same press, so one of them has to own it. The job
             // is the state the press *began* in: a send empties the field and turns the button
             // into the microphone while the finger is still down, and that press must not start
-            // a recording (T31). The press the recorder owns is consumed, so the button below it
+            // a recording. The press the recorder owns is consumed, so the button below it
             // does not answer the same finger a second time.
             val pressState = rememberUpdatedState(primary)
             androidx.compose.foundation.layout.Box(
@@ -400,8 +400,8 @@ private fun ComposerZone(
                             return@awaitEachGesture
                         }
                         press.consume()
-                        // The finger is the start: the recording is open before it moves at all
-                        // (T48 — the 300 ms commit step is what read as lag).
+                        // The finger is the start: the recording is open before it moves at all.
+                        // The 300 ms commit step the press used to wait for is what read as lag.
                         beginRecording()
                         // The drag is only the lock. Past the threshold the finger may leave the
                         // screen and the button becomes Send; below it, a lift ends the press.

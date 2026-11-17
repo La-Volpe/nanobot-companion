@@ -28,9 +28,9 @@ import de.arjmandi.nanobot.companion.R
 import de.arjmandi.nanobot.companion.ui.Design
 
 /**
- * A8's surfaces: the dot, the banner under the bar, the notice rows in the transcript, the goal
- * strip and the subtask dock above the composer, and the one snackbar. Each composable draws one
- * state the view model owns; none of them decides when it is shown.
+ * The shell's surfaces: the dot, the banner under the bar, the notice rows in the transcript,
+ * the goal strip and the subtask dock above the composer, and the one snackbar. Each composable
+ * draws one state the view model owns; none of them decides when it is shown.
  */
 @Composable
 fun ConnectionDotView(dot: ConnectionDot, modifier: Modifier = Modifier) {

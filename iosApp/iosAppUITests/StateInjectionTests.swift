@@ -1,6 +1,6 @@
 import XCTest
 
-/// G2's second instrument: each of the eight connection failures is reachable from the app's
+/// The second instrument: each of the eight connection failures is reachable from the app's
 /// own debug menu, and shows the taxonomy's copy on the chat surface. The menu is DEBUG-only;
 /// what it injects is the app's real banner and dot.
 final class StateInjectionTests: XCTestCase {

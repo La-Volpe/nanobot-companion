@@ -39,8 +39,8 @@ import de.arjmandi.nanobot.companion.ui.readingStyle
 import kotlinx.coroutines.launch
 
 /**
- * Onboarding (plan.md A1). The composable reads one state and calls one command; every branch —
- * what counts as an address, when the key is required, which sentence a failure shows — lives in
+ * Onboarding. The composable reads one state and calls one command; every branch
+ * (what counts as an address, when the key is required, which sentence a failure shows) lives in
  * [ConnectViewModel]. Layout follows the artifact's `data-view="onboarding"` in Android's own
  * metrics: system interface type, Open Sans for the paragraph, 48 dp controls, an 8 dp field radius.
  */
@@ -120,7 +120,7 @@ fun ConnectScreen(
         )
 
         // The switch that makes a self-signed home gateway usable: off by default, and turning it
-        // on does not retry (C3.2, D21).
+        // on does not retry: the user decides, then presses Connect.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -191,7 +191,7 @@ fun ConnectScreen(
             modifier = Modifier.padding(top = 20.dp),
         )
 
-        // The name and the mark stay, so the app says plainly what it is not (T52) — worded
+        // The name and the mark stay, so the app says plainly what it is not, worded
         // identically on iOS, and compared by tools/parity_copy.py.
         Text(
             text = stringResource(R.string.connect_disclaimer),

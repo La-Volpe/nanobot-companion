@@ -14,7 +14,7 @@ struct ThreadViewport: Equatable {
 
     var following: Bool = true
 
-    /// The reader's own scroll landed [distanceFromBottom] from the end — whether they scrolled
+    /// The reader's own scroll landed [distanceFromBottom] from the end, whether they scrolled
     /// there or the gesture settled there. The end resumes the follow; anywhere else pauses it.
     func scrolled(distanceFromBottom: CGFloat) -> ThreadViewport {
         ThreadViewport(following: distanceFromBottom < Self.nearBottom)

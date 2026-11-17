@@ -8,10 +8,10 @@ import de.arjmandi.nanobot.companion.bridge.storeGatewaySecret
 import de.arjmandi.nanobot.companion.connect.CredentialsStoring
 
 /**
- * Where the gateway's address, key and trust decision live (D17, D47). The key goes to the core's
- * secure store — the same encrypted-preferences implementation `:core` tested through its seam —
- * and the address and the switch go to ordinary preferences, because neither is a secret and both
- * are needed before there is a key to unlock anything with.
+ * Where the gateway's address, key and trust decision live. The key goes to the core's secure
+ * store, the same encrypted-preferences implementation `:core` tested through its seam. The
+ * address and the switch go to ordinary preferences, because neither is a secret and both are
+ * needed before there is a key to unlock anything with.
  */
 class StoredCredentials(private val context: Context, private val preferences: SharedPreferences) : CredentialsStoring {
 

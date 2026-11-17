@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
 /**
- * Onboarding (plan.md A1). The red line the plan names is the unverified-certificate switch: it is
+ * Onboarding. The rule worth pinning here is the unverified-certificate switch: it is
  * the user's decision about one gateway, it is off until they say otherwise, and turning it on
  * never retries by itself. The rest is the button's own rules and the copy each failure picks.
  */
@@ -285,7 +285,7 @@ class ConnectViewModelTest {
 
     /**
      * Settings → Gateway: the store is emptied and the screen goes back to the questions. The
-     * model's own phase has to go with it — a `Connected` phase on a screen that no longer exists
+     * model's own phase has to go with it: a `Connected` phase on a screen that no longer exists
      * is how a launch walks itself back into the shell it just left (`RootScreen`'s connected
      * effect fires on first composition).
      */

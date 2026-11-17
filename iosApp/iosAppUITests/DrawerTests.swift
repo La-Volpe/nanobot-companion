@@ -1,8 +1,8 @@
 import XCTest
 
-/// The drawer flow a tap can prove (plan.md I2's gate): it opens over the chat, the search
-/// field filters what is loaded, and a query that matches nothing says so — the states the
-/// design artifact calls "searching" and "no matches".
+/// The drawer flow a tap can prove: it opens over the chat, the search
+/// field filters what is loaded, and a query that matches nothing says so, which are the states
+/// the design artifact calls "searching" and "no matches".
 final class DrawerTests: XCTestCase {
 
     private func connectedApp() -> XCUIApplication {
