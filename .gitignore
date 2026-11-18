@@ -45,3 +45,4 @@ credentials.json
 
 # Python bytecode from the parity instruments
 __pycache__/
+/release-artefacts/

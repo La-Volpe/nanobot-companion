@@ -187,11 +187,14 @@ cd iosApp && xcodebuild -scheme iosApp -destination 'platform=iOS Simulator,name
 `vMAJOR.MINOR.PATCH` tag and turn on `publish`. The workflow tags and publishes the exact tested commit only
 when every job passes. Leave `publish` off to run the same tests without creating a tag or release.
 
-A release has two assets:
+A release has three assets:
 
 - `nanobot-companion.apk` — signed with the repository's release key, universal: arm64-v8a, armeabi-v7a,
   x86_64 and x86 in one file, so it installs on a phone, a tablet and an emulator alike. Android 8 or later.
 - `core-cli.zip` — the command-line client.
+- `nanobot-companion-ios-<version>.zip` — the tested source, one folder, with `tools/ios-self-build.sh` and a
+  `BUILD-IOS.txt` at the root: unzip it on a Mac, run the script, and the iOS app builds, installs and launches.
+  No Apple account is needed for the simulator.
 
 Both need the four `NANOBOT_*` signing secrets (see `AGENTS.md`); without them the packaging job still builds the
 APK for the gate to inspect, and the publish job refuses to attach an unsigned one rather than shipping an
