@@ -159,8 +159,11 @@ cd iosApp && xcodebuild -scheme iosApp -destination 'platform=iOS Simulator,name
 `main` is protected; submit changes through a PR. To cut a GitHub release, run **Release** with a new
 `vMAJOR.MINOR.PATCH` tag and turn on `publish`. The workflow tags and publishes the exact tested commit only
 when every job passes. Leave `publish` off to run the same tests without creating a tag or release.
-`app-debug.apk` is for testing only. It uses the CI runner's debug key, so it may not install over a copy
-signed elsewhere, including a debug APK from a previous run.
+
+The release carries `nanobot-companion.apk` and `nanobot-companion.aab`, signed with the repository's release
+key when the four `NANOBOT_*` signing secrets exist (see `AGENTS.md`), and `nanobot-companion-unsigned.apk`
+instead when they do not — the release notes say which. `nanobot-companion-debug.apk` is for testing only: it
+uses the runner's throwaway debug key, so it cannot update over a build signed elsewhere.
 
 Hosted jobs use no gateway or signing credentials. The live contract (`:core:jvmTest -Pcontract`) and the
 instruments below run separately on a machine with a dev gateway. Use them before releasing a change to

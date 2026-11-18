@@ -7,6 +7,17 @@ on:
         description: fast, apple, android-ui, or full (all suites and release packaging)
         type: string
         required: true
+    # Only the release job has one, and only when the owner has added it. Everything that runs on
+    # a pull request gets `fast`/`apple` and never reaches the job that reads this.
+    secrets:
+      NANOBOT_KEYSTORE_BASE64:
+        required: false
+      NANOBOT_KEYSTORE_PASSWORD:
+        required: false
+      NANOBOT_KEY_ALIAS:
+        required: false
+      NANOBOT_KEY_PASSWORD:
+        required: false
 
 permissions:
   contents: read
@@ -141,11 +152,40 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-android
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build and verify the debug APK, unsigned release APK and AAB, and the CLI ZIP
+      - name: Decode the release keystore, if the repository has one
+        env:
+          KEYSTORE_BASE64: ${{ secrets.NANOBOT_KEYSTORE_BASE64 }}
+        run: |
+          if [[ -z "${KEYSTORE_BASE64:-}" ]]; then
+            echo "::notice::No NANOBOT_KEYSTORE_BASE64 secret: the release artefacts will be unsigned."
+            exit 0
+          fi
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+          {
+            echo "NANOBOT_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore"
+            echo "NANOBOT_KEYSTORE_PASSWORD=${{ secrets.NANOBOT_KEYSTORE_PASSWORD }}"
+            echo "NANOBOT_KEY_ALIAS=${{ secrets.NANOBOT_KEY_ALIAS }}"
+            echo "NANOBOT_KEY_PASSWORD=${{ secrets.NANOBOT_KEY_PASSWORD }}"
+          } >> "$GITHUB_ENV"
+
+      - name: Build and verify the debug APK, release APK and AAB, and the CLI ZIP
         run: |
           ./gradlew --stacktrace :app:assembleDebug :app:assembleRelease :app:bundleRelease :core-cli:distZip
           debug_apk=app/build/outputs/apk/debug/app-debug.apk
           "$ANDROID_SDK_ROOT/build-tools/37.0.0/apksigner" verify "$debug_apk"
+          # A signed release is the point of the keystore; an unsigned one is what a fork or a
+          # missing secret produces, and the job says which it made instead of guessing later.
+          release_apk=$(ls app/build/outputs/apk/release/*.apk)
+          if [[ -n "${NANOBOT_KEYSTORE_PATH:-}" ]]; then
+            "$ANDROID_SDK_ROOT/build-tools/37.0.0/apksigner" verify --print-certs "$release_apk" \
+              | tee /tmp/certs.txt
+            grep -qi "Android Debug" /tmp/certs.txt && { echo "::error::the release APK is signed with a debug key"; exit 1; }
+            echo "SIGNED=$release_apk" >> "$GITHUB_ENV"
+          else
+            echo "::warning::$release_apk is unsigned: add the keystore secrets to publish an installable build"
+            echo "UNSIGNED=$release_apk" >> "$GITHUB_ENV"
+          fi
           check_notices() {
             local entries
             entries=$(unzip -Z1 "$1")
@@ -153,7 +193,7 @@ jobs:
             grep -Fxq "$2/LICENSE" <<< "$entries"
           }
           check_notices "$debug_apk" assets
-          check_notices app/build/outputs/apk/release/app-release-unsigned.apk assets
+          check_notices "$(ls app/build/outputs/apk/release/*.apk)" assets
           check_notices app/build/outputs/bundle/release/app-release.aab base/assets
           check_notices core-cli/build/distributions/core-cli.zip core-cli
       - uses: actions/upload-artifact@v4
@@ -161,7 +201,7 @@ jobs:
           name: release-artefacts
           path: |
             app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/release/app-release-unsigned.apk
+            app/build/outputs/apk/release/*.apk
             app/build/outputs/bundle/release/app-release.aab
             core-cli/build/distributions/core-cli.zip
           if-no-files-found: error

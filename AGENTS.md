@@ -344,9 +344,23 @@ When asked to review this codebase, meet this bar:
   individual hardware-dependent and opt-in skips remain visible in reports.
   If publishing fails *after* tag creation, inspect the run and tag before
   taking any further release action; never retag a different commit.
-- Hosted CI does not receive gateway, signing, or store credentials. Run the
-  live contract and instruments locally when gateway behavior changes, before
-  dispatching the release. A GitHub release is not an app-store upload.
+- **Android release signing is four repository secrets**, and nothing else:
+  `NANOBOT_KEYSTORE_BASE64` (the `.jks`, base64), `NANOBOT_KEYSTORE_PASSWORD`,
+  `NANOBOT_KEY_ALIAS`, `NANOBOT_KEY_PASSWORD`. With all four the Release
+  workflow signs both the APK and the AAB and refuses a debug certificate; with
+  none it builds the same artefacts **unsigned** and says so in the run and the
+  release notes. With some, `app/build.gradle.kts` stops at configuration
+  rather than shipping half a key. Generate one with
+  `keytool -genkeypair -v -keystore release.jks -alias nanobot -keyalg RSA
+  -keysize 4096 -validity 10000` (the password and alias then go in as secrets),
+  encode with `base64 -i release.jks | pbcopy`, and keep the original file out
+  of the repository and out of your backups of it — losing it means every
+  installed copy can no longer be updated. `versionCode` in
+  `app/build.gradle.kts` still has to be raised by hand before a store upload.
+- Hosted CI otherwise receives no gateway, signing, or store credentials beyond
+  those four. Run the live contract and instruments locally when gateway
+  behavior changes, before dispatching the release. A GitHub release is not an
+  app-store upload: Google Play wants the `.aab` and its own upload key.
 
 ## QA standards
 
