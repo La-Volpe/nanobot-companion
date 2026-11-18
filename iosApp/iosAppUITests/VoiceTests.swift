@@ -11,11 +11,12 @@ import XCTest
 /// the owner's phone.
 final class VoiceTests: XCTestCase {
 
-    private func chatApp() -> XCUIApplication {
+    private func chatApp(voiceSeconds: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["NANOBOT_SCENARIO"] = "connected"
         app.launchEnvironment["NANOBOT_START_CONNECTED"] = "1"
         app.launchEnvironment["NANOBOT_THREAD"] = "scripted"
+        if let voiceSeconds { app.launchEnvironment["NANOBOT_SCRIPTED_VOICE_SECONDS"] = voiceSeconds }
         app.launch()
         if !app.buttons["chat.voice"].waitForExistence(timeout: 10) {
             XCTFail("an empty field offers the microphone. Tree:\n\(app.debugDescription)")
@@ -139,7 +140,10 @@ final class VoiceTests: XCTestCase {
     /// While the gateway transcribes, the button is the feedback, and the composer keeps working,
     /// which is the owner's correction to the brief: the field is editable and still sends.
     func testTranscribingLeavesTheComposerUsable() {
-        let app = chatApp()
+        // The scripted transcription waits 25 s here, not its usual 4: this test types *during*
+        // the wait, and on a loaded runner the tap and the typing together can outlast four
+        // seconds, which would land the transcript before the typing it has to follow.
+        let app = chatApp(voiceSeconds: "25")
 
         app.buttons["chat.voice"].press(forDuration: 1.0)
 
@@ -155,10 +159,11 @@ final class VoiceTests: XCTestCase {
         composer.typeText("typed while waiting")
         XCTAssertEqual(composer.value as? String, "typed while waiting", "the composer is not locked")
 
-        // The scripted gateway answers after 4 s; the transcript lands after the typing.
+        // The scripted gateway answers after the launch's scripted wait; the transcript lands
+        // after the typing.
         let expected = NSPredicate(format: "value CONTAINS %@", "Check the attachment policy limits.")
         expectation(for: expected, evaluatedWith: composer)
-        waitForExpectations(timeout: 15)
+        waitForExpectations(timeout: 40)
     }
 
     func testTypingTurnsTheMicrophoneBackIntoASendButton() {

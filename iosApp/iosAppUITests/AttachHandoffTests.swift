@@ -40,7 +40,7 @@ final class AttachHandoffTests: XCTestCase {
         openAttachSheet(app, row: "photos").tap()
 
         XCTAssertTrue(
-            app.navigationBars["Photos"].waitForExistence(timeout: 6),
+            app.navigationBars["Photos"].waitForExistence(timeout: 20),
             "one tap on Photo or video opens the picker; nothing else is tapped. Tree:\n\(app.debugDescription)"
         )
     }
@@ -51,7 +51,7 @@ final class AttachHandoffTests: XCTestCase {
         openAttachSheet(app, row: "files").tap()
 
         XCTAssertTrue(
-            app.tabBars["DOC.browsingModeTabBar"].waitForExistence(timeout: 6),
+            app.tabBars["DOC.browsingModeTabBar"].waitForExistence(timeout: 20),
             "one tap on Files opens the document picker, on its Recents tab. Tree:\n\(app.debugDescription)"
         )
     }

@@ -364,7 +364,10 @@ struct RootView: View {
         let driver: ChatDriving
         #if DEBUG
         if container.scripted {
-            let scripted = ScriptedChat(fixture: container.markdownFixture) { state in
+            let scripted = ScriptedChat(
+                fixture: container.markdownFixture,
+                holdSeconds: container.scriptedTurnSeconds
+            ) { state in
                 let thread = state.withMarkdown()
                 chat.update(thread: thread)
                 activity.update(thread: thread)
@@ -389,7 +392,7 @@ struct RootView: View {
                     )
                 }
             }
-            voice.use(ScriptedVoice(), recording: ScriptedRecorder())
+            voice.use(ScriptedVoice(seconds: container.scriptedVoiceSeconds), recording: ScriptedRecorder())
             await scripted.open()
             return
         }

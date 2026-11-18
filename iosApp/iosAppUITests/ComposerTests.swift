@@ -8,11 +8,12 @@ import XCTest
 /// rows the gateway sends is the core's (`PaletteTest`).
 final class ComposerTests: XCTestCase {
 
-    private func chatApp() -> XCUIApplication {
+    private func chatApp(turnSeconds: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["NANOBOT_SCENARIO"] = "connected"
         app.launchEnvironment["NANOBOT_START_CONNECTED"] = "1"
         app.launchEnvironment["NANOBOT_THREAD"] = "scripted"
+        if let turnSeconds { app.launchEnvironment["NANOBOT_SCRIPTED_TURN_SECONDS"] = turnSeconds }
         app.launch()
         // The composer's field proves the shell; an empty field offers the microphone, not Send.
         if !app.textFields["chat.composer"].waitForExistence(timeout: 10) {
@@ -60,7 +61,11 @@ final class ComposerTests: XCTestCase {
     }
 
     func testAPromptTypedDuringATurnQueuesWithSendNowAndDelete() {
-        let app = chatApp()
+        // The turn is held open for the length of the test. Its scripted default finishes in under
+        // a second, and on a loaded CI runner the send tap lands after that: the prompt then starts
+        // a second turn instead of queueing into the first, which is a race in the instrument rather
+        // than a missing chip (AGENTS gotcha 21).
+        let app = chatApp(turnSeconds: "30")
 
         let composer = app.textFields["chat.composer"]
         composer.tap()
