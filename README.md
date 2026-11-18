@@ -1,6 +1,7 @@
 # nanobot Companion
 
 [![Fast checks](https://github.com/La-Volpe/nanobot-companion/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/La-Volpe/nanobot-companion/actions/workflows/ci.yml)
+[![Core line coverage snapshot: 95.64%](https://img.shields.io/badge/Core%20line%20coverage%20snapshot-95.64%25-brightgreen)](#testing)
 
 A native iOS and Android client for a [nanobot](https://github.com/HKUDS/nanobot)
 gateway. One Kotlin Multiplatform module holds everything that is not UI. iOS
@@ -127,6 +128,10 @@ never touches `~/.nanobot`. Point the app at your own gateway or at that LAN
 address; the secret is the gateway's WebUI secret.
 
 ## Testing
+
+The coverage badge is a snapshot: **95.64%** (1,951 of 2,040 lines) on 2026-11-18 from the
+[Kover report for `38f4834`](https://github.com/La-Volpe/nanobot-companion/actions/runs/44242359151/job/134593084193).
+It covers `wire`, `projection`, and `engine` in `:core`, not either app's UI or the whole repository.
 
 Counts are what the suites reported on 2026-11-17, read from `core/build/test-results/`,
 `app/build/test-results/` and the Xcode `.xcresult` of a full run; re-read them the same way if you want to
