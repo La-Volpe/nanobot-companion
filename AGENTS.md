@@ -220,9 +220,15 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
     `NANOBOT_SCRIPTED_VOICE_SECONDS` hold a reply open when a test has to type
     during it. A four-second script is a constant a loaded runner can outlast —
     the queue and transcription cases failed on the hosted machine for exactly
-    that reason and passed here. A row that dismisses a sheet also needs the
-    dismissal waited for (`waitForNonExistence`) before the surface under it is
-    read, not a longer poll on the surface.
+    that reason and passed here. So is the six seconds a scripted turn runs by
+    default (a pending prompt, then four chunks 1.4 s apart): a test that reads
+    `chat.stop` has to hold the turn open, and one that reads the answer has to
+    leave it alone, because the answer arrives after the hold. Run 44412530371
+    read the button 7.8 s after the send, its own wait for the bubble having
+    already outlasted the turn, and failed with the whole answer on screen. A
+    row that dismisses a sheet also needs the dismissal waited for
+    (`waitForNonExistence`) before the surface under it is read, not a longer
+    poll on the surface.
 
 22. **The dev gateway needs help to start.** `NANOBOT_SKIP_WEBUI_BUILD=1`
     (otherwise `nanobot webui` runs npm install/build), and a Python 3.12 venv
