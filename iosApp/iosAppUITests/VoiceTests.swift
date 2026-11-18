@@ -155,8 +155,8 @@ final class VoiceTests: XCTestCase {
         XCTAssertFalse(app.buttons["chat.voice"].isEnabled, "the voice job is the one the button cannot do")
 
         let composer = app.textFields["chat.composer"]
-        composer.tap()
-        composer.typeText("typed while waiting")
+        // The arc redraws ten times a second here; `typeSettling` types at a pace the field keeps.
+        composer.typeSettling("typed while waiting")
         XCTAssertEqual(composer.value as? String, "typed while waiting", "the composer is not locked")
 
         // The scripted gateway answers after the launch's scripted wait; the transcript lands
