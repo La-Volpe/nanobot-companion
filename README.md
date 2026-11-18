@@ -102,7 +102,8 @@ Prerequisites: JDK 21+, the Android SDK, Xcode 27 with an iOS 17+ runtime, and
 a nanobot gateway you can reach.
 
 ```bash
-./gradlew :core:allTests :core-cli:test :app:testDebugUnitTest   # all unit suites
+tools/all-tests.sh                                               # every gate, in order, stops at the first red
+./gradlew :core:allTests :core-cli:test :app:testDebugUnitTest   # or just the unit suites
 ./gradlew :app:installDebug                                      # Android on the emulator/device
 tools/run-on-device.sh --local                                   # iOS on a plugged-in iPhone
 ```

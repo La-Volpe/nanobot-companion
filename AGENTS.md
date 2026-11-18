@@ -37,7 +37,10 @@ Two rules shape every diff:
 ## Commands
 
 ```bash
-# everything that runs without a device
+# the five gate commands, in order, stopping at the first red
+tools/all-tests.sh                      # --skip-device, --skip-ios, --with-contract, --dry-run
+
+# or one at a time — everything that runs without a device
 ./gradlew :core:allTests :core-cli:test :app:testDebugUnitTest
 
 # per target, when you need to see one
