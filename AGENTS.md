@@ -347,9 +347,13 @@ When asked to review this codebase, meet this bar:
   `publish` off for a dry run; enable it to tag and publish the exact tested
   commit only after the full offline suite passes. It runs the checks above,
   Android connected tests, XCUITest, and packaging. The release carries exactly
-  two assets: `nanobot-companion.apk` (signed, universal — arm64-v8a,
-  armeabi-v7a, x86_64 and x86 in one file) and `core-cli.zip`, both checked for
-  the licence and the notices. **The publish job refuses an unsigned APK**, so a
+  three assets: `nanobot-companion.apk` (signed, universal — arm64-v8a,
+  armeabi-v7a, x86_64 and x86 in one file), `core-cli.zip`, and
+  `nanobot-companion-ios-<version>.zip` — the tested tree with
+  `tools/ios-self-build.sh` and a `BUILD-IOS.txt`, because iOS ships as source a
+  reader builds (gotcha 19). The two binaries are checked for the licence and the
+  notices; the iOS bundle is checked for the script it advertises and for the
+  absence of `.git`, `.dev` and the working documents. **The publish job refuses an unsigned APK**, so a
   run without the signing secrets goes red instead of publishing something
   nobody can install. A missing or empty device suite is a failure;
   individual hardware-dependent and opt-in skips remain visible in reports.

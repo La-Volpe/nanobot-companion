@@ -62,6 +62,10 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-android
       - uses: gradle/actions/setup-gradle@v4
+      - name: The documented iOS self-build path still works here
+        # Cheap, and it keeps `tools/ios-self-build.sh` honest on every Apple check instead of
+        # letting the one path an iOS reader has rot between releases.
+        run: tools/ios-self-build.sh --check
       - name: Core JVM, Kotlin/Native and coverage
         # The JVM bridge test reads the Swift framework header, so this runs on macOS.
         run: |
