@@ -174,8 +174,13 @@ class PaletteRefreshTest {
 
         assertEquals("Bearer api", seen["/api/commands"])
         assertEquals("Bearer api", seen["/api/settings/cli-apps"])
+        // The read itself, not whoever came last: `refreshPalettes` reads the commands and the
+        // apps concurrently while the drawer's own sessions read is in flight, so "last" depends
+        // on which finishes first. That ordering held here and did not on a three-core runner
+        // (release run 44333657988, `only installed apps are mentionable`).
+        val appsRead = engine.requestHistory.last { it.url.encodedPath == "/api/settings/cli-apps" }
         assertTrue(
-            engine.requestHistory.last().url.parameters["installed_only"] == "1",
+            appsRead.url.parameters["installed_only"] == "1",
             "only installed apps are mentionable",
         )
     }
