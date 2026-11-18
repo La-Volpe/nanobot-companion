@@ -338,9 +338,12 @@ When asked to review this codebase, meet this bar:
   dispatch it from `main` with a new `vMAJOR.MINOR.PATCH` version. Leave
   `publish` off for a dry run; enable it to tag and publish the exact tested
   commit only after the full offline suite passes. It runs the checks above,
-  Android connected tests, XCUITest, and packaging: a debug-signed APK for
-  testing, unsigned release APK/AAB, and CLI ZIP, all with license and notice
-  checks. A missing or empty device suite is a failure;
+  Android connected tests, XCUITest, and packaging. The release carries exactly
+  two assets: `nanobot-companion.apk` (signed, universal — arm64-v8a,
+  armeabi-v7a, x86_64 and x86 in one file) and `core-cli.zip`, both checked for
+  the licence and the notices. **The publish job refuses an unsigned APK**, so a
+  run without the signing secrets goes red instead of publishing something
+  nobody can install. A missing or empty device suite is a failure;
   individual hardware-dependent and opt-in skips remain visible in reports.
   If publishing fails *after* tag creation, inspect the run and tag before
   taking any further release action; never retag a different commit.
@@ -348,8 +351,8 @@ When asked to review this codebase, meet this bar:
   `NANOBOT_KEYSTORE_BASE64` (the `.jks`, base64), `NANOBOT_KEYSTORE_PASSWORD`,
   `NANOBOT_KEY_ALIAS`, `NANOBOT_KEY_PASSWORD`. With all four the Release
   workflow signs both the APK and the AAB and refuses a debug certificate; with
-  none it builds the same artefacts **unsigned** and says so in the run and the
-  release notes. With some, `app/build.gradle.kts` stops at configuration
+  none the packaging job still builds the same artefacts **unsigned** for the
+  gate to inspect, and the publish job refuses to attach them. With some, `app/build.gradle.kts` stops at configuration
   rather than shipping half a key. Generate one with
   `keytool -genkeypair -v -keystore release.jks -alias nanobot -keyalg RSA
   -keysize 4096 -validity 10000` (the password and alias then go in as secrets),
