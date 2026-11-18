@@ -5,11 +5,12 @@ import XCTest
 /// The scripted chat streams on the same timeline as a real one (DEBUG only).
 final class ChatRoundTripTests: XCTestCase {
 
-    private func chatApp() -> XCUIApplication {
+    private func chatApp(turnSeconds: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["NANOBOT_SCENARIO"] = "connected"
         app.launchEnvironment["NANOBOT_START_CONNECTED"] = "1"
         app.launchEnvironment["NANOBOT_THREAD"] = "scripted"
+        if let turnSeconds { app.launchEnvironment["NANOBOT_SCRIPTED_TURN_SECONDS"] = turnSeconds }
         app.launch()
         // The composer's field is what proves the shell: with an empty field the primary button
         // is the microphone, so waiting for "chat.send" would wait for a state the screen is
@@ -49,16 +50,18 @@ final class ChatRoundTripTests: XCTestCase {
     }
 
     func testTheButtonIsStopWhileATurnRunsAndSendWhenSomethingIsTyped() {
-        let app = chatApp()
+        // Held open for the length of the test. The scripted reply otherwise finishes between the
+        // first send and the second tap, and the run then fails with "Neither element nor any
+        // descendant has keyboard focus" (hosted run 44393023565) — a timer in the instrument, not
+        // a missing control (`NANOBOT_SCRIPTED_TURN_SECONDS`, AGENTS gotcha 21).
+        let app = chatApp(turnSeconds: "30")
         let composer = app.textFields["chat.composer"]
-        composer.tap()
-        composer.typeText("start a turn")
+        composer.typeSettling("start a turn")
         app.buttons["chat.send"].tap()
 
-        XCTAssertTrue(app.buttons["chat.stop"].waitForExistence(timeout: 5), "an empty field during a turn means Stop")
+        XCTAssertTrue(app.buttons["chat.stop"].waitForExistence(timeout: 15), "an empty field during a turn means Stop")
 
-        composer.tap()
-        composer.typeText("and this is a steer")
+        composer.typeSettling("and this is a steer")
         XCTAssertTrue(app.buttons["chat.send"].waitForExistence(timeout: 5), "typing turns the button back into Send")
     }
 }
