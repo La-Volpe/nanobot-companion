@@ -141,15 +141,18 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-android
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build and verify unsigned APK and AAB, and the CLI ZIP
+      - name: Build and verify the debug APK, unsigned release APK and AAB, and the CLI ZIP
         run: |
-          ./gradlew --stacktrace :app:assembleRelease :app:bundleRelease :core-cli:distZip
+          ./gradlew --stacktrace :app:assembleDebug :app:assembleRelease :app:bundleRelease :core-cli:distZip
+          debug_apk=app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_SDK_ROOT/build-tools/37.0.0/apksigner" verify "$debug_apk"
           check_notices() {
             local entries
             entries=$(unzip -Z1 "$1")
             grep -Fxq "$2/THIRD_PARTY_NOTICES.txt" <<< "$entries"
             grep -Fxq "$2/LICENSE" <<< "$entries"
           }
+          check_notices "$debug_apk" assets
           check_notices app/build/outputs/apk/release/app-release-unsigned.apk assets
           check_notices app/build/outputs/bundle/release/app-release.aab base/assets
           check_notices core-cli/build/distributions/core-cli.zip core-cli
@@ -157,6 +160,7 @@ jobs:
         with:
           name: release-artefacts
           path: |
+            app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release-unsigned.apk
             app/build/outputs/bundle/release/app-release.aab
             core-cli/build/distributions/core-cli.zip

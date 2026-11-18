@@ -331,8 +331,9 @@ When asked to review this codebase, meet this bar:
   dispatch it from `main` with a new `vMAJOR.MINOR.PATCH` version. Leave
   `publish` off for a dry run; enable it to tag and publish the exact tested
   commit only after the full offline suite passes. It runs the checks above,
-  Android connected tests, XCUITest, and unsigned Android/CLI packaging with
-  license and notice checks. A missing or empty device suite is a failure;
+  Android connected tests, XCUITest, and packaging: a debug-signed APK for
+  testing, unsigned release APK/AAB, and CLI ZIP, all with license and notice
+  checks. A missing or empty device suite is a failure;
   individual hardware-dependent and opt-in skips remain visible in reports.
   If publishing fails *after* tag creation, inspect the run and tag before
   taking any further release action; never retag a different commit.
