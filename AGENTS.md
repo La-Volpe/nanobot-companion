@@ -199,6 +199,14 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
     own team in Xcode for a device build, or sign with an xcconfig you keep
     out of git. Simulator builds and `build-for-testing` need nothing.
 
+    **iOS has no distribution channel on purpose** — no App Store build, no TestFlight, because both need a paid
+    Apple account for an app whose whole job is talking to a gateway you run. The supported path is
+    `tools/ios-self-build.sh`: `--check` names what a Mac is missing, `--simulator` builds, installs and launches
+    with no Apple account at all, `--device --team ID` builds for a plugged-in iPhone, `--open` puts the project
+    in Xcode for the click-Run path. A free Apple ID's personal team is enough for a device, and its profile
+    expires after seven days — say that in the docs rather than let a reader file it as a bug. Never put a team
+    id back in the project to make this smoother.
+
 20. **Android blocks cleartext at targetSdk 37.** `network_security_config.xml`
     permits it for the dev gateway; without it the first connect fails as
     `unreachable`. The emulator reaches the host at `10.0.2.2`, not `127.0.0.1`.

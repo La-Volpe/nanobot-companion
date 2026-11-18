@@ -116,6 +116,33 @@ framework arrives through a Run Script phase that calls
 `./gradlew :core:embedAndSignAppleFrameworkForXcode`. No CocoaPods, no
 XcodeGen, no Tuist.
 
+### The iOS app on your own Mac
+
+There is no App Store build, by choice: distribution needs a paid Apple account, and this app talks to a gateway
+you run yourself. What you can do is build it on your own Mac in a few minutes — **the simulator needs no Apple
+account at all**, and a plugged-in iPhone needs nothing more than your free Apple ID.
+
+```bash
+git clone https://github.com/La-Volpe/nanobot-companion && cd nanobot-companion
+tools/ios-self-build.sh --check          # Xcode, JDK 21, a simulator runtime: what is missing, if anything
+tools/ios-self-build.sh --simulator      # build, install and launch on the iPhone 17 simulator
+tools/ios-self-build.sh --device --team YOURTEAMID   # or your own iPhone
+tools/ios-self-build.sh --open           # the by-hand path: Xcode, scheme iosApp, Run
+```
+
+Requirements are Xcode with an iOS runtime and **JDK 21** (the Kotlin framework is built by Gradle inside Xcode's
+run-script phase). The first build downloads Gradle and the Kotlin/Native toolchain once, so it takes a few
+minutes; after that it is seconds.
+
+The project carries no `DEVELOPMENT_TEAM` on purpose — it once named two Apple accounts in a public repository — so
+a device build asks *you* for a team. Your free Apple ID's personal team works: Xcode → target `iosApp` →
+Signing & Capabilities → Team. That profile expires after seven days; rebuild from Xcode to renew it. An app you
+installed that way stops launching the moment the profile lapses, which is the one surprising thing about the free
+route.
+
+A simulator reaches a gateway on the same Mac at `http://127.0.0.1:18765`; a phone needs the LAN address
+(`tools/nanobot-dev.sh start --lan` prints it) and both machines on the same network.
+
 For a gateway of your own:
 
 ```bash
