@@ -196,6 +196,18 @@ A release has three assets:
   `BUILD-IOS.txt` at the root: unzip it on a Mac, run the script, and the iOS app builds, installs and launches.
   No Apple account is needed for the simulator.
 
+Each release also carries `SHA256SUMS`, and every asset has a **signed build-provenance attestation**:
+
+```bash
+shasum -a 256 -c SHA256SUMS                     # catches a truncated download
+gh attestation verify nanobot-companion-ios-v1.0.0.zip \
+  --repo La-Volpe/nanobot-companion             # proves which workflow and commit produced it
+```
+
+The attestation is the stronger claim: GitHub's `actions/attest` signs a statement that these exact bytes came out
+of this repository's Release workflow for that commit, and publishes it to the public Sigstore log. There is no
+project key to trust and none to lose — the identity is the workflow run itself.
+
 Both need the four `NANOBOT_*` signing secrets (see `AGENTS.md`); without them the packaging job still builds the
 APK for the gate to inspect, and the publish job refuses to attach an unsigned one rather than shipping an
 uninstallable APK.

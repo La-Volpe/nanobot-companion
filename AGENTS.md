@@ -353,7 +353,12 @@ When asked to review this codebase, meet this bar:
   `tools/ios-self-build.sh` and a `BUILD-IOS.txt`, because iOS ships as source a
   reader builds (gotcha 19). The two binaries are checked for the licence and the
   notices; the iOS bundle is checked for the script it advertises and for the
-  absence of `.git`, `.dev` and the working documents. **The publish job refuses an unsigned APK**, so a
+  absence of `.git`, `.dev` and the working documents. Every asset is published
+  with `SHA256SUMS` and a build-provenance attestation
+  (`actions/attest@v4`, keyless via OIDC — `id-token: write` and
+  `attestations: write` only in the publish job), so a reader can prove a
+  download came from this workflow at this commit. Never replace that with a
+  long-lived signing key. **The publish job refuses an unsigned APK**, so a
   run without the signing secrets goes red instead of publishing something
   nobody can install. A missing or empty device suite is a failure;
   individual hardware-dependent and opt-in skips remain visible in reports.
