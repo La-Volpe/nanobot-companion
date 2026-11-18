@@ -81,11 +81,17 @@ jobs:
           # thing that actually works for a stranger: the tested tree, zipped with one top-level
           # folder, and the four commands that build and launch it on their own Mac. `git archive`
           # of this SHA means the bundle is the code the suite just proved, not a later branch.
-          stage=release-artefacts/assets
+          # Absolute, because the zip is built from another directory (a relative path stopped
+          # resolving after the `cd` and the v0.1.0 run died with "Could not create output file").
+          stage="$PWD/release-artefacts/assets"
           bundle=nanobot-companion-ios-$TAG
-          mkdir -p "$stage/$bundle"
-          git archive --format=tar "$GITHUB_SHA" | tar -x -C "$stage/$bundle"
-          cat > "$stage/$bundle/BUILD-IOS.txt" <<'TXT'
+          # Built outside `assets/` on purpose: a staging folder left beside the files is a
+          # directory that `gh release create` tries to upload, and it failed the v0.1.0 publish
+          # with "read …/nanobot-companion-ios-v0.1.0: is a directory".
+          src="$RUNNER_TEMP/ios-bundle"
+          rm -rf "$src"; mkdir -p "$src/$bundle"
+          git archive --format=tar "$GITHUB_SHA" | tar -x -C "$src/$bundle"
+          cat > "$src/$bundle/BUILD-IOS.txt" <<'TXT'
           nanobot Companion on iOS: build it on your own Mac.
 
             1. Unzip this archive anywhere.
@@ -105,14 +111,13 @@ jobs:
           # The things a reader's first command needs, or this bundle is a dead end.
           for want in tools/ios-self-build.sh gradle/wrapper/gradle-wrapper.jar \
                       iosApp/iosApp.xcodeproj/project.pbxproj BUILD-IOS.txt; do
-            test -e "$stage/$bundle/$want" || { echo "::error::the iOS bundle is missing $want"; exit 1; }
+            test -e "$src/$bundle/$want" || { echo "::error::the iOS bundle is missing $want"; exit 1; }
           done
           # Nothing personal rides along: the archive is the tracked tree, so prove it.
           for forbidden in .git .dev tasks.md plan.md GATES.md; do
-            test ! -e "$stage/$bundle/$forbidden" || { echo "::error::the iOS bundle carries $forbidden"; exit 1; }
+            test ! -e "$src/$bundle/$forbidden" || { echo "::error::the iOS bundle carries $forbidden"; exit 1; }
           done
-          ( cd "$stage" && zip -qr "$RUNNER_TEMP/$bundle.zip" "$bundle" )
-          mv "$RUNNER_TEMP/$bundle.zip" "$stage/$bundle.zip"
+          ( cd "$src" && zip -qr "$stage/$bundle.zip" "$bundle" )
           python3 - "$stage/$bundle.zip" <<'PY'
           import sys, zipfile
           names = zipfile.ZipFile(sys.argv[1]).namelist()
@@ -165,7 +170,7 @@ jobs:
       - name: Tag the tested SHA and publish its artefacts
         run: |
           assets=release-artefacts/assets
-          files=("$assets"/*)
+          files=(); for f in "$assets"/*; do [ -f "$f" ] && files+=("$f"); done
           test -s "$assets/SHA256SUMS" || { echo "::error::no SHA256SUMS to publish"; exit 1; }
           for file in "${files[@]}"; do test -s "$file"; done
           # Creating the ref is atomic: don't publish an existing tag that might point at another SHA.
