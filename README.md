@@ -1,5 +1,7 @@
 # nanobot Companion
 
+[![Fast checks](https://github.com/La-Volpe/nanobot-companion/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/La-Volpe/nanobot-companion/actions/workflows/ci.yml)
+
 A native iOS and Android client for a [nanobot](https://github.com/HKUDS/nanobot)
 gateway. One Kotlin Multiplatform module holds everything that is not UI. iOS
 renders it with SwiftUI, Android with Jetpack Compose, both against the
@@ -142,24 +144,20 @@ cd iosApp && xcodebuild -scheme iosApp -destination 'platform=iOS Simulator,name
 
 ### What CI runs, and what it deliberately does not
 
-**CI is disabled as of 2026-11-17** at the owner's request, because of Actions minutes and limits; both workflows
-(`ci.yml`, `probe.yml`) are in the repo and can be switched back on with `gh workflow enable ci.yml`. What they last
-proved, before they were switched off, is in `tasks.md` and in the run IDs below.
+| Workflow | When it runs | What it checks |
+|---|---|---|
+| [Checks](https://github.com/La-Volpe/nanobot-companion/actions/workflows/ci.yml) | Every PR to `main`, every merge to `main`, or on demand | Core Android host tests, CLI and Android unit tests, instrumented test compilation, and string parity. This is the required PR check. |
+| [Apple checks](https://github.com/La-Volpe/nanobot-companion/actions/workflows/apple-checks.yml) | Relevant Core, iOS, or build/CI PRs, or on demand | Core JVM and Kotlin/Native tests, Kover, and Swift unit tests. |
+| [Android UI tests](https://github.com/La-Volpe/nanobot-companion/actions/workflows/android-ui.yml) | On demand | Compose instrumented tests on an emulator. |
+| [Release](https://github.com/La-Volpe/nanobot-companion/actions/workflows/release.yml) | Manually from `main` | All of the above, XCUITest, and unsigned APK/AAB and CLI ZIP builds. It checks that each archive contains the license and third-party notices. |
 
-GitHub Actions ran the parts that need nothing but a machine with a toolchain:
+`main` is protected; submit changes through a PR. To cut a GitHub release, run **Release** with a new
+`vMAJOR.MINOR.PATCH` tag and turn on `publish`. The workflow tags and publishes the exact tested commit only
+when every job passes. Leave `publish` off to run the same tests without creating a tag or release.
 
-| job | what it proves |
-|---|---|
-| `test` (ubuntu) | `:core:testAndroidHostTest`, `:core-cli:test`, `:app:testDebugUnitTest`, and the copy parity check |
-| `macos` | `:core:jvmTest` (it links the iOS framework before it runs), `:core:iosSimulatorArm64Test`, the coverage gate, and the XCUITest suite on a simulator |
-| `connected` (advisory) | the Compose instrumented suite on an emulator. Advisory because the emulator's software keyboard can vanish and only a cold boot revives it |
-| `builds` | the release APK, the AAB and the CLI zip, with the licence and third-party notices asserted inside each artefact |
-
-**No secret is involved anywhere.** The five instruments that need a live gateway or a real device —
-`:core:jvmTest -Pcontract`, `tools/parity-check.sh`, `tools/session20.sh`, `tools/soak.sh` and
-`tools/android-session.sh` — never run on a hosted runner. They belong to a `self-hosted` runner on a machine
-that has a gateway, and to a person who can watch them; running them against a hosted machine would either need
-a gateway secret in CI or prove nothing.
+Hosted jobs use no gateway or signing credentials. The live contract (`:core:jvmTest -Pcontract`) and the
+instruments below run separately on a machine with a dev gateway. Use them before releasing a change to
+gateway behavior.
 
 Instruments that are not unit tests, and earn their keep:
 

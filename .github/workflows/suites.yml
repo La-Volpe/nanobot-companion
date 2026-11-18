@@ -1,0 +1,164 @@
+name: Test suites
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: fast, apple, android-ui, or full (all suites and release packaging)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux tests
+    if: inputs.mode == 'fast' || inputs.mode == 'full'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-android
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Host tests and compile Android instrumented tests without an emulator
+        run: |
+          ./gradlew --stacktrace :core:testAndroidHostTest :core-cli:test \
+            :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin
+          python3 tools/require-junit-results.py core/build/test-results/testAndroidHostTest \
+            core-cli/build/test-results/test app/build/test-results/testDebugUnitTest
+          python3 tools/parity_copy.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-test-results
+          path: |
+            core/build/test-results/testAndroidHostTest
+            core-cli/build/test-results/test
+            app/build/test-results/testDebugUnitTest
+          retention-days: 7
+
+  apple:
+    name: Apple tests
+    if: inputs.mode == 'apple' || inputs.mode == 'full'
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-android
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Core JVM, Kotlin/Native and coverage
+        # The JVM bridge test reads the Swift framework header, so this runs on macOS.
+        run: |
+          ./gradlew --stacktrace :core:jvmTest :core:iosSimulatorArm64Test :core:koverVerify :core:koverXmlReport
+          python3 tools/require-junit-results.py core/build/test-results/jvmTest \
+            core/build/test-results/iosSimulatorArm64Test
+      - name: Swift unit tests (plus XCUITest in full mode)
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          args=()
+          if [[ "$MODE" == apple ]]; then args+=(-only-testing:iosAppTests); fi
+          xcodebuild test -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 17' \
+            -derivedDataPath "$RUNNER_TEMP/NanobotDerivedData" -resultBundlePath Nanobot.xcresult \
+            ${args[@]+"${args[@]}"} CODE_SIGNING_ALLOWED=NO
+          xcrun xcresulttool get test-results tests --path Nanobot.xcresult > ios-results.json
+          jq -e 'any(.testNodes[].children[]; .name == "iosAppTests" and .result == "Passed")' ios-results.json
+          if [[ "$MODE" == full ]]; then
+            jq -e 'any(.testNodes[].children[]; .name == "iosAppUITests" and .result == "Passed")' ios-results.json
+          fi
+      - name: Print iOS totals including skips
+        if: always()
+        run: |
+          if [[ -d Nanobot.xcresult ]]; then
+            xcrun xcresulttool get test-results summary --path Nanobot.xcresult || true
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apple-test-results
+          path: |
+            Nanobot.xcresult
+            ios-results.json
+            core/build/test-results/jvmTest
+            core/build/test-results/iosSimulatorArm64Test
+            core/build/reports/kover/report.xml
+          retention-days: 7
+
+  android_ui:
+    name: Android connected tests
+    if: inputs.mode == 'android-ui' || inputs.mode == 'full'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-android
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Compose tests on a cold-boot API 36 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: default
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-snapshot-load -no-boot-anim -no-audio -no-window
+          emulator-boot-timeout: 900
+          # The action runs each script line independently and owns the adb server. No ANDROID_SERIAL.
+          script: |
+            adb shell settings put secure show_ime_with_hard_keyboard 1 || true
+            ./gradlew --stacktrace :app:connectedDebugAndroidTest
+      - name: Require an actual test run, not an empty report
+        run: python3 tools/require-junit-results.py app/build/outputs/androidTest-results/connected
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-connected-results
+          path: |
+            app/build/outputs/androidTest-results
+            app/build/reports/androidTests
+          retention-days: 7
+
+  builds:
+    name: Release packaging
+    if: inputs.mode == 'full'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-android
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build and verify unsigned APK and AAB, and the CLI ZIP
+        run: |
+          ./gradlew --stacktrace :app:assembleRelease :app:bundleRelease :core-cli:distZip
+          check_notices() {
+            local entries
+            entries=$(unzip -Z1 "$1")
+            grep -Fxq "$2/THIRD_PARTY_NOTICES.txt" <<< "$entries"
+            grep -Fxq "$2/LICENSE" <<< "$entries"
+          }
+          check_notices app/build/outputs/apk/release/app-release-unsigned.apk assets
+          check_notices app/build/outputs/bundle/release/app-release.aab assets
+          check_notices core-cli/build/distributions/core-cli.zip core-cli
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-artefacts
+          path: |
+            app/build/outputs/apk/release/app-release-unsigned.apk
+            app/build/outputs/bundle/release/app-release.aab
+            core-cli/build/distributions/core-cli.zip
+          if-no-files-found: error
+          retention-days: 14

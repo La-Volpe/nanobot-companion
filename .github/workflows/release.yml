@@ -1,0 +1,80 @@
+name: Release
+run-name: ${{ inputs.publish && 'Publish' || 'Verify' }} ${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: New release tag (vMAJOR.MINOR.PATCH, for example v1.0.0)
+        type: string
+        required: true
+      publish:
+        description: Create the tag and publish if all checks pass (off = test only)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate release candidate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.version }}
+    steps:
+      - name: Require main and an unused version
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Dispatch Release from main.'; exit 1; }
+          [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+            echo 'Expected vMAJOR.MINOR.PATCH.'; exit 1;
+          }
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$TAG" \
+            --jq "any(.[]; .ref == \"refs/tags/$TAG\")")
+          [[ "$existing" == false ]] || { echo 'That tag already exists.'; exit 1; }
+          printf 'Candidate: `%s` at `%s`\n' "$TAG" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+
+  full:
+    name: Full offline suite
+    needs: validate
+    uses: ./.github/workflows/suites.yml
+    with:
+      mode: full
+
+  publish:
+    name: Publish tested commit
+    needs: [validate, full]
+    if: ${{ inputs.publish && github.ref == 'refs/heads/main' && needs.full.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artefacts
+          path: release-artefacts
+      - name: Tag the tested SHA and publish its artefacts
+        run: |
+          root=release-artefacts
+          files=(
+            "$root/app/build/outputs/apk/release/app-release-unsigned.apk"
+            "$root/app/build/outputs/bundle/release/app-release.aab"
+            "$root/core-cli/build/distributions/core-cli.zip"
+          )
+          for file in "${files[@]}"; do test -s "$file"; done
+          # Creating the ref is atomic: don't publish an existing tag that might point at another SHA.
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" --silent
+          gh release create "$TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$TAG" --generate-notes \
+            --notes "Tested commit: \`$GITHUB_SHA\`. [Full test run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID). Android artifacts are unsigned."

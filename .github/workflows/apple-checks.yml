@@ -1,0 +1,29 @@
+name: Apple checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'core/**'
+      - 'iosApp/**'
+      - 'gradle/**'
+      - '**/*.gradle.kts'
+      - 'gradle.properties'
+      - 'gradlew*'
+      - '.github/**'
+      - 'tools/require-junit-results.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-checks-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apple:
+    name: Apple checks
+    uses: ./.github/workflows/suites.yml
+    with:
+      mode: apple

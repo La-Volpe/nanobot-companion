@@ -315,9 +315,34 @@ When asked to review this codebase, meet this bar:
 - Review-only: change nothing. The deliverable is a ranked, sized list of
   findings. Flattery gets rejected; so does a finding without evidence.
 
+## CI and releases
+
+- **`main` is PR-only**, including for admins. Work on a branch and open a PR;
+  never push, force-push, or commit directly on GitHub to `main`. The Linux
+  `Fast checks / Linux tests` check is required before merging, and **Checks**
+  runs it again on the merged `main`. This covers Core Android host tests,
+  CLI tests, Android unit tests, compilation of the Android instrumented
+  tests, and copy parity. It does not boot an emulator.
+- **Apple checks** runs on relevant PRs (Core, iOS or shared build/CI changes),
+  or on demand. It covers Core JVM and Kotlin/Native, Kover, and Swift unit
+  tests. Review the result on relevant PRs; it is not required on every PR.
+  For Android UI changes, run **Android UI tests** or use the local emulator.
+- **Release** is the only supported publication path. Merge the changes, then
+  dispatch it from `main` with a new `vMAJOR.MINOR.PATCH` version. Leave
+  `publish` off for a dry run; enable it to tag and publish the exact tested
+  commit only after the full offline suite passes. It runs the checks above,
+  Android connected tests, XCUITest, and unsigned Android/CLI packaging with
+  license and notice checks. A missing or empty device suite is a failure;
+  individual hardware-dependent and opt-in skips remain visible in reports.
+  If publishing fails *after* tag creation, inspect the run and tag before
+  taking any further release action; never retag a different commit.
+- Hosted CI does not receive gateway, signing, or store credentials. Run the
+  live contract and instruments locally when gateway behavior changes, before
+  dispatching the release. A GitHub release is not an app-store upload.
+
 ## QA standards
 
-A change is green only when all of these pass:
+Before release or for full local verification, all applicable checks must pass:
 
 1. `./gradlew :core:allTests :core-cli:test :app:testDebugUnitTest`
 2. `./gradlew :app:connectedDebugAndroidTest` (emulator required)
