@@ -1,0 +1,14 @@
+name: Android UI tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android UI
+    uses: ./.github/workflows/suites.yml
+    with:
+      mode: android-ui

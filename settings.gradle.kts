@@ -8,7 +8,10 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositories {
-        mavenCentral()
+        // AndroidX is published on Google Maven. A Central 429 stops Gradle before it can fall back.
+        mavenCentral {
+            content { excludeGroupByRegex("androidx(\\..*)?") }
+        }
         google()
     }
 }

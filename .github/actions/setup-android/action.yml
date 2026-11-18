@@ -1,0 +1,36 @@
+name: Set up JDK 21 and Android SDK 37
+
+description: Installs the Java and Android toolchains used by the test and build jobs.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '21'
+
+    - name: Install Android SDK packages
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ "$RUNNER_OS" == macOS ]]; then
+          export ANDROID_HOME="$HOME/android-sdk" ANDROID_SDK_ROOT="$HOME/android-sdk"
+          tools="$ANDROID_HOME/cmdline-tools"
+          mkdir -p "$tools"
+          if [[ ! -x "$tools/latest/bin/sdkmanager" ]]; then
+            curl -fsSLo "$RUNNER_TEMP/android-cmdtools.zip" https://dl.google.com/android/repository/commandlinetools-mac-13114758_latest.zip
+            unzip -q "$RUNNER_TEMP/android-cmdtools.zip" -d "$tools"
+            mv "$tools/cmdline-tools" "$tools/latest"
+          fi
+        fi
+        printf 'ANDROID_HOME=%s\nANDROID_SDK_ROOT=%s\n' "$ANDROID_HOME" "$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+        sdkmanager="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+        if [[ ! -x "$sdkmanager" ]]; then
+          for candidate in "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin/sdkmanager; do
+            if [[ -x "$candidate" ]]; then sdkmanager="$candidate"; break; fi
+          done
+        fi
+        yes | "$sdkmanager" --licenses >/dev/null || true
+        # The SDK manager uses android-37.0, not android-37.
+        "$sdkmanager" 'platforms;android-37.0' 'build-tools;37.0.0'
