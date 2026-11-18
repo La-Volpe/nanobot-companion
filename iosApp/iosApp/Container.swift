@@ -41,6 +41,12 @@ final class Container {
     /// proved: a pick that landed, and one whose upload failed.
     var scriptedAttachments = false
 
+    /// The scripted reply's timings. A flow test that has to type *during* a turn or a
+    /// transcription raises them: on a loaded runner the taps alone can outlast a fixed
+    /// four-second script, and then the reply lands before the action it is meant to follow.
+    var scriptedTurnSeconds: Double = 0
+    var scriptedVoiceSeconds: Double = 4
+
     /// A scripted launch can start on the connected shell, which is what a drawer or chat flow
     /// test needs: onboarding is already covered by its own suite.
     let startsConnected: Bool
@@ -122,6 +128,8 @@ final class Container {
             }
             container.markdownFixture = scripted == .markdown
             container.scriptedAttachments = environment["NANOBOT_ATTACH"] != nil
+            container.scriptedTurnSeconds = Double(environment["NANOBOT_SCRIPTED_TURN_SECONDS"] ?? "") ?? 0
+            container.scriptedVoiceSeconds = Double(environment["NANOBOT_SCRIPTED_VOICE_SECONDS"] ?? "") ?? 4
             return container
         }
         #endif

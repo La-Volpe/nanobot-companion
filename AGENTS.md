@@ -207,7 +207,14 @@ All pins live in `gradle/libs.versions.toml`, with the resolution date in a comm
     id; `onChange` does not fire for a value set before the view exists; live
     tests need the `TEST_RUNNER_` prefix on their environment variables; and a
     fast model can finish a turn before a stop tap lands, which is a race in the
-    instrument, so pick a prompt that stays open.
+    instrument, so pick a prompt that stays open. The scripted launch follows the
+    same rule with knobs instead of prose: `NANOBOT_SCRIPTED_TURN_SECONDS` and
+    `NANOBOT_SCRIPTED_VOICE_SECONDS` hold a reply open when a test has to type
+    during it. A four-second script is a constant a loaded runner can outlast —
+    the queue and transcription cases failed on the hosted machine for exactly
+    that reason and passed here. A row that dismisses a sheet also needs the
+    dismissal waited for (`waitForNonExistence`) before the surface under it is
+    read, not a longer poll on the surface.
 
 22. **The dev gateway needs help to start.** `NANOBOT_SKIP_WEBUI_BUILD=1`
     (otherwise `nanobot webui` runs npm install/build), and a Python 3.12 venv

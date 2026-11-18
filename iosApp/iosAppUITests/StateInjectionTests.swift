@@ -19,7 +19,19 @@ final class StateInjectionTests: XCTestCase {
 
     private func openDebug(_ app: XCUIApplication) {
         app.buttons["chat.debug"].tap()
-        XCTAssertTrue(app.navigationBars["Debug states"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Debug states"].waitForExistence(timeout: 15))
+    }
+
+    /// Inject one state and wait for the sheet to be gone. The surface underneath only updates
+    /// once the dismissal finishes, and on a loaded hosted runner that plus the re-render
+    /// outlasts a five-second poll, which is what made this walk fail there and pass here.
+    private func inject(_ app: XCUIApplication, _ identifier: String) {
+        openDebug(app)
+        scrollTo(app, identifier).tap()
+        XCTAssertTrue(
+            app.navigationBars["Debug states"].waitForNonExistence(timeout: 15),
+            "the sheet closes before the surface is read"
+        )
     }
 
     /// The menu is a `List` with the eight failures above the chat states, so a state row can be
@@ -71,43 +83,38 @@ final class StateInjectionTests: XCTestCase {
     func testTheDebugMenuAlsoInjectsTheChatStates() {
         let app = chatApp()
 
-        openDebug(app)
-        scrollTo(app, "debug.state.compaction").tap()
-        XCTAssertTrue(app.staticTexts["Context compacted to keep the conversation going."].waitForExistence(timeout: 5),
+        inject(app, "debug.state.compaction")
+        XCTAssertTrue(app.staticTexts["Context compacted to keep the conversation going."].waitForExistence(timeout: 15),
                       "a compaction is one line in the thread. Tree:\n\(app.debugDescription)")
 
-        openDebug(app)
-        scrollTo(app, "debug.state.recovery").tap()
-        XCTAssertTrue(app.buttons["states.action.continue"].waitForExistence(timeout: 5), "recovery offers Continue")
+        inject(app, "debug.state.recovery")
+        XCTAssertTrue(app.buttons["states.action.continue"].waitForExistence(timeout: 15), "recovery offers Continue")
         XCTAssertTrue(app.buttons["states.action.dismiss"].exists, "and Dismiss")
 
-        openDebug(app)
-        scrollTo(app, "debug.state.subagent").tap()
-        XCTAssertTrue(app.staticTexts["Subtask: audit attachment limits"].waitForExistence(timeout: 5), "the dock names the task")
+        inject(app, "debug.state.subagent")
+        XCTAssertTrue(app.staticTexts["Subtask: audit attachment limits"].waitForExistence(timeout: 15), "the dock names the task")
 
-        openDebug(app)
-        scrollTo(app, "debug.state.queued").tap()
-        XCTAssertTrue(app.staticTexts["composer.queue"].waitForExistence(timeout: 5), "the queued prompt has its chip")
+        inject(app, "debug.state.queued")
+        XCTAssertTrue(app.staticTexts["composer.queue"].waitForExistence(timeout: 15), "the queued prompt has its chip")
 
-        openDebug(app)
-        scrollTo(app, "debug.state.notSent").tap()
-        XCTAssertTrue(app.staticTexts["Not sent"].waitForExistence(timeout: 5), "a failed delivery keeps the words")
+        inject(app, "debug.state.notSent")
+        XCTAssertTrue(app.staticTexts["Not sent"].waitForExistence(timeout: 15), "a failed delivery keeps the words")
 
-        openDebug(app)
-        scrollTo(app, "debug.state.sandbox").tap()
-        XCTAssertTrue(app.staticTexts["Shell tools are paused: the sandbox launcher is not installed."].waitForExistence(timeout: 5),
+        inject(app, "debug.state.sandbox")
+        XCTAssertTrue(app.staticTexts["Shell tools are paused: the sandbox launcher is not installed."].waitForExistence(timeout: 15),
                       "the sandbox warning names its cause")
 
-        openDebug(app)
-        scrollTo(app, "debug.state.offline").tap()
-        XCTAssertEqual(app.staticTexts["states.banner"].label, "Disconnected. Sends are held.")
+        inject(app, "debug.state.offline")
+        let offline = app.staticTexts["states.banner"]
+        XCTAssertTrue(offline.waitForExistence(timeout: 15), "the offline banner is up. Tree:\n\(app.debugDescription)")
+        XCTAssertEqual(offline.label, "Disconnected. Sends are held.")
 
-        openDebug(app)
-        scrollTo(app, "debug.state.reconnecting").tap()
-        XCTAssertEqual(app.staticTexts["states.banner"].label, "Reconnecting…")
+        inject(app, "debug.state.reconnecting")
+        let reconnecting = app.staticTexts["states.banner"]
+        XCTAssertTrue(reconnecting.waitForExistence(timeout: 15), "the reconnecting banner is up")
+        XCTAssertEqual(reconnecting.label, "Reconnecting…")
 
-        openDebug(app)
-        scrollTo(app, "debug.clear").tap()
-        XCTAssertFalse(app.staticTexts["states.banner"].waitForExistence(timeout: 2), "Clear every injected state empties the surface")
+        inject(app, "debug.clear")
+        XCTAssertTrue(app.staticTexts["states.banner"].waitForNonExistence(timeout: 15), "Clear every injected state empties the surface")
     }
 }

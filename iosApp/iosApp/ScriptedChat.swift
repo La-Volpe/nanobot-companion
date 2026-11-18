@@ -14,9 +14,14 @@ final class ScriptedChat: ChatDriving {
     /// The markdown launch streams `document` instead of answering, so a construct the parser
     /// handles can be photographed on a device without a model in the loop.
     private let fixture: Bool
+    /// How long a sent turn stays open. Zero streams immediately; a queue test sets it high,
+    /// because a turn that finishes in under a second is a race a loaded CI runner loses: the
+    /// Send tap then starts a *second* turn instead of queueing into the first.
+    private let holdSeconds: Double
 
-    init(fixture: Bool = false, onChange: @escaping (ChatThreadState) -> Void) {
+    init(fixture: Bool = false, holdSeconds: Double = 0, onChange: @escaping (ChatThreadState) -> Void) {
         self.fixture = fixture
+        self.holdSeconds = holdSeconds
         self.onChange = onChange
     }
 
@@ -152,6 +157,12 @@ final class ScriptedChat: ChatDriving {
         // the core parsed them.
         // Long enough that a flow test can type while it runs, and markdown-shaped so the
         // prose, the bullets and the fence are what the parser produced.
+        if holdSeconds > 0 {
+            let deadline = Date().addingTimeInterval(holdSeconds)
+            while !stopRequested, Date() < deadline {
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
+        }
         let chunks = ["Streaming ", "an answer ", "with **markdown**:\n\n- one bullet\n- two bullets\n\n```swift\nlet ready = true\nprint(ready)\n```"]
         for chunk in chunks {
             if stopRequested { break }
@@ -299,8 +310,19 @@ final class ScriptedRecorder: AudioRecording {
 /// its arc turning, and the composer still working), and a query takes about a second.
 @MainActor
 final class ScriptedVoice: VoiceDriving {
+    /// Four seconds by default, because that wait is the state a flow test has to look at (the
+    /// button inactive, its arc turning, and the composer still working), and a query takes about
+    /// a second. A test that types *while* transcribing raises it through the launch, because on
+    /// a loaded runner the tap and the typing together can outlast four seconds and the
+    /// transcript would land before the typing it is supposed to follow.
+    private let seconds: Double
+
+    init(seconds: Double = 4) {
+        self.seconds = seconds
+    }
+
     func transcribe(pcm: Data, durationMs: Int) async -> VoiceOutcome {
-        try? await Task.sleep(nanoseconds: 4_000_000_000)
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
         return .transcribed("Check the attachment policy limits.")
     }
 }
