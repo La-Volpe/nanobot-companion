@@ -74,8 +74,8 @@ final class ComposerTests: XCTestCase {
 
         XCTAssertTrue(app.buttons["chat.stop"].waitForExistence(timeout: 5), "an empty field during a turn means Stop")
 
-        composer.tap()
-        composer.typeText("and this waits")
+        // The turn is streaming under the cursor, which is the redraw `typeSettling` is for.
+        composer.typeSettling("and this waits")
         let send = app.buttons["chat.send"]
         XCTAssertTrue(send.waitForExistence(timeout: 5), "typing turns the button back into Send")
         send.tap()
