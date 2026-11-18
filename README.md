@@ -154,11 +154,13 @@ cd iosApp && xcodebuild -scheme iosApp -destination 'platform=iOS Simulator,name
 | [Checks](https://github.com/La-Volpe/nanobot-companion/actions/workflows/ci.yml) | Every PR to `main`, every merge to `main`, or on demand | Core Android host tests, CLI and Android unit tests, instrumented test compilation, and string parity. This is the required PR check. |
 | [Apple checks](https://github.com/La-Volpe/nanobot-companion/actions/workflows/apple-checks.yml) | Relevant Core, iOS, or build/CI PRs, or on demand | Core JVM and Kotlin/Native tests, Kover, and Swift unit tests. |
 | [Android UI tests](https://github.com/La-Volpe/nanobot-companion/actions/workflows/android-ui.yml) | On demand | Compose instrumented tests on an emulator. |
-| [Release](https://github.com/La-Volpe/nanobot-companion/actions/workflows/release.yml) | Manually from `main` | All of the above, XCUITest, and unsigned APK/AAB and CLI ZIP builds. It checks that each archive contains the license and third-party notices. |
+| [Release](https://github.com/La-Volpe/nanobot-companion/actions/workflows/release.yml) | Manually from `main` | All of the above, XCUITest, and builds of a debug APK, unsigned release APK/AAB, and CLI ZIP. It verifies the debug APK signature and checks every archive for the license and third-party notices. |
 
 `main` is protected; submit changes through a PR. To cut a GitHub release, run **Release** with a new
 `vMAJOR.MINOR.PATCH` tag and turn on `publish`. The workflow tags and publishes the exact tested commit only
 when every job passes. Leave `publish` off to run the same tests without creating a tag or release.
+`app-debug.apk` is for testing only. It uses the CI runner's debug key, so it may not install over a copy
+signed elsewhere, including a debug APK from a previous run.
 
 Hosted jobs use no gateway or signing credentials. The live contract (`:core:jvmTest -Pcontract`) and the
 instruments below run separately on a machine with a dev gateway. Use them before releasing a change to
