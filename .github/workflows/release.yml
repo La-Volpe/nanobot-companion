@@ -58,6 +58,10 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      # Keyless signing: the attestation is bound to this workflow run and this commit by
+      # GitHub's OIDC token, so there is no long-lived key to leak or lose.
+      id-token: write
+      attestations: write
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ inputs.version }}
@@ -140,10 +144,29 @@ jobs:
           cp "$root/core-cli/build/distributions/core-cli.zip" "$stage/core-cli.zip"
           ls -l "$stage"
 
+      - name: Write the checksums a reader can check without any tool
+        run: |
+          stage=release-artefacts/assets
+          # Plain POSIX and no `find -printf` (GNU-only): the same line runs on the runner and on
+          # the reader's Mac, which is the point of a checksum file.
+          ( cd "$stage" && for f in *; do
+              [ "$f" = SHA256SUMS ] || [ ! -f "$f" ] || shasum -a 256 "$f"
+            done | sort -k2 > SHA256SUMS )
+          cat "$stage/SHA256SUMS"
+
+      - name: Attest what was built, from this commit, by this workflow
+        uses: actions/attest@v4
+        with:
+          # One provenance statement per published file. `gh attestation verify` checks it
+          # against the public Sigstore log, so a reader who downloads a file can prove it came
+          # out of this repository's Release workflow for this commit — and nothing else.
+          subject-path: release-artefacts/assets/*
+
       - name: Tag the tested SHA and publish its artefacts
         run: |
           assets=release-artefacts/assets
           files=("$assets"/*)
+          test -s "$assets/SHA256SUMS" || { echo "::error::no SHA256SUMS to publish"; exit 1; }
           for file in "${files[@]}"; do test -s "$file"; done
           # Creating the ref is atomic: don't publish an existing tag that might point at another SHA.
           gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
@@ -154,4 +177,15 @@ jobs:
 
           - \`nanobot-companion.apk\` — signed universal build for Android 8 and later (arm64-v8a, armeabi-v7a, x86_64, x86).
           - \`core-cli.zip\` — the command-line client.
+          ### Verify a download
+
+          \`\`\`
+          shasum -a 256 -c SHA256SUMS
+          gh attestation verify nanobot-companion-ios-$TAG.zip --repo $GITHUB_REPOSITORY
+          \`\`\`
+
+          The checksums catch a truncated download. The attestation is the stronger claim: it is
+          signed by this workflow's identity for commit \`$GITHUB_SHA\`, so a file that verifies
+          was built here from that commit and has not been swapped since.
+
           - \`nanobot-companion-ios-$TAG.zip\` — the tested source with \`tools/ios-self-build.sh\`: unzip on a Mac, run it, and the iOS app builds, installs and launches. No Apple account needed for the simulator; a free personal team is enough for your own iPhone (its profile lasts seven days). There is no App Store build on purpose."
