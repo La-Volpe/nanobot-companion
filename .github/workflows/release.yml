@@ -66,39 +66,38 @@ jobs:
         with:
           name: release-artefacts
           path: release-artefacts
-      - name: Name the release artefacts for what they are
+      - name: Require a signed universal APK, and stage the two assets
         run: |
           root=release-artefacts
           apk=$(ls "$root"/app/build/outputs/apk/release/*.apk)
-          stage="$root/named"
-          mkdir -p "$stage"
-          # The signed and unsigned APKs come out of Gradle with different file names, and a reader
-          # should not have to know which is which: the published name says it.
-          if [[ "$apk" == *"-unsigned.apk" ]]; then
-            echo "::warning::this release carries an unsigned APK; add the keystore secrets to sign it"
-            cp "$apk" "$stage/nanobot-companion-unsigned.apk"
-            echo "UNSIGNED_APK=1" >> "$GITHUB_ENV"
-          else
-            cp "$apk" "$stage/nanobot-companion.apk"
+          if [[ "$apk" == *-unsigned.apk ]]; then
+            echo "::error::refusing to publish an unsigned APK. Add NANOBOT_KEYSTORE_BASE64, NANOBOT_KEYSTORE_PASSWORD, NANOBOT_KEY_ALIAS and NANOBOT_KEY_PASSWORD, then dispatch again."
+            exit 1
           fi
-          cp "$root/app/build/outputs/apk/debug/app-debug.apk" "$stage/nanobot-companion-debug.apk"
-          cp "$root/app/build/outputs/bundle/release/app-release.aab" "$stage/nanobot-companion.aab"
+          # Universal: one APK carrying every ABI this app ships, so it installs on a phone, a
+          # tablet and an emulator without the reader picking a variant.
+          abis=$(unzip -Z1 "$apk" | sed -n 's|^lib/\([^/]*\)/.*|\1|p' | sort -u | tr '\n' ' ')
+          echo "ABIs: $abis"
+          for want in arm64-v8a armeabi-v7a x86_64; do
+            [[ "$abis" == *"$want"* ]] || { echo "::error::$apk is missing $want, so it is not universal"; exit 1; }
+          done
+          stage="$root/assets"
+          mkdir -p "$stage"
+          cp "$apk" "$stage/nanobot-companion.apk"
           cp "$root/core-cli/build/distributions/core-cli.zip" "$stage/core-cli.zip"
           ls -l "$stage"
 
       - name: Tag the tested SHA and publish its artefacts
         run: |
-          root=release-artefacts/named
-          files=("$root"/*)
+          assets=release-artefacts/assets
+          files=("$assets"/*)
           for file in "${files[@]}"; do test -s "$file"; done
-          if [[ -n "${UNSIGNED_APK:-}" ]]; then
-            caveat="The APK here is **unsigned** — add the keystore secrets to publish an installable one."
-          else
-            caveat="\`nanobot-companion.apk\` and \`.aab\` are signed with the release key; \`nanobot-companion-debug.apk\` is a throwaway-signed debug build."
-          fi
           # Creating the ref is atomic: don't publish an existing tag that might point at another SHA.
           gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
             -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" --silent
           gh release create "$TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "$TAG" --generate-notes \
-            --notes "Tested commit: \`$GITHUB_SHA\`. [Full test run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID). $caveat"
+            --notes "Tested commit: \`$GITHUB_SHA\`. [Full test run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID).
+
+          - \`nanobot-companion.apk\` — signed universal build for Android 8 and later (arm64-v8a, armeabi-v7a, x86_64, x86).
+          - \`core-cli.zip\` — the command-line client."

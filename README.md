@@ -154,16 +154,21 @@ cd iosApp && xcodebuild -scheme iosApp -destination 'platform=iOS Simulator,name
 | [Checks](https://github.com/La-Volpe/nanobot-companion/actions/workflows/ci.yml) | Every PR to `main`, every merge to `main`, or on demand | Core Android host tests, CLI and Android unit tests, instrumented test compilation, and string parity. This is the required PR check. |
 | [Apple checks](https://github.com/La-Volpe/nanobot-companion/actions/workflows/apple-checks.yml) | Relevant Core, iOS, or build/CI PRs, or on demand | Core JVM and Kotlin/Native tests, Kover, and Swift unit tests. |
 | [Android UI tests](https://github.com/La-Volpe/nanobot-companion/actions/workflows/android-ui.yml) | On demand | Compose instrumented tests on an emulator. |
-| [Release](https://github.com/La-Volpe/nanobot-companion/actions/workflows/release.yml) | Manually from `main` | All of the above, XCUITest, and builds of a debug APK, unsigned release APK/AAB, and CLI ZIP. It verifies the debug APK signature and checks every archive for the license and third-party notices. |
+| [Release](https://github.com/La-Volpe/nanobot-companion/actions/workflows/release.yml) | Manually from `main` | All of the above, XCUITest, and the two published assets: a signed universal APK and the CLI ZIP. It refuses an unsigned APK and checks both archives for the license and third-party notices. |
 
 `main` is protected; submit changes through a PR. To cut a GitHub release, run **Release** with a new
 `vMAJOR.MINOR.PATCH` tag and turn on `publish`. The workflow tags and publishes the exact tested commit only
 when every job passes. Leave `publish` off to run the same tests without creating a tag or release.
 
-The release carries `nanobot-companion.apk` and `nanobot-companion.aab`, signed with the repository's release
-key when the four `NANOBOT_*` signing secrets exist (see `AGENTS.md`), and `nanobot-companion-unsigned.apk`
-instead when they do not — the release notes say which. `nanobot-companion-debug.apk` is for testing only: it
-uses the runner's throwaway debug key, so it cannot update over a build signed elsewhere.
+A release has two assets:
+
+- `nanobot-companion.apk` — signed with the repository's release key, universal: arm64-v8a, armeabi-v7a,
+  x86_64 and x86 in one file, so it installs on a phone, a tablet and an emulator alike. Android 8 or later.
+- `core-cli.zip` — the command-line client.
+
+Both need the four `NANOBOT_*` signing secrets (see `AGENTS.md`); without them the packaging job still builds the
+APK for the gate to inspect, and the publish job refuses to attach an unsigned one rather than shipping an
+uninstallable APK.
 
 Hosted jobs use no gateway or signing credentials. The live contract (`:core:jvmTest -Pcontract`) and the
 instruments below run separately on a machine with a dev gateway. Use them before releasing a change to

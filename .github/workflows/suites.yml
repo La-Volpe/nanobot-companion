@@ -169,11 +169,9 @@ jobs:
             echo "NANOBOT_KEY_PASSWORD=${{ secrets.NANOBOT_KEY_PASSWORD }}"
           } >> "$GITHUB_ENV"
 
-      - name: Build and verify the debug APK, release APK and AAB, and the CLI ZIP
+      - name: Build and verify the release APK and the CLI ZIP
         run: |
-          ./gradlew --stacktrace :app:assembleDebug :app:assembleRelease :app:bundleRelease :core-cli:distZip
-          debug_apk=app/build/outputs/apk/debug/app-debug.apk
-          "$ANDROID_SDK_ROOT/build-tools/37.0.0/apksigner" verify "$debug_apk"
+          ./gradlew --stacktrace :app:assembleRelease :core-cli:distZip
           # A signed release is the point of the keystore; an unsigned one is what a fork or a
           # missing secret produces, and the job says which it made instead of guessing later.
           release_apk=$(ls app/build/outputs/apk/release/*.apk)
@@ -192,17 +190,13 @@ jobs:
             grep -Fxq "$2/THIRD_PARTY_NOTICES.txt" <<< "$entries"
             grep -Fxq "$2/LICENSE" <<< "$entries"
           }
-          check_notices "$debug_apk" assets
           check_notices "$(ls app/build/outputs/apk/release/*.apk)" assets
-          check_notices app/build/outputs/bundle/release/app-release.aab base/assets
           check_notices core-cli/build/distributions/core-cli.zip core-cli
       - uses: actions/upload-artifact@v4
         with:
           name: release-artefacts
           path: |
-            app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/*.apk
-            app/build/outputs/bundle/release/app-release.aab
             core-cli/build/distributions/core-cli.zip
           if-no-files-found: error
           retention-days: 14
