@@ -53,6 +53,67 @@ flowchart TB
 The arrow is the dependency direction: nothing below points back up, and
 `commonMain` never reaches for a UI toolkit (enforced by `ArchitectureTest`).
 
+## Install it on your phone
+
+You need a **nanobot gateway you can reach** and its **WebUI secret** — the app is a client, and it has no server
+of its own. Every install method below ends on the same connect screen: gateway address, then that secret.
+
+Grab the latest build from the [releases page](https://github.com/La-Volpe/nanobot-companion/releases/latest).
+
+### Android (8.0 or later)
+
+1. Download **`nanobot-companion.apk`** on the phone.
+2. Open it. Android will say the install is blocked because it came from a browser: allow "install unknown apps"
+   for that app (Chrome: *⋮ → Settings → Install unknown apps*), then tap **Install**.
+3. Open **nanobot Companion** and type your gateway — `http://192.168.1.10:8787` style, or the LAN address
+   `tools/nanobot-dev.sh start --lan` prints. Paste the WebUI secret and press **Connect**.
+
+The APK is universal (arm64-v8a, armeabi-v7a, x86_64, x86) and signed with the project's release key, so it
+installs on a phone, a tablet and an emulator alike, and later releases update over it. If Android says *"App not
+installed"*, you have a build signed with a different key — uninstall the old copy first.
+
+### iOS (17 or later) — you build it, on a Mac
+
+There is no App Store or TestFlight build: distribution needs a paid Apple account, and this app talks to a
+gateway you run yourself. iOS installs from **`nanobot-companion-ios-<version>.zip`**, which is the tested source
+plus the script that builds and installs it:
+
+1. Download **`nanobot-companion-ios-v0.1.0.zip`** (or your version) on a Mac with Xcode and JDK 21.
+2. Unzip it and, in that folder, run:
+   ```bash
+   tools/ios-self-build.sh --check        # names anything missing, e.g. brew install --cask temurin@21
+   tools/ios-self-build.sh --simulator    # try it with no Apple account at all
+   ```
+3. For the phone itself: plug it in, unlock, tap **Trust**, then
+   ```bash
+   tools/ios-self-build.sh --device --team YOURTEAMID
+   ```
+   Your team id is in *Xcode → Settings → Accounts → your Apple ID → Team*. A **free Apple ID is enough**.
+4. First launch on a phone: **Settings → General → VPN & Device Management → your Apple ID → Trust**.
+
+Two things surprise people about the free route, both true: the app **stops launching after seven days** — rebuild
+from Xcode or `--device` to renew it — and the app's name on the home screen is the build's, not a store listing.
+`BUILD-IOS.txt` inside the zip repeats the four commands.
+
+### Verify what you installed (optional, Android)
+
+Every release ships `SHA256SUMS` and a signed provenance attestation, so you can prove a download came from this
+repository's release workflow at a specific commit:
+
+```bash
+shasum -a 256 -c SHA256SUMS
+gh attestation verify nanobot-companion.apk --repo La-Volpe/nanobot-companion
+```
+
+### Nothing appears to work?
+
+- **"No gateway at that address"** — the phone is not on the same network as the gateway, or the gateway is bound
+  to loopback only. Start it with `tools/nanobot-dev.sh start --lan`, or point the app at your own gateway's LAN
+  address, and check the port.
+- **"That key was refused"** — the WebUI secret, not a password or an API token. It is the value the gateway's
+  `webui` command shows, stored as `NANOBOT_WEBUI_SECRET` in a typical install.
+- **Self-signed HTTPS** — the connect screen has an "allow unverified certificate" switch for exactly that case.
+
 ## What is hard here
 
 - Two feeds, one reducer. The gateway replays the same event vocabulary for
@@ -187,14 +248,14 @@ cd iosApp && xcodebuild -scheme iosApp -destination 'platform=iOS Simulator,name
 `vMAJOR.MINOR.PATCH` tag and turn on `publish`. The workflow tags and publishes the exact tested commit only
 when every job passes. Leave `publish` off to run the same tests without creating a tag or release.
 
-A release has three assets:
+A release has three assets — what each is for, and how a reader installs it, is in
+[Install it on your phone](#install-it-on-your-phone):
 
-- `nanobot-companion.apk` — signed with the repository's release key, universal: arm64-v8a, armeabi-v7a,
-  x86_64 and x86 in one file, so it installs on a phone, a tablet and an emulator alike. Android 8 or later.
+- `nanobot-companion.apk` — signed with the repository's release key and universal (arm64-v8a, armeabi-v7a,
+  x86_64, x86): Android 8 or later, on a phone, a tablet or an emulator alike.
 - `core-cli.zip` — the command-line client.
-- `nanobot-companion-ios-<version>.zip` — the tested source, one folder, with `tools/ios-self-build.sh` and a
-  `BUILD-IOS.txt` at the root: unzip it on a Mac, run the script, and the iOS app builds, installs and launches.
-  No Apple account is needed for the simulator.
+- `nanobot-companion-ios-<version>.zip` — the tested source with `tools/ios-self-build.sh` and a `BUILD-IOS.txt`,
+  which builds, installs and launches the iOS app on a reader's own Mac.
 
 Each release also carries `SHA256SUMS`, and every asset has a **signed build-provenance attestation**:
 
