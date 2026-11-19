@@ -84,6 +84,10 @@ jobs:
           # Absolute, because the zip is built from another directory (a relative path stopped
           # resolving after the `cd` and the v0.1.0 run died with "Could not create output file").
           stage="$PWD/release-artefacts/assets"
+          # `download-artifact` restores the build outputs, not the folder this step stages into;
+          # without this line `zip` failed with "Could not create output file" in run 44427515329
+          # and the whole publish died after every suite had passed.
+          mkdir -p "$stage"
           bundle=nanobot-companion-ios-$TAG
           # Built outside `assets/` on purpose: a staging folder left beside the files is a
           # directory that `gh release create` tries to upload, and it failed the v0.1.0 publish
